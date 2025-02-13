@@ -22,7 +22,7 @@ from bagofholding.metadata import Metadata, get_metadata
 from bagofholding.retrieve import import_from_string
 
 if TYPE_CHECKING:
-    from bagofholding.instance.bag import Bag
+    from bagofholding.instances.bag import Bag
 
 DispatcherAlias: TypeAlias = Callable[[object], "type[Content[Any, Any]] | None"]
 PackingMemoAlias: TypeAlias = bidict[int, str]
