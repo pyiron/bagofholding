@@ -6,7 +6,7 @@ from h5py import Dataset, File, string_dtype
 from h5py import Group as H5Group
 
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.instances.bag import Bag
+from bagofholding.instances.bag import InstanceBag
 from bagofholding.instances.content import (
     ComplexItem,
     Content,
@@ -74,7 +74,7 @@ def dispatch_array(obj: object) -> type[ArrayItem] | type[Reducible] | None:
     return None
 
 
-class InstanceH5Bag(Bag):
+class InstanceH5Bag(InstanceBag):
 
     def __init__(self, filepath: str | Path, *args: object, **kwargs: Any) -> None:
         super().__init__(filepath)
@@ -162,7 +162,7 @@ class InstanceH5Bag(Bag):
     def _maybe_decode(self, attr: str | bytes) -> Any:
         return attr if isinstance(attr, str) else attr.decode("utf-8")
 
-    def __getitem__(self, path: str) -> Content[Any, Any]:
+    def get_content(self, path: str) -> Content[Any, Any]:
         entry = self.file[path]
         content = self._instantiate_content(
             self._maybe_decode(entry.attrs["content_type"]),
@@ -171,7 +171,7 @@ class InstanceH5Bag(Bag):
         )
         if isinstance(content, Group):
             for subgroup in entry:
-                content[subgroup] = self[content.relative(subgroup)]
+                content[subgroup] = self.get_content(content.relative(subgroup))
         return content
 
     def _read_metadata(self, entry: H5Group | Dataset) -> Metadata | None:

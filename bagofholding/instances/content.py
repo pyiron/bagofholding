@@ -22,7 +22,7 @@ from bagofholding.metadata import Metadata, get_metadata
 from bagofholding.retrieve import import_from_string
 
 if TYPE_CHECKING:
-    from bagofholding.instances.bag import Bag
+    from bagofholding.instances.bag import InstanceBag
 
 DispatcherAlias: TypeAlias = Callable[[object], "type[Content[Any, Any]] | None"]
 PackingMemoAlias: TypeAlias = bidict[int, str]
@@ -110,13 +110,13 @@ def _get_importable_string_from_string_reduction(
 
 
 def unpack_content(
-    bag: Bag,
+    bag: InstanceBag,
     path: str,
     memo: UnpackingMemoAlias,
 ) -> Any:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
-        value = bag[path].unpack(bag, memo)
+        value = bag.get_content(path).unpack(bag, memo)
         if path not in memo:
             memo[path] = value
         return value
@@ -151,7 +151,7 @@ class Content(Generic[PackingType, UnpackingType], ABC):
 
     @abstractmethod
     def unpack(
-        self, bag: Bag, memo: UnpackingMemoAlias
+        self, bag: InstanceBag, memo: UnpackingMemoAlias
     ) -> (
         UnpackingType
     ):  # I think I need to break content type into packing and unpacking types
@@ -171,13 +171,13 @@ class Item(
 ):
     stored: StoredType | NotData = NotData()
 
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> UnpackingType:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> UnpackingType:
         if isinstance(self.stored, NotData):
             self.stored = bag.read_stored_item(self)
         return self._unpack_item(bag, memo)
 
     @abstractmethod
-    def _unpack_item(self, bag: Bag, memo: UnpackingMemoAlias) -> UnpackingType:
+    def _unpack_item(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> UnpackingType:
         pass
 
 
@@ -192,11 +192,11 @@ class Reference(Item[str, str, Any]):
         self.stored = obj
         return self
 
-    def _unpack_item(self, bag: Bag, memo: UnpackingMemoAlias) -> Any:
+    def _unpack_item(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> Any:
         reference = cast(str, self.stored)
         from_memo = memo.get(reference, NotData)
         if from_memo is NotData:
-            return bag[reference].unpack(bag, memo)
+            return bag.get_content(reference).unpack(bag, memo)
         return from_memo
 
 
@@ -217,7 +217,7 @@ class Global(Item[GlobalType, str, Any]):
             self.stored = obj.__module__ + "." + obj.__qualname__
         return self
 
-    def _unpack_item(self, bag: Bag, memo: UnpackingMemoAlias) -> Any:
+    def _unpack_item(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> Any:
         import_string = cast(str, self.stored)
         return import_from_string(import_string)
 
@@ -310,7 +310,7 @@ class Reducible(Group[Any, Any, Content[Any, Any]]):
             )
         return self
 
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> Any:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> Any:
         constructor = self["constructor"].unpack(bag, memo)
         constructor_args = self["args"].unpack(bag, memo)
         obj = constructor(*constructor_args)
@@ -362,7 +362,7 @@ class Dict(Group[dict[Any, Any], dict[Any, Any], "Tuple"]):
 
         return self
 
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> dict[Any, Any]:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> dict[Any, Any]:
         return {
             k.unpack(bag, memo): v.unpack(bag, memo)
             for k, v in zip(
@@ -385,7 +385,7 @@ class StrKeyDict(Group[dict[str, Any], dict[str, Any], Content[Any, Any]]):
             self[k] = pack_content(v, self.relative(k), dispatcher, memo, references)
         return self
 
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> dict[str, Any]:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> dict[str, Any]:
         return {k: v.unpack(bag, memo) for k, v in self.items()}
 
 
@@ -412,22 +412,22 @@ class Indexable(
 
 
 class Tuple(Indexable[tuple[Any, ...]]):
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> tuple[Any, ...]:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> tuple[Any, ...]:
         return tuple(child.unpack(bag, memo) for child in self.values())
 
 
 class List(Indexable[list[Any]]):
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> list[Any]:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> list[Any]:
         return [child.unpack(bag, memo) for child in self.values()]
 
 
 class Set(Indexable[set[Any]]):
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> set[Any]:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> set[Any]:
         return {child.unpack(bag, memo) for child in self.values()}
 
 
 class FrozenSet(Indexable[frozenset[Any]]):
-    def unpack(self, bag: Bag, memo: UnpackingMemoAlias) -> frozenset[Any]:
+    def unpack(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> frozenset[Any]:
         return frozenset(child.unpack(bag, memo) for child in self.values())
 
 
@@ -444,7 +444,7 @@ class DirectItem(
         self.stored = obj
         return self
 
-    def _unpack_item(self, bag: Bag, memo: UnpackingMemoAlias) -> PackingType:
+    def _unpack_item(self, bag: InstanceBag, memo: UnpackingMemoAlias) -> PackingType:
         return cast(PackingType, self.stored)
 
 
