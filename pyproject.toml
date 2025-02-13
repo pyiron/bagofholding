@@ -81,3 +81,41 @@ extend-exclude = '''
   ^/docs
 )
 '''
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ['docs/conf.py']
+# strict = true  # You can mix strict and per-module settings
+# https://github.com/python/mypy/issues/11401
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+extra_checks = true
+no_implicit_reexport = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+# Ideally, slowly turn these back on -- typing in tests is great
+check_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+
+
+[[tool.mypy.overrides]]
+module = "notebooks.*"
+# Leave these off -- we don't demand typing in notebooks
+check_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_untyped_defs = false
