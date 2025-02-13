@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import pathlib
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
 from typing import Any, ClassVar
 
 import bidict
 import h5py
 
+from bagofholding.bag import Bag
 from bagofholding.classes.content import pack, read_metadata, unpack
 from bagofholding.metadata import Metadata
 
 
-class ClassH5Bag(Mapping[str, Metadata | None]):
-    storage_root: ClassVar[str] = "object"
+class ClassH5Bag(Bag):
     filepath: pathlib.Path
     file: h5py.File
     libver: ClassVar[str | tuple[str, str] | None] = "latest"
@@ -20,8 +20,7 @@ class ClassH5Bag(Mapping[str, Metadata | None]):
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
     ) -> None:
-        super().__init__(*args, **kwargs)
-        self.filepath = pathlib.Path(filepath)
+        super().__init__(filepath, *args, **kwargs)
         self.file = h5py.File(filepath, mode="r", libver=self.libver)
 
     def _close(self) -> None:
@@ -35,7 +34,7 @@ class ClassH5Bag(Mapping[str, Metadata | None]):
         with h5py.File(filepath, "w", libver=cls.libver) as f:
             pack(obj, f, cls.storage_root, bidict.bidict(), [])
 
-    def load(self, path: str = storage_root) -> Any:
+    def load(self, path: str = Bag.storage_root) -> Any:
         return unpack(self.file, path, {})
 
     def __getitem__(self, path: str) -> Metadata | None:
