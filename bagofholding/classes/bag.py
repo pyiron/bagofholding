@@ -11,7 +11,7 @@ from bagofholding.classes.content import pack, read_metadata, unpack
 from bagofholding.metadata import Metadata
 
 
-class H5Bag(Mapping[str, Metadata | None]):
+class ClassH5Bag(Mapping[str, Metadata | None]):
     storage_root: ClassVar[str] = "object"
     filepath: pathlib.Path
     file: h5py.File
