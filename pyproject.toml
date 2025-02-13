@@ -7,8 +7,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyiron_module_template"
-description = "pyiron_module_template - Your pyiron-like module."
+name = "bagofholding"
+description = "bagofholding - Your pyiron-like module."
 readme = "docs/README.md"
 keywords = [ "pyiron",]
 requires-python = ">=3.9, <3.13"
@@ -36,21 +36,21 @@ file = "LICENSE"
 
 [project.urls]
 Homepage = "https://pyiron.org/"
-Documentation = "https://pyiron_module_template.readthedocs.io"
-Repository = "https://github.com/pyiron/pyiron_module_template"
+Documentation = "https://bagofholding.readthedocs.io"
+Repository = "https://github.com/pyiron/bagofholding"
 
 [tool.versioneer]
 VCS = "git"
 style = "pep440-pre"
-versionfile_source = "pyiron_module_template/_version.py"
-parentdir_prefix = "pyiron_module_template"
-tag_prefix = "pyiron_module_template-"
+versionfile_source = "bagofholding/_version.py"
+parentdir_prefix = "bagofholding"
+tag_prefix = "bagofholding-"
 
 [tool.setuptools.packages.find]
-include = [ "pyiron_module_template*",]
+include = [ "bagofholding*",]
 
 [tool.setuptools.dynamic.version]
-attr = "pyiron_module_template.__version__"
+attr = "bagofholding.__version__"
 
 [tool.ruff]
 exclude = ["docs", "notebooks", "setup.py", "_version.py"]
