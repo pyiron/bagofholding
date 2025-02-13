@@ -5,7 +5,7 @@
 name: Preview Release
 
 on:
-  pull_request:
+#  pull_request:
 #  release:
 #    types: [ published ]
 
