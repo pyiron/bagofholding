@@ -1,5 +1,6 @@
 channels:
   - conda-forge
 dependencies:
-  - pyiron_base =0.8.3
-  
+  - bidict =0.23.1
+  - h5py =3.12.1
+  - numpy =2.1.3
