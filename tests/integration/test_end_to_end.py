@@ -10,9 +10,6 @@ from static.objects import CustomReduce, Parent, SomeData, build_workflow
 from bagofholding import ClassH5Bag, InstanceH5Bag, PickleBag
 
 
-
-
-
 class TestEndToEnd(unittest.TestCase):
     def setUp(self):
         self.objects = (
@@ -32,8 +29,6 @@ class TestEndToEnd(unittest.TestCase):
         self.wf = build_workflow(3)
         self.bags = [PickleBag, InstanceH5Bag, ClassH5Bag]
         self.fname = "obj.bag"
-
-
 
     def tearDown(self):
         with contextlib.suppress(FileNotFoundError):

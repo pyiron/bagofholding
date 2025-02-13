@@ -9,6 +9,7 @@ from static.objects import build_workflow
 from bagofholding import ClassH5Bag, InstanceH5Bag, PickleBag
 from bagofholding.instances.content import pack_content
 
+
 class TestBenchmark(unittest.TestCase):
     """
     Presently, these can't actually fail -- they just print stuff for us to build
@@ -95,4 +96,3 @@ class TestBenchmark(unittest.TestCase):
                         round(h5t_load / pt_load, 2),
                     )
                     print("--------------------------")
-
