@@ -4,7 +4,7 @@ import pickle
 from pathlib import Path
 from typing import Any, TypeAlias, cast
 
-from bagofholding.instances.bag import Bag
+from bagofholding.instances.bag import InstanceBag
 from bagofholding.instances.content import (
     PATH_DELIMITER,
     Content,
@@ -19,7 +19,7 @@ NestedDictAlias: TypeAlias = dict[str, "str | NestedDictAlias"]
 BOH_PREFIX: str = "BoH::"
 
 
-class PickleBag(Bag):
+class PickleBag(InstanceBag):
     content: Content[Any, Any]
 
     def __init__(self, filepath: str | Path, *args: object, **kwargs: Any) -> None:
@@ -87,7 +87,7 @@ class PickleBag(Bag):
                 metadata_kwargs[k] = v
         return metadata_kwargs
 
-    def __getitem__(self, path: str) -> Content[Any, Any]:
+    def get_content(self, path: str) -> Content[Any, Any]:
         if not path.startswith(self.storage_root):
             raise ValueError(
                 f"Invalid path: {path}. Paths must start with {self.storage_root}"

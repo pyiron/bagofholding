@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ClassVar, TypeAlias
+from typing import Any, TypeAlias
 
+from bagofholding.bag import Bag
 from bagofholding.exception import BagOfHoldingError
 from bagofholding.instances.content import (
     Content,
@@ -18,10 +19,7 @@ from bagofholding.retrieve import import_from_string
 RetrieverAlias: TypeAlias = dict[type[Item[Any, Any, Any]], Callable[[Path, str], Any]]
 
 
-class Bag(Mapping[str, Content[Any, Any]], ABC):
-
-    storage_root: ClassVar[str] = "object"
-    filepath: Path
+class InstanceBag(Bag, ABC):
 
     @classmethod
     def save(cls, obj: Any, filepath: str | Path) -> None:
@@ -41,30 +39,19 @@ class Bag(Mapping[str, Content[Any, Any]], ABC):
     def _write(cls, content: Content[Any, Any], filepath: Path) -> None:
         pass
 
-    def __init__(self, filepath: str | Path, *args: object, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.filepath = Path(filepath)
-
-    def load(self, path: str = storage_root) -> Any:
+    def load(self, path: str = Bag.storage_root) -> Any:
         return unpack_content(self, path, {})
 
     @abstractmethod
     def read_stored_item(self, item: Item[Any, Any, Any]) -> Any:
         pass
 
+    def __getitem__(self, path: str) -> Metadata | None:
+        return self.get_content(path).metadata
+
     @abstractmethod
-    def __getitem__(self, path: str) -> Content[Any, Any]:
+    def get_content(self, path: str) -> Content[Any, Any]:
         pass
-
-    @abstractmethod
-    def list_paths(self) -> list[str]:
-        """A list of all available content paths."""
-
-    def __len__(self) -> int:
-        return len(self.list_paths())
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.list_paths())
 
     def _instantiate_content(
         self, content_class_string: str, path: str, metadata: Metadata | None
