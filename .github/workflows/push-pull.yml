@@ -15,3 +15,4 @@ jobs:
       notebooks-env-files: .ci_support/environment.yml .ci_support/environment-workflow.yml
       tests-env-files: .ci_support/environment.yml .ci_support/environment-workflow.yml
       alternate-tests-env-files: .ci_support/lower_bound.yml .ci_support/environment-workflow.yml
+      alternate-tests-dir: tests/unit
