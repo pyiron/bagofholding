@@ -1,0 +1,6 @@
+channels:
+  - conda-forge
+dependencies:
+  - bidict =0.23.1
+  - h5py =3.12.1
+  - numpy =2.1.3
