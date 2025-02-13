@@ -74,7 +74,7 @@ def dispatch_array(obj: object) -> type[ArrayItem] | type[Reducible] | None:
     return None
 
 
-class H5Bag(Bag):
+class InstanceH5Bag(Bag):
 
     def __init__(self, filepath: str | Path, *args: object, **kwargs: Any) -> None:
         super().__init__(filepath)
