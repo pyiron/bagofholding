@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import pathlib
 from collections.abc import Iterator
 from typing import Any, ClassVar
@@ -24,7 +25,8 @@ class ClassH5Bag(Bag):
         self.file = h5py.File(filepath, mode="r", libver=self.libver)
 
     def _close(self) -> None:
-        self.file.close()
+        with contextlib.suppress(AttributeError):
+            self.file.close()
 
     def __del__(self) -> None:
         self._close()
