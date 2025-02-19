@@ -25,7 +25,7 @@ def get_metadata(obj: Any) -> Metadata | None:
         return Metadata(
             module=module,
             version=get_version(module),
-            meta=obj.__metadata__ if hasattr(obj, "__metadata__") else None,
+            meta=str(obj.__metadata__) if hasattr(obj, "__metadata__") else None,
         )
 
 
