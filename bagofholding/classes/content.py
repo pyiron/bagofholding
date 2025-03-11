@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import abc
+import collections.abc
+import operator
+import types
 from collections.abc import Callable, Iterator
 from types import BuiltinFunctionType, FunctionType
 from typing import Any, ClassVar, Generic, TypeAlias, TypeVar, cast
@@ -494,6 +497,52 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         return {k: unpack(file, relative(path, k), memo) for k in file[path]}
 
 
+class Union(SimpleGroup[types.UnionType]):
+    """
+    :class:`types.UnionType` has no :meth:`__reduce__` method. Pickle actually gets
+    around this with bespoke logic, and so we need to too.
+    """
+
+    @classmethod
+    def _write_subcontent(
+        cls,
+        obj: types.UnionType,
+        file: h5py.File,
+        path: str,
+        memo: PackingMemoAlias,
+        references: ReferencesAlias,
+    ) -> None:
+        for i, v in enumerate(obj.__args__):
+            pack(v, file, relative(path, f"i{i}"), memo, references)
+
+    @staticmethod
+    def _recursive_or(args: collections.abc.Iterable[object]) -> types.UnionType:
+        it = iter(args)
+        try:
+            first = next(it)
+            second = next(it)
+        except StopIteration:
+            raise ValueError("Expected at least two elements for a UnionType") from None
+
+        union: types.UnionType = operator.or_(first, second)
+
+        for arg in it:
+            union = operator.or_(union, arg)
+
+        return union
+
+    @classmethod
+    def read(
+        cls,
+        file: h5py.File,
+        path: str,
+        memo: UnpackingMemoAlias,
+    ) -> types.UnionType:
+        return cls._recursive_or(
+            unpack(file, relative(path, f"i{i}"), memo) for i in range(len(file[path]))
+        )
+
+
 IndexableType = TypeVar(
     "IndexableType", tuple[Any, ...], list[Any], set[Any], frozenset[Any]
 )
@@ -612,6 +661,7 @@ def get_complex_content_class(obj: object) -> type[ComplexItem[Any]] | None:
 
 KNOWN_GROUP_MAP: dict[type, type[Group[Any, Any]]] = {
     dict: Dict,
+    types.UnionType: Union,
     tuple: Tuple,
     list: List,
     set: Set,
