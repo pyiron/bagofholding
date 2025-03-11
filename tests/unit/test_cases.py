@@ -12,6 +12,8 @@ class TestCases(unittest.TestCase):
         self.save.unlink(missing_ok=True)
 
     def test_uniontype(self):
-        union_type = int | float
-
+        sub_union = str | bytes
+        union_type = int | float | sub_union
         boh.ClassH5Bag.save(union_type, self.save)
+        reloaded = boh.ClassH5Bag(self.save).load()
+        self.assertEqual(union_type, reloaded)
