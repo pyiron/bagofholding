@@ -43,7 +43,7 @@ class ClassH5Bag(Bag):
         return read_metadata(self.file[path])
 
     def _get_enriched_metadata(
-            self, path: str
+        self, path: str
     ) -> tuple[str, Metadata | None, tuple[str, ...] | None]:
         """
         Enriched browsing information to support a browsing widget.
