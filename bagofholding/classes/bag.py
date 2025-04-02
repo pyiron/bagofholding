@@ -9,7 +9,7 @@ import bidict
 import h5py
 
 from bagofholding.bag import Bag
-from bagofholding.classes.content import pack, read_metadata, unpack
+from bagofholding.classes.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.metadata import Metadata
 
 
@@ -41,6 +41,28 @@ class ClassH5Bag(Bag):
 
     def __getitem__(self, path: str) -> Metadata | None:
         return read_metadata(self.file[path])
+
+    def _get_enriched_metadata(
+            self, path: str
+    ) -> tuple[str, Metadata | None, tuple[str, ...] | None]:
+        """
+        Enriched browsing information to support a browsing widget.
+        Still doesn't actually load the object, but exploits more available information.
+
+        Args:
+            path (str): Where in the h5 file to look
+
+        Returns:
+            (str): The content type class string.
+            (Metadata | None): The metadata, if any.
+            (tuple[str, ...] | None): The sub-entry name(s), if any.
+        """
+        entry = self.file[path]
+        return (
+            maybe_decode(entry.attrs["content_type"]),
+            read_metadata(entry),
+            tuple(entry.keys()) if isinstance(entry, h5py.Group) else None,
+        )
 
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
