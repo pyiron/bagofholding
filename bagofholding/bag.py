@@ -5,6 +5,7 @@ import pathlib
 from collections.abc import Iterator, Mapping
 from typing import Any, ClassVar
 
+from bagofholding import __version__
 from bagofholding.metadata import Metadata
 
 
@@ -44,3 +45,15 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.list_paths())
+
+    @classmethod
+    def get_version(self) -> str:
+        return __version__
+
+    @classmethod
+    def get_bag_info(cls) -> dict[str, str]:
+        return {
+            "bag_qualname": cls.__qualname__,
+            "bag_module": cls.__module__,
+            "bag_version": cls.get_version(),
+        }
