@@ -1,4 +1,15 @@
-import ipytree
+from pyiron_snippets.import_alarm import ImportAlarm
+
+try:
+    import ipytree
+
+    import_alarm = ImportAlarm()
+except (ImportError, ModuleNotFoundError):
+    import_alarm = ImportAlarm(
+        "The browsing widget relies on ipytree, but this was unavailable. "
+        "You can browse all available paths with :meth:`bagofholding.classes.bag.ClassH5Bag.list_paths`.",
+        _fail_on_warning=True,
+    )
 
 from bagofholding.classes.content import Reducible
 
@@ -8,6 +19,7 @@ class BagTree(ipytree.Tree):
     A widget for more convenient bag browsing inside notebooks.
     """
 
+    @import_alarm
     def __init__(self, bag):
         super().__init__(multiple_selection=False)
         self.bag = bag

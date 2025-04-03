@@ -10,6 +10,7 @@ import h5py
 
 from bagofholding.bag import Bag
 from bagofholding.classes.content import maybe_decode, pack, read_metadata, unpack
+from bagofholding.classes.widget import BagTree
 from bagofholding.metadata import Metadata
 
 
@@ -76,10 +77,8 @@ class ClassH5Bag(Bag):
     def __iter__(self) -> Iterator[str]:
         return iter(self.list_paths())
 
-    def browse(self):
-        try:  # TODO: use import alarm
-            from bagofholding.classes.widget import BagTree
-
+    def browse(self) -> BagTree | list[str]:
+        try:
             return BagTree(self)
         except ImportError:
             return self.list_paths()
