@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bagofholding"
-description = "bagofholding - Your pyiron-like module."
+description = "bagofholding - browsable, partially-reloadable serialization for pickleable python objects."
 readme = "docs/README.md"
 keywords = [ "pyiron",]
 requires-python = ">=3.9, <3.13"
@@ -32,7 +32,7 @@ dependencies = [
 ]
 dynamic = [ "version",]
 authors = [
-    { name = "Lorem Ipsum", email = "lorem@ipsum.com" },
+    { name = "Liam Huber", email = "liamhuber@greyhavensolutions.com" },
 ]
 
 [project.license]
