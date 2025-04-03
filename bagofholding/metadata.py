@@ -9,6 +9,7 @@ from typing import Any
 
 @dataclass
 class Metadata:
+    qualname: str | None = None
     module: str | None = None
     version: str | None = None
     meta: str | None = None
@@ -23,6 +24,7 @@ def get_metadata(obj: Any) -> Metadata | None:
         return None
     else:
         return Metadata(
+            qualname=obj.__class__.__qualname__,
             module=module,
             version=get_version(module),
             meta=str(obj.__metadata__) if hasattr(obj, "__metadata__") else None,
