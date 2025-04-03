@@ -7,4 +7,3 @@ dependencies:
 - sphinx-gallery
 - sphinx-rtd-theme
 - versioneer
-- pyiron_base =0.8.3
