@@ -6,8 +6,8 @@ import unittest
 
 from static.objects import build_workflow
 
-from bagofholding import H5Bag, InstanceH5Bag, PickleBag
-from bagofholding.instances.content import pack_content
+from bagofholding import H5Bag
+from bagofholding.h5.content import pack
 
 
 class TestBenchmark(unittest.TestCase):
@@ -15,13 +15,6 @@ class TestBenchmark(unittest.TestCase):
     Presently, these can't actually fail -- they just print stuff for us to build
     intuition and start making comparisons
     """
-
-    def test_packing_time(self):
-        wf = build_workflow(3000)
-        t0 = time.time()
-        pack_content(wf, "object", dispatcher=InstanceH5Bag.dispatch)
-        t_pack = time.time() - t0
-        print(f"Packing time: {round(t_pack * 1000, 0)} ms for graph length {len(wf)}")
 
     def test_timing(self):
         fname = "wf.pckl"
@@ -45,7 +38,7 @@ class TestBenchmark(unittest.TestCase):
                     os.remove(fname)
 
                 fname = "wf.h5"
-                for bag_class in [PickleBag, InstanceH5Bag, H5Bag]:
+                for bag_class in [H5Bag]:
                     t0 = time.time()
                     bag_class.save(wf, fname)
                     h5t_save = time.time() - t0
