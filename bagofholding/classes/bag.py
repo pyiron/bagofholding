@@ -75,3 +75,11 @@ class ClassH5Bag(Bag):
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.list_paths())
+
+    def browse(self):
+        try:  # TODO: use import alarm
+            from bagofholding.classes.widget import BagTree
+
+            return BagTree(self)
+        except ImportError:
+            return self.list_paths()
