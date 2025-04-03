@@ -14,7 +14,7 @@ from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata
 
 
-class ClassH5Bag(Bag):
+class H5Bag(Bag):
     filepath: pathlib.Path
     file: h5py.File
     libver: ClassVar[str | tuple[str, str] | None] = "latest"

@@ -7,7 +7,7 @@ import numpy as np
 from pyiron_snippets.dotdict import DotDict
 from static.objects import CustomReduce, Parent, SomeData, build_workflow
 
-from bagofholding import ClassH5Bag, InstanceH5Bag, PickleBag
+from bagofholding import H5Bag, InstanceH5Bag, PickleBag
 
 
 class TestEndToEnd(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestEndToEnd(unittest.TestCase):
             np.array([SomeData(), SomeData()]),
         )
         self.wf = build_workflow(3)
-        self.bags = [PickleBag, InstanceH5Bag, ClassH5Bag]
+        self.bags = [PickleBag, InstanceH5Bag, H5Bag]
         self.fname = "obj.bag"
 
     def tearDown(self):

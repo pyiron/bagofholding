@@ -20,7 +20,7 @@ from bagofholding.h5.content import Reducible
 if typing.TYPE_CHECKING:
     import traitlets
 
-    from bagofholding.h5.bag import ClassH5Bag
+    from bagofholding.h5.bag import H5Bag
 
 
 class BagTree(ipytree.Tree):  # type: ignore

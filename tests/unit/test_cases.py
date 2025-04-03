@@ -14,6 +14,6 @@ class TestCases(unittest.TestCase):
     def test_uniontype(self):
         sub_union = str | bytes
         union_type = int | float | sub_union
-        boh.ClassH5Bag.save(union_type, self.save)
-        reloaded = boh.ClassH5Bag(self.save).load()
+        boh.H5Bag.save(union_type, self.save)
+        reloaded = boh.H5Bag(self.save).load()
         self.assertEqual(union_type, reloaded)

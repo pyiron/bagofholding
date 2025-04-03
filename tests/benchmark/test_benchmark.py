@@ -6,7 +6,7 @@ import unittest
 
 from static.objects import build_workflow
 
-from bagofholding import ClassH5Bag, InstanceH5Bag, PickleBag
+from bagofholding import H5Bag, InstanceH5Bag, PickleBag
 from bagofholding.instances.content import pack_content
 
 
@@ -45,7 +45,7 @@ class TestBenchmark(unittest.TestCase):
                     os.remove(fname)
 
                 fname = "wf.h5"
-                for bag_class in [PickleBag, InstanceH5Bag, ClassH5Bag]:
+                for bag_class in [PickleBag, InstanceH5Bag, H5Bag]:
                     t0 = time.time()
                     bag_class.save(wf, fname)
                     h5t_save = time.time() - t0
