@@ -11,16 +11,16 @@ try:
 except (ImportError, ModuleNotFoundError):
     import_alarm = ImportAlarm(
         "The browsing widget relies on ipytree, but this was unavailable. "
-        "You can browse all available paths with :meth:`bagofholding.classes.bag.ClassH5Bag.list_paths`.",
+        "You can browse all available paths with :meth:`bagofholding.h5.bag.ClassH5Bag.list_paths`.",
         _fail_on_warning=True,
     )
 
-from bagofholding.classes.content import Reducible
+from bagofholding.h5.content import Reducible
 
 if typing.TYPE_CHECKING:
     import traitlets
 
-    from bagofholding.classes.bag import ClassH5Bag
+    from bagofholding.h5.bag import ClassH5Bag
 
 
 class BagTree(ipytree.Tree):  # type: ignore

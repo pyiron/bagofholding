@@ -9,8 +9,8 @@ import bidict
 import h5py
 
 from bagofholding.bag import Bag
-from bagofholding.classes.content import maybe_decode, pack, read_metadata, unpack
-from bagofholding.classes.widget import BagTree
+from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
+from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata
 
 

@@ -12,8 +12,7 @@ import bidict
 import h5py
 import numpy as np
 
-from bagofholding.classes.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
-from bagofholding.instances.content import _get_importable_string_from_string_reduction
+from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
 from bagofholding.metadata import Metadata, get_metadata
 from bagofholding.retrieve import import_from_string
 
