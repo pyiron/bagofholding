@@ -14,6 +14,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
     Bags are the user-facing object.
     """
 
+    bag_info: BagInfo
     storage_root: ClassVar[str] = "object"
     filepath: pathlib.Path
 
