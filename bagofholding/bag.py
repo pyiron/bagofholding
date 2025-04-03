@@ -6,7 +6,7 @@ from collections.abc import Iterator, Mapping
 from typing import Any, ClassVar
 
 from bagofholding import __version__
-from bagofholding.metadata import Metadata
+from bagofholding.metadata import BagInfo,Metadata
 
 
 class Bag(Mapping[str, Metadata | None], abc.ABC):
@@ -27,6 +27,11 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
+        self.bag_info = self.read_bag_info(self.filepath)
+
+    @abc.abstractmethod
+    def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
+        pass
 
     @abc.abstractmethod
     def load(self, path: str = storage_root) -> Any:
@@ -51,9 +56,10 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         return __version__
 
     @classmethod
-    def get_bag_info(cls) -> dict[str, str]:
-        return {
-            "bag_qualname": cls.__qualname__,
-            "bag_module": cls.__module__,
-            "bag_version": cls.get_version(),
-        }
+    def get_bag_info(cls) -> BagInfo:
+        return BagInfo(
+            qualname=cls.__qualname__,
+            module=cls.__module__,
+            version=cls.get_version(),
+        )
+
