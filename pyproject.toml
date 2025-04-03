@@ -43,6 +43,9 @@ Homepage = "https://pyiron.org/"
 Documentation = "https://bagofholding.readthedocs.io"
 Repository = "https://github.com/pyiron/bagofholding"
 
+[project.optional-dependencies]
+notebook = ["ipytree==0.2.2"]
+
 [tool.versioneer]
 VCS = "git"
 style = "pep440-pre"
