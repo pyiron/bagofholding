@@ -7,7 +7,6 @@ import unittest
 from static.objects import build_workflow
 
 from bagofholding import H5Bag
-from bagofholding.h5.content import pack
 
 
 class TestBenchmark(unittest.TestCase):

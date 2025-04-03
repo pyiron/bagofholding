@@ -32,7 +32,7 @@ class BagTree(ipytree.Tree):  # type: ignore
     @import_alarm  # type: ignore
     # pyiron_snippets.import_alarm.ImportAlarm.__call__  is not correctly passing on
     # the hint
-    def __init__(self, bag) -> None:
+    def __init__(self, bag: H5Bag) -> None:
         super().__init__(multiple_selection=False)
         self.bag = bag
         self.root_path = bag.storage_root
