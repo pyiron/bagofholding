@@ -37,7 +37,7 @@ def get_version(module_name: str) -> str | None:
     if module_name == "builtins":
         return f"{version_info.major}.{version_info.minor}.{version_info.micro}"
 
-    module = import_module(module_name)
+    module = import_module(module_name.split(".")[0])
     for version in ["__version__", "version", "_version"]:
         if hasattr(module, version):
             return str(getattr(module, version))
