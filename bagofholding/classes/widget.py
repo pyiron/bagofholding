@@ -1,3 +1,5 @@
+import typing
+
 from pyiron_snippets.import_alarm import ImportAlarm
 
 try:
@@ -13,14 +15,22 @@ except (ImportError, ModuleNotFoundError):
 
 from bagofholding.classes.content import Reducible
 
+if typing.TYPE_CHECKING:
+    import traitlets
 
-class BagTree(ipytree.Tree):
+    from bagofholding.classes.bag import ClassH5Bag
+
+
+class BagTree(ipytree.Tree):  # type: ignore
+    # Silence complaints about subclassing `Any` because of upstream issues
     """
     A widget for more convenient bag browsing inside notebooks.
     """
 
-    @import_alarm
-    def __init__(self, bag):
+    @import_alarm  # type: ignore
+    # pyiron_snippets.import_alarm.ImportAlarm.__call__  is not correctly passing on
+    # the hint
+    def __init__(self, bag: ClassH5Bag) -> None:
         super().__init__(multiple_selection=False)
         self.bag = bag
         self.root_path = bag.storage_root
@@ -29,7 +39,7 @@ class BagTree(ipytree.Tree):
         self.root = self._create_node(self.root_path)
         self.add_node(self.root)
 
-    def _create_node(self, path):
+    def _create_node(self, path: str) -> ipytree.Node:
         content_type, metadata, subentries = self.bag._get_enriched_metadata(path)
 
         label_base = path.split("/")[-1]
@@ -64,7 +74,7 @@ class BagTree(ipytree.Tree):
 
         return node
 
-    def _load_subentries(self, change):
+    def _load_subentries(self, change: traitlets.Bunch) -> None:
         node = change["owner"]
 
         if node.tree_metadata["loaded"]:
@@ -87,11 +97,11 @@ class BagTree(ipytree.Tree):
 
         node.tree_metadata["loaded"] = True
 
-    def _on_select(self, change):
+    def _on_select(self, change: traitlets.Bunch) -> None:
         if change["new"]:
             self.selected_entry = change["new"][0].tree_metadata["path"]
 
-    def load_selected(self):
+    def load_selected(self) -> object:
         if self.selected_entry is None:
             raise ValueError("No entry selected")
         print(f"Loading {self.selected_entry}")

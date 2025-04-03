@@ -79,6 +79,8 @@ class ClassH5Bag(Bag):
 
     def browse(self) -> BagTree | list[str]:
         try:
-            return BagTree(self)
+            return BagTree(self)  # type: ignore
+            # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
+            # and this is not correctly passing on the hint
         except ImportError:
             return self.list_paths()
