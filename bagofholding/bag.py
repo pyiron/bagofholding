@@ -7,7 +7,12 @@ from collections.abc import Callable, ItemsView, Iterator, Mapping
 from typing import Any, ClassVar, Generic, TypeVar
 
 from bagofholding import __version__
+from bagofholding.exception import BagOfHoldingError
 from bagofholding.metadata import Metadata
+
+
+class BagMismatchError(BagOfHoldingError, ValueError):
+    pass
 
 
 @dataclasses.dataclass(frozen=True)
@@ -83,10 +88,20 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
         self.bag_info = self.read_bag_info(self.filepath)
+        if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
+            raise BagMismatchError(
+                f"The bag class {self.__class__} does not match the bag saved at "
+                f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
+                f"is {self.bag_info}"
+            )
 
     @abc.abstractmethod
     def read_bag_info(self, filepath: pathlib.Path) -> InfoType:
         pass
+
+    @staticmethod
+    def validate_bag_info(bag_info: InfoType, reference: InfoType) -> bool:
+        return bag_info == reference
 
     @abc.abstractmethod
     def load(self, path: str = storage_root) -> Any:
