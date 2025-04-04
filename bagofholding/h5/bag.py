@@ -14,10 +14,18 @@ from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata
 
 
-class H5Bag(Bag):
+class H5Bag(Bag[BagInfo]):
     filepath: pathlib.Path
     file: h5py.File
     libver: ClassVar[str | tuple[str, str] | None] = "latest"
+
+    @classmethod
+    def get_bag_info(cls) -> BagInfo:
+        return BagInfo(
+            qualname=cls.__qualname__,
+            module=cls.__module__,
+            version=cls.get_version(),
+        )
 
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any

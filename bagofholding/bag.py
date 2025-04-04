@@ -4,7 +4,7 @@ import abc
 import dataclasses
 import pathlib
 from collections.abc import Callable, ItemsView, Iterator, Mapping
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 from bagofholding import __version__
 from bagofholding.metadata import Metadata
@@ -20,12 +20,15 @@ class BagInfo:
         return dataclasses.asdict(self).items()
 
 
-class Bag(Mapping[str, Metadata | None], abc.ABC):
+InfoType = TypeVar("InfoType", bound=BagInfo)
+
+
+class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     """
     Bags are the user-facing object.
     """
 
-    bag_info: BagInfo
+    bag_info: InfoType
     storage_root: ClassVar[str] = "object"
     filepath: pathlib.Path
 
@@ -50,6 +53,11 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         """
         pass
 
+    @classmethod
+    @abc.abstractmethod
+    def get_bag_info(cls) -> InfoType:
+        pass
+
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
     ) -> None:
@@ -58,7 +66,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         self.bag_info = self.read_bag_info(self.filepath)
 
     @abc.abstractmethod
-    def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
+    def read_bag_info(self, filepath: pathlib.Path) -> InfoType:
         pass
 
     @abc.abstractmethod
@@ -82,11 +90,3 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
     @classmethod
     def get_version(self) -> str:
         return str(__version__)
-
-    @classmethod
-    def get_bag_info(cls) -> BagInfo:
-        return BagInfo(
-            qualname=cls.__qualname__,
-            module=cls.__module__,
-            version=cls.get_version(),
-        )
