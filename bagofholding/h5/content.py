@@ -254,10 +254,14 @@ class ComplexItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         obj: ItemType,
         file: h5py.File,
         path: str,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
     ) -> None:
         entry = cls._write_item(obj, file, path)
         cls._write_type(entry)
-        cls._write_metadata(entry, get_metadata(obj))
+        cls._write_metadata(
+            entry,
+            get_metadata(obj, {} if version_scraping is None else version_scraping),
+        )
 
     @classmethod
     @abc.abstractmethod
@@ -302,6 +306,7 @@ class Group(
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
         **kwargs: Any,
     ) -> None:
         pass
@@ -359,15 +364,26 @@ class Reducible(Group[object, object]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
         reduced_value: ReduceReturnType | PickleHint | None = None,
         **kwargs: Any,
     ) -> None:
         reduced_value = obj.__reduce__() if reduced_value is None else reduced_value
         entry = file.create_group(path)
         cls._write_type(entry)
-        cls._write_metadata(entry, get_metadata(obj))
+        cls._write_metadata(
+            entry,
+            get_metadata(obj, {} if version_scraping is None else version_scraping),
+        )
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
-            pack(value, file, relative(path, subpath), memo, references)
+            pack(
+                value,
+                file,
+                relative(path, subpath),
+                memo,
+                references,
+                version_scraping=version_scraping,
+            )
 
     @classmethod
     def read(
@@ -426,11 +442,14 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
         **kwargs: Any,
     ) -> None:
         entry = file.create_group(path)
         cls._write_type(entry)
-        cls._write_subcontent(obj, file, path, memo, references)
+        cls._write_subcontent(
+            obj, file, path, memo, references, version_scraping=version_scraping
+        )
 
     @classmethod
     @abc.abstractmethod
@@ -441,6 +460,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None,
     ) -> h5py.Group:
         pass
 
@@ -454,9 +474,24 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None,
     ) -> None:
-        pack(tuple(obj.keys()), file, relative(path, "keys"), memo, references)
-        pack(tuple(obj.values()), file, relative(path, "values"), memo, references)
+        pack(
+            tuple(obj.keys()),
+            file,
+            relative(path, "keys"),
+            memo,
+            references,
+            version_scraping=version_scraping,
+        )
+        pack(
+            tuple(obj.values()),
+            file,
+            relative(path, "values"),
+            memo,
+            references,
+            version_scraping=version_scraping,
+        )
 
     @classmethod
     def read(
@@ -483,9 +518,17 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None,
     ) -> None:
         for k, v in obj.items():
-            pack(v, file, relative(path, k), memo, references)
+            pack(
+                v,
+                file,
+                relative(path, k),
+                memo,
+                references,
+                version_scraping=version_scraping,
+            )
 
     @classmethod
     def read(
@@ -511,9 +554,17 @@ class Union(SimpleGroup[types.UnionType]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None,
     ) -> None:
         for i, v in enumerate(obj.__args__):
-            pack(v, file, relative(path, f"i{i}"), memo, references)
+            pack(
+                v,
+                file,
+                relative(path, f"i{i}"),
+                memo,
+                references,
+                version_scraping=version_scraping,
+            )
 
     @staticmethod
     def _recursive_or(args: collections.abc.Iterable[object]) -> types.UnionType:
@@ -559,9 +610,17 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        version_scraping: dict[str, Callable[[str], str | None]] | None,
     ) -> None:
         for i, v in enumerate(obj):
-            pack(v, file, relative(path, f"i{i}"), memo, references)
+            pack(
+                v,
+                file,
+                relative(path, f"i{i}"),
+                memo,
+                references,
+                version_scraping=version_scraping,
+            )
 
     @classmethod
     def read(
@@ -597,6 +656,7 @@ def pack(
     path: str,
     memo: PackingMemoAlias,
     references: ReferencesAlias,
+    version_scraping: dict[str, Callable[[str], str | None]] | None = None,
 ) -> None:
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
@@ -615,12 +675,14 @@ def pack(
 
     complex_class = get_complex_content_class(obj)
     if complex_class is not None:
-        complex_class.write_item(obj, file, path)
+        complex_class.write_item(obj, file, path, version_scraping=version_scraping)
         return
 
     group_class = get_group_content_class(obj)
     if group_class is not None:
-        group_class.write_group(obj, file, path, memo, references)
+        group_class.write_group(
+            obj, file, path, memo, references, version_scraping=version_scraping
+        )
         return
 
     rv = obj.__reduce__()  # TODO: handle __reduce_ex__ for pickle compliance
@@ -632,7 +694,15 @@ def pack(
         )
         return
     else:
-        Reducible.write_group(obj, file, path, memo, references, reduced_value=rv)
+        Reducible.write_group(
+            obj,
+            file,
+            path,
+            memo,
+            references,
+            reduced_value=rv,
+            version_scraping=version_scraping,
+        )
         return
 
 

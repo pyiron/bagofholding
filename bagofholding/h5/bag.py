@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any, ClassVar
 
 import bidict
@@ -11,7 +11,7 @@ import h5py
 from bagofholding.bag import Bag
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
-from bagofholding.metadata import Metadata, BagInfo
+from bagofholding.metadata import BagInfo, Metadata
 
 
 class H5Bag(Bag):
@@ -27,11 +27,7 @@ class H5Bag(Bag):
 
     def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
         with h5py.File(filepath, "r", libver=self.libver) as f:
-            info = BagInfo(
-                **{
-                    k: f.attrs[k] for k in BagInfo.__dataclass_fields__.keys()
-                }
-            )
+            info = BagInfo(**{k: f.attrs[k] for k in BagInfo.__dataclass_fields__})
         return info
 
     def _close(self) -> None:
@@ -42,11 +38,34 @@ class H5Bag(Bag):
         self._close()
 
     @classmethod
-    def save(cls, obj: Any, filepath: str | pathlib.Path) -> None:
+    def save(
+        cls,
+        obj: Any,
+        filepath: str | pathlib.Path,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+    ) -> None:
+        """
+        Save a python object to file.
+
+        Args:
+            obj (Any): The (pickleble) python object to be saved.
+            filepath (str|pathlib.Path): The path to save the object to.
+            version_scraping (dict[str, Callable[[str], str]] | None): An optional
+                dictionary mapping module names to a callable that takes this name and
+                returns a version (or None). The default callable imports the module
+                string and looks for a `__version__` attribute.
+        """
         with h5py.File(filepath, "w", libver=cls.libver) as f:
             for k, v in cls.get_bag_info().field_items():
                 f.attrs[k] = v
-            pack(obj, f, cls.storage_root, bidict.bidict(), [])
+            pack(
+                obj,
+                f,
+                cls.storage_root,
+                bidict.bidict(),
+                [],
+                version_scraping=version_scraping,
+            )
 
     def load(self, path: str = Bag.storage_root) -> Any:
         return unpack(self.file, path, {})
