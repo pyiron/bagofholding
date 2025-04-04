@@ -73,7 +73,6 @@ def get_version(
         {} if version_scraping is None else version_scraping
     )
 
-
     scraper = (
         scraper_map[module_base]  # noqa: SIM401
         if module_base in scraper_map
@@ -104,6 +103,7 @@ VersionValidatorType: TypeAlias = (
 def validate_version(
     metadata: Metadata,
     validator: VersionValidatorType = "exact",
+    version_scraping: VersionScrapingMap | None = None,
 ) -> None:
     """
     Check whether versioning information in a piece of metadata matches the current
@@ -119,6 +119,10 @@ def validate_version(
             in the first two digits; all non-semantic versions must match exactly),
             "semantic-major" (semantic versions match in the first digit), and "none"
             (don't compare the versions at all).
+        version_scraping (dict[str, Callable[[str], str]] | None): An optional
+            dictionary mapping module names to a callable that takes this name and
+            returns a version (or None). The default callable imports the module
+            string and looks for a `__version__` attribute.
 
     Raises:
         EnvironmentMismatch: If the module in the metadata cannot be found, or if the
@@ -130,7 +134,7 @@ def validate_version(
         and isinstance(metadata.module, str)
     ):
         try:
-            current_version = str(get_version(metadata.module))
+            current_version = str(get_version(metadata.module, version_scraping))
         except ModuleNotFoundError as e:
             raise EnvironmentMismatch(
                 f"When unpacking an object, encountered a module {metadata.module}  "

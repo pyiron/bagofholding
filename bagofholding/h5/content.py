@@ -46,6 +46,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
@@ -98,13 +99,20 @@ class Reference(Item[str, Any]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
         reference = file[path][()].decode("utf-8")
         from_memo = memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
         else:
-            return unpack(file, reference, memo, version_validator=version_validator)
+            return unpack(
+                file,
+                reference,
+                memo,
+                version_validator=version_validator,
+                version_scraping=version_scraping,
+            )
 
 
 GlobalType: TypeAlias = type[type] | FunctionType | str
@@ -135,6 +143,7 @@ class Global(Item[GlobalType, Any]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
         import_string = file[path][()].decode("utf-8")
         return import_from_string(import_string)
@@ -158,6 +167,7 @@ class NoneItem(Item[type[None], None]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> None:
         return None
 
@@ -187,6 +197,7 @@ class Complex(SimpleItem[complex]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> complex:
         entry = file[path]
         return complex(entry[0], entry[1])
@@ -212,6 +223,7 @@ class Str(SimpleItem[str]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> str:
         return cast(str, file[path][()].decode("utf-8"))
 
@@ -236,6 +248,7 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> ItemType:
         return cast(ItemType, cls.recast(file[path][()]))
 
@@ -304,6 +317,7 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(np.ndarray[tuple[int, ...], H5DtypeAlias], file[path][()])
 
@@ -406,6 +420,7 @@ class Reducible(Group[object, object]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> object:
         constructor = cast(
             ConstructorType,
@@ -414,18 +429,29 @@ class Reducible(Group[object, object]):
                 relative(path, "constructor"),
                 memo,
                 version_validator=version_validator,
+                version_scraping=version_scraping,
             ),
         )
         constructor_args = cast(
             ConstructorArgsType,
             unpack(
-                file, relative(path, "args"), memo, version_validator=version_validator
+                file,
+                relative(path, "args"),
+                memo,
+                version_validator=version_validator,
+                version_scraping=version_scraping,
             ),
         )
         obj: object = constructor(*constructor_args)
         memo[path] = obj
         rv = (constructor, constructor_args) + tuple(
-            unpack(file, relative(path, k), memo, version_validator=version_validator)
+            unpack(
+                file,
+                relative(path, k),
+                memo,
+                version_validator=version_validator,
+                version_scraping=version_scraping,
+            )
             for k in cls.reduction_fields[2 : len(file[path])]
         )
         n_items = len(rv)
@@ -524,11 +550,30 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> dict[Any, Any]:
         return dict(
             zip(
-                cast(tuple[Any], unpack(file, relative(path, "keys"), memo)),
-                cast(tuple[Any], unpack(file, relative(path, "values"), memo)),
+                cast(
+                    tuple[Any],
+                    unpack(
+                        file,
+                        relative(path, "keys"),
+                        memo,
+                        version_validator=version_validator,
+                        version_scraping=version_scraping,
+                    ),
+                ),
+                cast(
+                    tuple[Any],
+                    unpack(
+                        file,
+                        relative(path, "values"),
+                        memo,
+                        version_validator=version_validator,
+                        version_scraping=version_scraping,
+                    ),
+                ),
                 strict=True,
             )
         )
@@ -562,10 +607,15 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> dict[Any, Any]:
         return {
             k: unpack(
-                file, relative(path, k), memo, version_validator=version_validator
+                file,
+                relative(path, k),
+                memo,
+                version_validator=version_validator,
+                version_scraping=version_scraping,
             )
             for k in file[path]
         }
@@ -620,10 +670,15 @@ class Union(SimpleGroup[types.UnionType]):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> types.UnionType:
         return cls._recursive_or(
             unpack(
-                file, relative(path, f"i{i}"), memo, version_validator=version_validator
+                file,
+                relative(path, f"i{i}"),
+                memo,
+                version_validator=version_validator,
+                version_scraping=version_scraping,
             )
             for i in range(len(file[path]))
         )
@@ -664,10 +719,15 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         path: str,
         memo: UnpackingMemoAlias,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> IndexableType:
         return cls.recast(
             unpack(
-                file, relative(path, f"i{i}"), memo, version_validator=version_validator
+                file,
+                relative(path, f"i{i}"),
+                memo,
+                version_validator=version_validator,
+                version_scraping=version_scraping,
             )
             for i in range(len(file[path]))
         )
@@ -821,6 +881,7 @@ def unpack(
     path: str,
     memo: UnpackingMemoAlias,
     version_validator: VersionValidatorType = "exact",
+    version_scraping: VersionScrapingMap | None = None,
 ) -> object:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
@@ -829,9 +890,15 @@ def unpack(
         content_class = import_from_string(content_class_string)
         metadata = read_metadata(entry)
         if metadata is not None:
-            validate_version(metadata, validator=version_validator)
+            validate_version(
+                metadata, validator=version_validator, version_scraping=version_scraping
+            )
         value = content_class.read(
-            file, path, memo, version_validator=version_validator
+            file,
+            path,
+            memo,
+            version_validator=version_validator,
+            version_scraping=version_scraping,
         )
         if path not in memo:
             memo[path] = value

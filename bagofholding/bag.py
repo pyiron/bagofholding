@@ -112,6 +112,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         self,
         path: str = storage_root,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
         pass
 

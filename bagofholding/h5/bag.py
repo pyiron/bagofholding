@@ -94,8 +94,15 @@ class H5Bag(Bag[H5Info]):
         self,
         path: str = Bag.storage_root,
         version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
-        return unpack(self.file, path, {}, version_validator=version_validator)
+        return unpack(
+            self.file,
+            path,
+            {},
+            version_validator=version_validator,
+            version_scraping=version_scraping,
+        )
 
     def __getitem__(self, path: str) -> Metadata | None:
         return read_metadata(self.file[path])
