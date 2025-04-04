@@ -24,7 +24,7 @@ class Metadata:
 
 def get_metadata(
     obj: Any,
-    version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+    version_scraping: VersionScrapingMap | None = None,
 ) -> Metadata | None:
     """
 
@@ -57,16 +57,30 @@ def _get_module(obj: Any) -> str:
     return obj.__module__ if isinstance(obj, type) else type(obj).__module__
 
 
+VersionScraperType: TypeAlias = Callable[[str], str | None]
+VersionScrapingMap: TypeAlias = dict[str, VersionScraperType]
+
+
 def get_version(
     module_name: str,
-    version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+    version_scraping: VersionScrapingMap | None = None,
 ) -> str | None:
     if module_name == "builtins":
         return f"{version_info.major}.{version_info.minor}.{version_info.micro}"
 
     module_base = module_name.split(".")[0]
-    scraper_map = {} if version_scraping is None else version_scraping
-    scraper = scraper_map.get(module_base, _scrape_version_attribute)
+    scraper_map: VersionScrapingMap = (
+        {} if version_scraping is None else version_scraping
+    )
+
+
+    scraper = (
+        scraper_map[module_base]  # noqa: SIM401
+        if module_base in scraper_map
+        else _scrape_version_attribute
+    )
+    # mypy struggles with .get even when the fallback is specified,
+    # so break it apart and tell Ruff to not worry that we avoid .get
     return scraper(module_base)
 
 

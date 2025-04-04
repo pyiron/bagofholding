@@ -3,11 +3,16 @@ from __future__ import annotations
 import abc
 import dataclasses
 import pathlib
-from collections.abc import Callable, ItemsView, Iterator, Mapping
+from collections.abc import ItemsView, Iterator, Mapping
 from typing import Any, ClassVar, Generic, TypeVar
 
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.metadata import Metadata, VersionValidatorType, get_version
+from bagofholding.metadata import (
+    Metadata,
+    VersionScrapingMap,
+    VersionValidatorType,
+    get_version,
+)
 
 
 class BagMismatchError(BagOfHoldingError, ValueError):
@@ -41,7 +46,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
-        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+        version_scraping: VersionScrapingMap | None = None,
     ) -> None:
         """
         Save a python object to file.
@@ -77,7 +82,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
-        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+        version_scraping: VersionScrapingMap | None = None,
     ) -> None:
         pass
 

@@ -16,6 +16,7 @@ from bagofholding.exception import BagOfHoldingError
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
 from bagofholding.metadata import (
     Metadata,
+    VersionScrapingMap,
     VersionValidatorType,
     get_metadata,
     validate_version,
@@ -266,7 +267,7 @@ class ComplexItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         obj: ItemType,
         file: h5py.File,
         path: str,
-        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+        version_scraping: VersionScrapingMap | None = None,
     ) -> None:
         entry = cls._write_item(obj, file, path)
         cls._write_type(entry)
@@ -319,7 +320,7 @@ class Group(
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+        version_scraping: VersionScrapingMap | None = None,
         **kwargs: Any,
     ) -> None:
         pass
@@ -377,7 +378,7 @@ class Reducible(Group[object, object]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+        version_scraping: VersionScrapingMap | None = None,
         reduced_value: ReduceReturnType | PickleHint | None = None,
         **kwargs: Any,
     ) -> None:
@@ -465,7 +466,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+        version_scraping: VersionScrapingMap | None = None,
         **kwargs: Any,
     ) -> None:
         entry = file.create_group(path)
@@ -483,7 +484,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None,
+        version_scraping: VersionScrapingMap | None,
     ) -> h5py.Group:
         pass
 
@@ -497,7 +498,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None,
+        version_scraping: VersionScrapingMap | None,
     ) -> None:
         pack(
             tuple(obj.keys()),
@@ -542,7 +543,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None,
+        version_scraping: VersionScrapingMap | None,
     ) -> None:
         for k, v in obj.items():
             pack(
@@ -584,7 +585,7 @@ class Union(SimpleGroup[types.UnionType]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None,
+        version_scraping: VersionScrapingMap | None,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
@@ -644,7 +645,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        version_scraping: dict[str, Callable[[str], str | None]] | None,
+        version_scraping: VersionScrapingMap | None,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
@@ -694,7 +695,7 @@ def pack(
     path: str,
     memo: PackingMemoAlias,
     references: ReferencesAlias,
-    version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+    version_scraping: VersionScrapingMap | None,
 ) -> None:
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
