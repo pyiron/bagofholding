@@ -8,10 +8,10 @@ from typing import Any, ClassVar
 import bidict
 import h5py
 
-from bagofholding.bag import Bag
+from bagofholding.bag import Bag, BagInfo
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
-from bagofholding.metadata import BagInfo, Metadata
+from bagofholding.metadata import Metadata
 
 
 class H5Bag(Bag):

@@ -70,13 +70,3 @@ def _scrape_version_attribute(module_name: str) -> str | None:
         return str(module.__version__)
     except AttributeError:
         return None
-
-
-@dataclass(frozen=True)
-class BagInfo:
-    qualname: str
-    module: str
-    version: str
-
-    def field_items(self) -> ItemsView[str, str | None]:
-        return asdict(self).items()

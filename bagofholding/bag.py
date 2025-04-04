@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import abc
+import dataclasses
 import pathlib
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, ItemsView, Iterator, Mapping
 from typing import Any, ClassVar
 
 from bagofholding import __version__
-from bagofholding.metadata import BagInfo, Metadata
+from bagofholding.metadata import Metadata
+
+
+@dataclasses.dataclass(frozen=True)
+class BagInfo:
+    qualname: str
+    module: str
+    version: str
+
+    def field_items(self) -> ItemsView[str, str | None]:
+        return dataclasses.asdict(self).items()
 
 
 class Bag(Mapping[str, Metadata | None], abc.ABC):
