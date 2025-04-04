@@ -7,7 +7,7 @@ from collections.abc import Callable, ItemsView, Iterator, Mapping
 from typing import Any, ClassVar, Generic, TypeVar
 
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.metadata import Metadata, get_version
+from bagofholding.metadata import Metadata, VersionValidatorType, get_version
 
 
 class BagMismatchError(BagOfHoldingError, ValueError):
@@ -103,7 +103,11 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         return bag_info == reference
 
     @abc.abstractmethod
-    def load(self, path: str = storage_root) -> Any:
+    def load(
+        self,
+        path: str = storage_root,
+        version_validator: VersionValidatorType = "exact",
+    ) -> Any:
         pass
 
     @abc.abstractmethod

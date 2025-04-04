@@ -12,7 +12,7 @@ import h5py
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
-from bagofholding.metadata import Metadata
+from bagofholding.metadata import Metadata, VersionValidatorType
 
 
 @dataclasses.dataclass(frozen=True)
@@ -90,8 +90,12 @@ class H5Bag(Bag[H5Info]):
     def __del__(self) -> None:
         self._close()
 
-    def load(self, path: str = Bag.storage_root) -> Any:
-        return unpack(self.file, path, {})
+    def load(
+        self,
+        path: str = Bag.storage_root,
+        version_validator: VersionValidatorType = "exact",
+    ) -> Any:
+        return unpack(self.file, path, {}, version_validator=version_validator)
 
     def __getitem__(self, path: str) -> Metadata | None:
         return read_metadata(self.file[path])

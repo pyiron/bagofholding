@@ -14,7 +14,12 @@ import numpy as np
 
 from bagofholding.exception import BagOfHoldingError
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
-from bagofholding.metadata import Metadata, get_metadata
+from bagofholding.metadata import (
+    Metadata,
+    VersionValidatorType,
+    get_metadata,
+    validate_version,
+)
 from bagofholding.retrieve import import_from_string
 
 PackingMemoAlias: TypeAlias = bidict.bidict[int, str]
@@ -39,6 +44,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
@@ -90,13 +96,14 @@ class Reference(Item[str, Any]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> Any:
         reference = file[path][()].decode("utf-8")
         from_memo = memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
         else:
-            return unpack(file, reference, memo)
+            return unpack(file, reference, memo, version_validator=version_validator)
 
 
 GlobalType: TypeAlias = type[type] | FunctionType | str
@@ -126,6 +133,7 @@ class Global(Item[GlobalType, Any]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> Any:
         import_string = file[path][()].decode("utf-8")
         return import_from_string(import_string)
@@ -148,6 +156,7 @@ class NoneItem(Item[type[None], None]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> None:
         return None
 
@@ -176,6 +185,7 @@ class Complex(SimpleItem[complex]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> complex:
         entry = file[path]
         return complex(entry[0], entry[1])
@@ -200,6 +210,7 @@ class Str(SimpleItem[str]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> str:
         return cast(str, file[path][()].decode("utf-8"))
 
@@ -223,6 +234,7 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> ItemType:
         return cast(ItemType, cls.recast(file[path][()]))
 
@@ -290,6 +302,7 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(np.ndarray[tuple[int, ...], H5DtypeAlias], file[path][()])
 
@@ -391,17 +404,27 @@ class Reducible(Group[object, object]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> object:
         constructor = cast(
-            ConstructorType, unpack(file, relative(path, "constructor"), memo)
+            ConstructorType,
+            unpack(
+                file,
+                relative(path, "constructor"),
+                memo,
+                version_validator=version_validator,
+            ),
         )
         constructor_args = cast(
-            ConstructorArgsType, unpack(file, relative(path, "args"), memo)
+            ConstructorArgsType,
+            unpack(
+                file, relative(path, "args"), memo, version_validator=version_validator
+            ),
         )
         obj: object = constructor(*constructor_args)
         memo[path] = obj
         rv = (constructor, constructor_args) + tuple(
-            unpack(file, relative(path, k), memo)
+            unpack(file, relative(path, k), memo, version_validator=version_validator)
             for k in cls.reduction_fields[2 : len(file[path])]
         )
         n_items = len(rv)
@@ -499,6 +522,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> dict[Any, Any]:
         return dict(
             zip(
@@ -536,8 +560,14 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> dict[Any, Any]:
-        return {k: unpack(file, relative(path, k), memo) for k in file[path]}
+        return {
+            k: unpack(
+                file, relative(path, k), memo, version_validator=version_validator
+            )
+            for k in file[path]
+        }
 
 
 class Union(SimpleGroup[types.UnionType]):
@@ -588,9 +618,13 @@ class Union(SimpleGroup[types.UnionType]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> types.UnionType:
         return cls._recursive_or(
-            unpack(file, relative(path, f"i{i}"), memo) for i in range(len(file[path]))
+            unpack(
+                file, relative(path, f"i{i}"), memo, version_validator=version_validator
+            )
+            for i in range(len(file[path]))
         )
 
 
@@ -628,9 +662,13 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
     ) -> IndexableType:
         return cls.recast(
-            unpack(file, relative(path, f"i{i}"), memo) for i in range(len(file[path]))
+            unpack(
+                file, relative(path, f"i{i}"), memo, version_validator=version_validator
+            )
+            for i in range(len(file[path]))
         )
 
 
@@ -781,12 +819,19 @@ def unpack(
     file: h5py.File,
     path: str,
     memo: UnpackingMemoAlias,
+    version_validator: VersionValidatorType = "exact",
 ) -> object:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
-        content_class_string = maybe_decode(file[path].attrs["content_type"])
+        entry = file[path]
+        content_class_string = maybe_decode(entry.attrs["content_type"])
         content_class = import_from_string(content_class_string)
-        value = content_class.read(file, path, memo)
+        metadata = read_metadata(entry)
+        if metadata is not None:
+            validate_version(metadata, validator=version_validator)
+        value = content_class.read(
+            file, path, memo, version_validator=version_validator
+        )
         if path not in memo:
             memo[path] = value
         return value
