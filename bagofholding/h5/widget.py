@@ -38,8 +38,16 @@ class BagTree(ipytree.Tree):  # type: ignore
         self.root_path = bag.storage_root
         self.selected_entry = None
         self.observe(self._on_select, names=["selected_nodes"])
-        self.root = self._create_node(self.root_path)
+
+        self.root = ipytree.Node("Bag", open=True, disabled=True, icon="shopping-bag")
         self.add_node(self.root)
+
+        for key, value in bag.bag_info.field_items():
+            self.root.add_node(
+                ipytree.Node(f"{key}: {value}", disabled=True, icon="info")
+            )
+        self.object = self._create_node(self.root_path)
+        self.root.add_node(self.object)
 
     def _create_node(self, path: str) -> ipytree.Node:
         content_type, metadata, subentries = self.bag._get_enriched_metadata(path)

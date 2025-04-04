@@ -45,3 +45,13 @@ def get_version(module_name: str) -> str | None:
             return str(getattr(module, version))
 
     return None
+
+
+@dataclass(frozen=True)
+class BagInfo:
+    qualname: str
+    module: str
+    version: str
+
+    def field_items(self) -> ItemsView[str, str | None]:
+        return asdict(self).items()
