@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import pathlib
 from collections.abc import Callable, Iterator
 from typing import Any, ClassVar
@@ -8,37 +9,43 @@ from typing import Any, ClassVar
 import bidict
 import h5py
 
-from bagofholding.bag import Bag
+from bagofholding.bag import Bag, BagInfo
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
-from bagofholding.metadata import BagInfo, Metadata
+from bagofholding.metadata import Metadata
 
 
-class H5Bag(Bag):
+@dataclasses.dataclass(frozen=True)
+class H5Info(BagInfo):
+    libver_str: str
+
+
+class H5Bag(Bag[H5Info]):
     filepath: pathlib.Path
     file: h5py.File
-    libver: ClassVar[str | tuple[str, str] | None] = "latest"
-
-    def __init__(
-        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
-    ) -> None:
-        super().__init__(filepath, *args, **kwargs)
-        self.file = h5py.File(filepath, mode="r", libver=self.libver)
-
-    def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
-        with h5py.File(filepath, "r", libver=self.libver) as f:
-            info = BagInfo(**{k: f.attrs[k] for k in BagInfo.__dataclass_fields__})
-        return info
-
-    def _close(self) -> None:
-        with contextlib.suppress(AttributeError):
-            self.file.close()
-
-    def __del__(self) -> None:
-        self._close()
+    libver_str: ClassVar[str] = "latest"
 
     @classmethod
-    def save(
+    def _write_bag_info(
+        cls,
+        filepath: str | pathlib.Path,
+        bag_info: H5Info,
+    ) -> None:
+        with h5py.File(filepath, "w", libver=cls.libver_str) as f:
+            for k, v in cls.get_bag_info().field_items():
+                f.attrs[k] = v
+
+    @classmethod
+    def get_bag_info(cls) -> H5Info:
+        return H5Info(
+            qualname=cls.__qualname__,
+            module=cls.__module__,
+            version=cls.get_version(),
+            libver_str=cls.libver_str,
+        )
+
+    @classmethod
+    def _save(
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
@@ -55,9 +62,7 @@ class H5Bag(Bag):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
-        with h5py.File(filepath, "w", libver=cls.libver) as f:
-            for k, v in cls.get_bag_info().field_items():
-                f.attrs[k] = v
+        with h5py.File(filepath, "a", libver=cls.libver_str) as f:
             pack(
                 obj,
                 f,
@@ -66,6 +71,24 @@ class H5Bag(Bag):
                 [],
                 version_scraping=version_scraping,
             )
+
+    def __init__(
+        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
+    ) -> None:
+        super().__init__(filepath, *args, **kwargs)
+        self.file = h5py.File(filepath, mode="r", libver=self.libver_str)
+
+    def read_bag_info(self, filepath: pathlib.Path) -> H5Info:
+        with h5py.File(filepath, "r", libver=self.libver_str) as f:
+            info = H5Info(**{k: f.attrs[k] for k in H5Info.__dataclass_fields__})
+        return info
+
+    def _close(self) -> None:
+        with contextlib.suppress(AttributeError):
+            self.file.close()
+
+    def __del__(self) -> None:
+        self._close()
 
     def load(self, path: str = Bag.storage_root) -> Any:
         return unpack(self.file, path, {})

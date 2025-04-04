@@ -1,25 +1,42 @@
 from __future__ import annotations
 
 import abc
+import dataclasses
 import pathlib
-from collections.abc import Callable, Iterator, Mapping
-from typing import Any, ClassVar
+from collections.abc import Callable, ItemsView, Iterator, Mapping
+from typing import Any, ClassVar, Generic, TypeVar
 
-from bagofholding import __version__
-from bagofholding.metadata import BagInfo, Metadata
+from bagofholding.exception import BagOfHoldingError
+from bagofholding.metadata import Metadata, get_version
 
 
-class Bag(Mapping[str, Metadata | None], abc.ABC):
+class BagMismatchError(BagOfHoldingError, ValueError):
+    pass
+
+
+@dataclasses.dataclass(frozen=True)
+class BagInfo:
+    qualname: str
+    module: str
+    version: str
+
+    def field_items(self) -> ItemsView[str, str | None]:
+        return dataclasses.asdict(self).items()
+
+
+InfoType = TypeVar("InfoType", bound=BagInfo)
+
+
+class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     """
     Bags are the user-facing object.
     """
 
-    bag_info: BagInfo
+    bag_info: InfoType
     storage_root: ClassVar[str] = "object"
     filepath: pathlib.Path
 
     @classmethod
-    @abc.abstractmethod
     def save(
         cls,
         obj: Any,
@@ -37,6 +54,31 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
+        cls._write_bag_info(filepath, cls.get_bag_info())
+        cls._save(obj, filepath, version_scraping)
+
+    @classmethod
+    @abc.abstractmethod
+    def _write_bag_info(
+        cls,
+        filepath: str | pathlib.Path,
+        bag_info: InfoType,
+    ) -> None:
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def get_bag_info(cls) -> InfoType:
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def _save(
+        cls,
+        obj: Any,
+        filepath: str | pathlib.Path,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+    ) -> None:
         pass
 
     def __init__(
@@ -45,10 +87,20 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
         self.bag_info = self.read_bag_info(self.filepath)
+        if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
+            raise BagMismatchError(
+                f"The bag class {self.__class__} does not match the bag saved at "
+                f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
+                f"is {self.bag_info}"
+            )
 
     @abc.abstractmethod
-    def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
+    def read_bag_info(self, filepath: pathlib.Path) -> InfoType:
         pass
+
+    @staticmethod
+    def validate_bag_info(bag_info: InfoType, reference: InfoType) -> bool:
+        return bag_info == reference
 
     @abc.abstractmethod
     def load(self, path: str = storage_root) -> Any:
@@ -69,13 +121,5 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         return iter(self.list_paths())
 
     @classmethod
-    def get_version(self) -> str:
-        return str(__version__)
-
-    @classmethod
-    def get_bag_info(cls) -> BagInfo:
-        return BagInfo(
-            qualname=cls.__qualname__,
-            module=cls.__module__,
-            version=cls.get_version(),
-        )
+    def get_version(cls) -> str:
+        return str(get_version(cls.__module__, {}))

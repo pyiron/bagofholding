@@ -42,7 +42,7 @@ def get_metadata(
         return Metadata(
             qualname=obj.__class__.__qualname__,
             module=module,
-            version=_get_version(
+            version=get_version(
                 module, {} if version_scraping is None else version_scraping
             ),
             meta=str(obj.__metadata__) if hasattr(obj, "__metadata__") else None,
@@ -53,14 +53,16 @@ def _get_module(obj: Any) -> str:
     return obj.__module__ if isinstance(obj, type) else type(obj).__module__
 
 
-def _get_version(
-    module_name: str, version_scraping: dict[str, Callable[[str], str | None]]
+def get_version(
+    module_name: str,
+    version_scraping: dict[str, Callable[[str], str | None]] | None = None,
 ) -> str | None:
     if module_name == "builtins":
         return f"{version_info.major}.{version_info.minor}.{version_info.micro}"
 
     module_base = module_name.split(".")[0]
-    scraper = version_scraping.get(module_base, _scrape_version_attribute)
+    scraper_map = {} if version_scraping is None else version_scraping
+    scraper = scraper_map.get(module_base, _scrape_version_attribute)
     return scraper(module_base)
 
 
@@ -70,13 +72,3 @@ def _scrape_version_attribute(module_name: str) -> str | None:
         return str(module.__version__)
     except AttributeError:
         return None
-
-
-@dataclass(frozen=True)
-class BagInfo:
-    qualname: str
-    module: str
-    version: str
-
-    def field_items(self) -> ItemsView[str, str | None]:
-        return asdict(self).items()
