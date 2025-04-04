@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import pathlib
 from collections.abc import Callable, Iterator
 from typing import Any, ClassVar
@@ -14,10 +15,15 @@ from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata
 
 
-class H5Bag(Bag[BagInfo]):
+@dataclasses.dataclass(frozen=True)
+class H5Info(BagInfo):
+    libver_str: str
+
+
+class H5Bag(Bag[H5Info]):
     filepath: pathlib.Path
     file: h5py.File
-    libver: ClassVar[str | tuple[str, str] | None] = "latest"
+    libver_str: ClassVar[str] = "latest"
 
     @classmethod
     def save(
@@ -37,7 +43,7 @@ class H5Bag(Bag[BagInfo]):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
-        with h5py.File(filepath, "w", libver=cls.libver) as f:
+        with h5py.File(filepath, "w", libver=cls.libver_str) as f:
             for k, v in cls.get_bag_info().field_items():
                 f.attrs[k] = v
             pack(
@@ -50,22 +56,23 @@ class H5Bag(Bag[BagInfo]):
             )
 
     @classmethod
-    def get_bag_info(cls) -> BagInfo:
-        return BagInfo(
+    def get_bag_info(cls) -> H5Info:
+        return H5Info(
             qualname=cls.__qualname__,
             module=cls.__module__,
             version=cls.get_version(),
+            libver_str=cls.libver_str,
         )
 
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
     ) -> None:
         super().__init__(filepath, *args, **kwargs)
-        self.file = h5py.File(filepath, mode="r", libver=self.libver)
+        self.file = h5py.File(filepath, mode="r", libver=self.libver_str)
 
-    def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
-        with h5py.File(filepath, "r", libver=self.libver) as f:
-            info = BagInfo(**{k: f.attrs[k] for k in BagInfo.__dataclass_fields__})
+    def read_bag_info(self, filepath: pathlib.Path) -> H5Info:
+        with h5py.File(filepath, "r", libver=self.libver_str) as f:
+            info = H5Info(**{k: f.attrs[k] for k in H5Info.__dataclass_fields__})
         return info
 
     def _close(self) -> None:
