@@ -11,7 +11,7 @@ import h5py
 from bagofholding.bag import Bag
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
-from bagofholding.metadata import Metadata, BagInfo
+from bagofholding.metadata import BagInfo, Metadata
 
 
 class H5Bag(Bag):
@@ -28,7 +28,7 @@ class H5Bag(Bag):
     def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
         with h5py.File(filepath, "r", libver=self.libver) as f:
             info = BagInfo(
-                **{k: f.attrs[k] for k in BagInfo.__dataclass_fields__.keys()}
+                **{k: f.attrs[k] for k in BagInfo.__dataclass_fields__}
             )
         return info
 
