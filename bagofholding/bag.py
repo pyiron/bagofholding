@@ -6,7 +6,7 @@ from collections.abc import Iterator, Mapping
 from typing import Any, ClassVar
 
 from bagofholding import __version__
-from bagofholding.metadata import BagInfo,Metadata
+from bagofholding.metadata import BagInfo, Metadata
 
 
 class Bag(Mapping[str, Metadata | None], abc.ABC):
@@ -63,4 +63,3 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
             module=cls.__module__,
             version=cls.get_version(),
         )
-
