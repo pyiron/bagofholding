@@ -59,12 +59,13 @@ def _get_version(
     if module_name == "builtins":
         return f"{version_info.major}.{version_info.minor}.{version_info.micro}"
 
-    scraper = version_scraping.get(module_name, _scrape_version_attribute)
-    return scraper(module_name)
+    module_base = module_name.split(".")[0]
+    scraper = version_scraping.get(module_base, _scrape_version_attribute)
+    return scraper(module_base)
 
 
 def _scrape_version_attribute(module_name: str) -> str | None:
-    module = import_module(module_name.split(".")[0])
+    module = import_module(module_name)
     try:
         return str(module.__version__)
     except AttributeError:

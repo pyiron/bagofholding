@@ -2,6 +2,7 @@ import sys
 import unittest
 
 import bidict
+import numpy
 
 from bagofholding.metadata import _get_module, _get_version
 
@@ -51,4 +52,16 @@ class TestMetadata(unittest.TestCase):
             bidict.__version__,
             _get_version("bidict", {"not_bidict": some_version_scraper}),
             msg="Modules shouldn't care about other modules' overrides",
+        )
+
+        self.assertEqual(
+            numpy.__version__,
+            _get_version("numpy.fft", {}),
+            msg="The version of the root module should be accessed"
+        )
+
+        self.assertEqual(
+            some_version_scraper("foo"),
+            _get_version("numpy.fft", {"numpy": some_version_scraper}),
+            msg="The root module should be accessed to search the scaper map"
         )
