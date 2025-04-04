@@ -54,7 +54,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
 
     @classmethod
     def get_version(self) -> str:
-        return __version__
+        return str(__version__)
 
     @classmethod
     def get_bag_info(cls) -> BagInfo:
