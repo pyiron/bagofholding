@@ -20,32 +20,6 @@ class H5Bag(Bag[BagInfo]):
     libver: ClassVar[str | tuple[str, str] | None] = "latest"
 
     @classmethod
-    def get_bag_info(cls) -> BagInfo:
-        return BagInfo(
-            qualname=cls.__qualname__,
-            module=cls.__module__,
-            version=cls.get_version(),
-        )
-
-    def __init__(
-        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
-    ) -> None:
-        super().__init__(filepath, *args, **kwargs)
-        self.file = h5py.File(filepath, mode="r", libver=self.libver)
-
-    def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
-        with h5py.File(filepath, "r", libver=self.libver) as f:
-            info = BagInfo(**{k: f.attrs[k] for k in BagInfo.__dataclass_fields__})
-        return info
-
-    def _close(self) -> None:
-        with contextlib.suppress(AttributeError):
-            self.file.close()
-
-    def __del__(self) -> None:
-        self._close()
-
-    @classmethod
     def save(
         cls,
         obj: Any,
@@ -74,6 +48,32 @@ class H5Bag(Bag[BagInfo]):
                 [],
                 version_scraping=version_scraping,
             )
+
+    @classmethod
+    def get_bag_info(cls) -> BagInfo:
+        return BagInfo(
+            qualname=cls.__qualname__,
+            module=cls.__module__,
+            version=cls.get_version(),
+        )
+
+    def __init__(
+        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
+    ) -> None:
+        super().__init__(filepath, *args, **kwargs)
+        self.file = h5py.File(filepath, mode="r", libver=self.libver)
+
+    def read_bag_info(self, filepath: pathlib.Path) -> BagInfo:
+        with h5py.File(filepath, "r", libver=self.libver) as f:
+            info = BagInfo(**{k: f.attrs[k] for k in BagInfo.__dataclass_fields__})
+        return info
+
+    def _close(self) -> None:
+        with contextlib.suppress(AttributeError):
+            self.file.close()
+
+    def __del__(self) -> None:
+        self._close()
 
     def load(self, path: str = Bag.storage_root) -> Any:
         return unpack(self.file, path, {})
