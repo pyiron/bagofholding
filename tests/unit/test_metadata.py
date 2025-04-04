@@ -57,11 +57,11 @@ class TestMetadata(unittest.TestCase):
         self.assertEqual(
             numpy.__version__,
             _get_version("numpy.fft", {}),
-            msg="The version of the root module should be accessed"
+            msg="The version of the root module should be accessed",
         )
 
         self.assertEqual(
             some_version_scraper("foo"),
             _get_version("numpy.fft", {"numpy": some_version_scraper}),
-            msg="The root module should be accessed to search the scaper map"
+            msg="The root module should be accessed to search the scaper map",
         )
