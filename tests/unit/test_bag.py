@@ -5,6 +5,7 @@ import unittest
 from bagofholding.bag import BagMismatchError
 from bagofholding.h5.bag import H5Bag, H5Info
 
+
 class BagVariant(H5Bag):
     @classmethod
     def get_bag_info(cls) -> H5Info:
@@ -32,6 +33,6 @@ class TestBag(unittest.TestCase):
         H5Bag(self.save_name)
 
         with self.assertRaises(
-                BagMismatchError, msg="We expect to fail hard when bag info mismatches"
+            BagMismatchError, msg="We expect to fail hard when bag info mismatches"
         ):
             BagVariant(self.save_name)

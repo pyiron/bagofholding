@@ -6,9 +6,8 @@ import pathlib
 from collections.abc import Callable, ItemsView, Iterator, Mapping
 from typing import Any, ClassVar, Generic, TypeVar
 
-from bagofholding import __version__
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.metadata import Metadata
+from bagofholding.metadata import Metadata, get_version
 
 
 class BagMismatchError(BagOfHoldingError, ValueError):
@@ -122,5 +121,5 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         return iter(self.list_paths())
 
     @classmethod
-    def get_version(self) -> str:
-        return str(__version__)
+    def get_version(cls) -> str:
+        return str(get_version(cls.__module__, {}))
