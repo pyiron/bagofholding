@@ -26,7 +26,26 @@ class H5Bag(Bag[H5Info]):
     libver_str: ClassVar[str] = "latest"
 
     @classmethod
-    def save(
+    def _write_bag_info(
+        cls,
+        filepath: str | pathlib.Path,
+        bag_info: H5Info,
+    ) -> None:
+        with h5py.File(filepath, "w", libver=cls.libver_str) as f:
+            for k, v in cls.get_bag_info().field_items():
+                f.attrs[k] = v
+
+    @classmethod
+    def get_bag_info(cls) -> H5Info:
+        return H5Info(
+            qualname=cls.__qualname__,
+            module=cls.__module__,
+            version=cls.get_version(),
+            libver_str=cls.libver_str,
+        )
+
+    @classmethod
+    def _save(
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
@@ -43,9 +62,7 @@ class H5Bag(Bag[H5Info]):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
-        with h5py.File(filepath, "w", libver=cls.libver_str) as f:
-            for k, v in cls.get_bag_info().field_items():
-                f.attrs[k] = v
+        with h5py.File(filepath, "a", libver=cls.libver_str) as f:
             pack(
                 obj,
                 f,
@@ -54,15 +71,6 @@ class H5Bag(Bag[H5Info]):
                 [],
                 version_scraping=version_scraping,
             )
-
-    @classmethod
-    def get_bag_info(cls) -> H5Info:
-        return H5Info(
-            qualname=cls.__qualname__,
-            module=cls.__module__,
-            version=cls.get_version(),
-            libver_str=cls.libver_str,
-        )
 
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any

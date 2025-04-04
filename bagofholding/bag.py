@@ -33,7 +33,6 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     filepath: pathlib.Path
 
     @classmethod
-    @abc.abstractmethod
     def save(
         cls,
         obj: Any,
@@ -51,11 +50,31 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
+        cls._write_bag_info(filepath, cls.get_bag_info())
+        cls._save(obj, filepath, version_scraping)
+
+    @classmethod
+    @abc.abstractmethod
+    def _write_bag_info(
+        cls,
+        filepath: str | pathlib.Path,
+        bag_info: InfoType,
+    ) -> None:
         pass
 
     @classmethod
     @abc.abstractmethod
     def get_bag_info(cls) -> InfoType:
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def _save(
+        cls,
+        obj: Any,
+        filepath: str | pathlib.Path,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+    ) -> None:
         pass
 
     def __init__(
