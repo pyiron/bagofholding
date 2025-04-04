@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 import pathlib
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from typing import Any, ClassVar
 
 from bagofholding import __version__
@@ -20,7 +20,23 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def save(cls, obj: Any, filepath: str | pathlib.Path) -> None:
+    def save(
+        cls,
+        obj: Any,
+        filepath: str | pathlib.Path,
+        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+    ) -> None:
+        """
+        Save a python object to file.
+
+        Args:
+            obj (Any): The (pickleble) python object to be saved.
+            filepath (str|pathlib.Path): The path to save the object to.
+            version_scraping (dict[str, Callable[[str], str]] | None): An optional
+                dictionary mapping module names to a callable that takes this name and
+                returns a version (or None). The default callable imports the module
+                string and looks for a `__version__` attribute.
+        """
         pass
 
     def __init__(
