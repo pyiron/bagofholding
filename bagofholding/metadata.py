@@ -144,11 +144,11 @@ def validate_version(
             ) from e
 
         if validator == "exact":
-            version_validator = versions_are_equal
+            version_validator = _versions_are_equal
         elif validator == "semantic-minor":
-            version_validator = versions_match_semantic_minor
+            version_validator = _versions_match_semantic_minor
         elif validator == "semantic-major":
-            version_validator = versions_match_semantic_major
+            version_validator = _versions_match_semantic_major
         else:
             version_validator = validator
 
@@ -168,7 +168,7 @@ def validate_version(
         )
 
 
-def versions_are_equal(version: str, reference: str) -> bool:
+def _versions_are_equal(version: str, reference: str) -> bool:
     return version == reference
 
 
@@ -180,7 +180,7 @@ def _decompose_semver(version: str) -> tuple[int, int, int] | None:
     return None
 
 
-def versions_match_semantic_minor(version: str, reference: str) -> bool:
+def _versions_match_semantic_minor(version: str, reference: str) -> bool:
     v_parts = _decompose_semver(version)
     r_parts = _decompose_semver(reference)
     if v_parts and r_parts:
@@ -188,7 +188,7 @@ def versions_match_semantic_minor(version: str, reference: str) -> bool:
     return version == reference
 
 
-def versions_match_semantic_major(version: str, reference: str) -> bool:
+def _versions_match_semantic_major(version: str, reference: str) -> bool:
     v_parts = _decompose_semver(version)
     r_parts = _decompose_semver(reference)
     if v_parts and r_parts:
