@@ -5,7 +5,7 @@ import dataclasses
 import pathlib
 import pickle
 from collections.abc import ItemsView, Iterator, Mapping
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, SupportsIndex, TypeVar
 
 from bagofholding.exception import BagOfHoldingError
 from bagofholding.metadata import (
@@ -48,7 +48,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         obj: Any,
         filepath: str | pathlib.Path,
         version_scraping: VersionScrapingMap | None = None,
-        _pickle_protocol: int = pickle.DEFAULT_PROTOCOL,
+        _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
     ) -> None:
         """
         Save a python object to file.
@@ -86,7 +86,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         obj: Any,
         filepath: str | pathlib.Path,
         version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         pass
 

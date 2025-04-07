@@ -7,7 +7,7 @@ import pickle
 import types
 from collections.abc import Callable, Iterator
 from types import BuiltinFunctionType, FunctionType
-from typing import Any, ClassVar, Generic, TypeAlias, TypeVar, cast
+from typing import Any, ClassVar, Generic, SupportsIndex, TypeAlias, TypeVar, cast
 
 import bidict
 import h5py
@@ -354,7 +354,7 @@ class Group(
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
         version_scraping: VersionScrapingMap | None = None,
         **kwargs: Any,
     ) -> None:
@@ -413,7 +413,7 @@ class Reducible(Group[object, object]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
         version_scraping: VersionScrapingMap | None = None,
         reduced_value: ReduceReturnType | PickleHint | None = None,
         **kwargs: Any,
@@ -518,7 +518,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
         version_scraping: VersionScrapingMap | None = None,
         **kwargs: Any,
     ) -> None:
@@ -538,7 +538,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
     ) -> h5py.Group:
         pass
 
@@ -553,7 +553,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         pack(
             tuple(obj.keys()),
@@ -620,7 +620,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         for k, v in obj.items():
             pack(
@@ -669,7 +669,7 @@ class Union(SimpleGroup[types.UnionType]):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
@@ -736,7 +736,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
@@ -793,7 +793,7 @@ def pack(
     memo: PackingMemoAlias,
     references: ReferencesAlias,
     version_scraping: VersionScrapingMap | None,
-    _pickle_protocol: int = pickle.HIGHEST_PROTOCOL,
+    _pickle_protocol: SupportsIndex = pickle.HIGHEST_PROTOCOL,
 ) -> None:
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)

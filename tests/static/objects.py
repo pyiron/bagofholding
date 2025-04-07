@@ -1,4 +1,6 @@
 import dataclasses
+from typing import SupportsIndex
+
 
 import pyiron_workflow as pwf
 from pyiron_snippets.singleton import Singleton
@@ -117,7 +119,7 @@ class ExReducta:
     def __init__(self, n: int):
         self.n = n
 
-    def __reduce_ex__(self, protocol: int):
+    def __reduce_ex__(self, protocol: SupportsIndex):
         return self.__class__, (self.n + 1,)
 
     def __eq__(self, other):

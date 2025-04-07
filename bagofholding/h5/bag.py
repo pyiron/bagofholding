@@ -4,7 +4,7 @@ import contextlib
 import dataclasses
 import pathlib
 from collections.abc import Iterator
-from typing import Any, ClassVar
+from typing import Any, ClassVar, SupportsIndex
 
 import bidict
 import h5py
@@ -50,7 +50,7 @@ class H5Bag(Bag[H5Info]):
         obj: Any,
         filepath: str | pathlib.Path,
         version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: int,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         """
         Save a python object to file.
