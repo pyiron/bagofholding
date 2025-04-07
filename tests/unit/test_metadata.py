@@ -210,4 +210,4 @@ class TestMetadata(unittest.TestCase):
             validate_version(non_semantic_metadata, validator=lambda _a, _b: True),
         )
         with self.assertRaises(EnvironmentMismatch):
-            validate_version(non_semantic_metadata, validator=lambda _a, _b: False),
+            validate_version(non_semantic_metadata, validator=lambda _a, _b: False)
