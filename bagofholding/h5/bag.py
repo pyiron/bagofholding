@@ -4,7 +4,7 @@ import contextlib
 import dataclasses
 import pathlib
 from collections.abc import Iterator
-from typing import Any, ClassVar
+from typing import Any, ClassVar, SupportsIndex
 
 import bidict
 import h5py
@@ -49,7 +49,8 @@ class H5Bag(Bag[H5Info]):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
-        version_scraping: VersionScrapingMap | None = None,
+        version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         """
         Save a python object to file.
@@ -70,6 +71,7 @@ class H5Bag(Bag[H5Info]):
                 bidict.bidict(),
                 [],
                 version_scraping=version_scraping,
+                _pickle_protocol=_pickle_protocol,
             )
 
     def __init__(
@@ -107,11 +109,11 @@ class H5Bag(Bag[H5Info]):
     def __getitem__(self, path: str) -> Metadata | None:
         return read_metadata(self.file[path])
 
-    def _get_enriched_metadata(
+    def get_enriched_metadata(
         self, path: str
     ) -> tuple[str, Metadata | None, tuple[str, ...] | None]:
         """
-        Enriched browsing information to support a browsing widget.
+        Enriched browsing information, e.g. to support a browsing widget.
         Still doesn't actually load the object, but exploits more available information.
 
         Args:

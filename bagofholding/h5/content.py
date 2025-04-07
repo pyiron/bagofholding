@@ -3,10 +3,11 @@ from __future__ import annotations
 import abc
 import collections.abc
 import operator
+import pickle
 import types
 from collections.abc import Callable, Iterator
 from types import BuiltinFunctionType, FunctionType
-from typing import Any, ClassVar, Generic, TypeAlias, TypeVar, cast
+from typing import Any, ClassVar, Generic, SupportsIndex, TypeAlias, TypeVar, cast
 
 import bidict
 import h5py
@@ -228,6 +229,29 @@ class Str(SimpleItem[str]):
         return cast(str, file[path][()].decode("utf-8"))
 
 
+class Bytes(SimpleItem[bytes]):
+    @classmethod
+    def write_item(
+        cls,
+        obj: bytes,
+        file: h5py.File,
+        path: str,
+    ) -> None:
+        entry = file.create_dataset(path, data=np.void(obj))
+        cls._write_type(entry)
+
+    @classmethod
+    def read(
+        cls,
+        file: h5py.File,
+        path: str,
+        memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
+    ) -> bytes:
+        return bytes(file[path][()])
+
+
 class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     recast: type[ItemType]
 
@@ -263,10 +287,6 @@ class Long(NativeItem[int]):
 
 class Float(NativeItem[float]):
     recast = float
-
-
-class Bytes(NativeItem[bytes]):
-    recast = bytes
 
 
 class Bytearray(NativeItem[bytearray]):
@@ -334,6 +354,7 @@ class Group(
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        _pickle_protocol: SupportsIndex,
         version_scraping: VersionScrapingMap | None = None,
         **kwargs: Any,
     ) -> None:
@@ -392,11 +413,15 @@ class Reducible(Group[object, object]):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        _pickle_protocol: SupportsIndex,
         version_scraping: VersionScrapingMap | None = None,
         reduced_value: ReduceReturnType | PickleHint | None = None,
         **kwargs: Any,
     ) -> None:
-        reduced_value = obj.__reduce__() if reduced_value is None else reduced_value
+        try:
+            reduced_value = obj.__reduce_ex__(pickle.DEFAULT_PROTOCOL)
+        except AttributeError:
+            reduced_value = obj.__reduce__() if reduced_value is None else reduced_value
         entry = file.create_group(path)
         cls._write_type(entry)
         cls._write_metadata(
@@ -411,6 +436,7 @@ class Reducible(Group[object, object]):
                 memo,
                 references,
                 version_scraping=version_scraping,
+                _pickle_protocol=_pickle_protocol,
             )
 
     @classmethod
@@ -492,13 +518,14 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         path: str,
         memo: PackingMemoAlias,
         references: ReferencesAlias,
+        _pickle_protocol: SupportsIndex,
         version_scraping: VersionScrapingMap | None = None,
         **kwargs: Any,
     ) -> None:
         entry = file.create_group(path)
         cls._write_type(entry)
         cls._write_subcontent(
-            obj, file, path, memo, references, version_scraping=version_scraping
+            obj, file, path, memo, references, version_scraping, _pickle_protocol
         )
 
     @classmethod
@@ -511,6 +538,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: SupportsIndex,
     ) -> h5py.Group:
         pass
 
@@ -525,6 +553,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         pack(
             tuple(obj.keys()),
@@ -533,6 +562,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             memo,
             references,
             version_scraping=version_scraping,
+            _pickle_protocol=_pickle_protocol,
         )
         pack(
             tuple(obj.values()),
@@ -541,6 +571,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             memo,
             references,
             version_scraping=version_scraping,
+            _pickle_protocol=_pickle_protocol,
         )
 
     @classmethod
@@ -589,6 +620,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         for k, v in obj.items():
             pack(
@@ -598,6 +630,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
                 memo,
                 references,
                 version_scraping=version_scraping,
+                _pickle_protocol=_pickle_protocol,
             )
 
     @classmethod
@@ -636,6 +669,7 @@ class Union(SimpleGroup[types.UnionType]):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
@@ -645,6 +679,7 @@ class Union(SimpleGroup[types.UnionType]):
                 memo,
                 references,
                 version_scraping=version_scraping,
+                _pickle_protocol=_pickle_protocol,
             )
 
     @staticmethod
@@ -701,6 +736,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
@@ -710,6 +746,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 memo,
                 references,
                 version_scraping=version_scraping,
+                _pickle_protocol=_pickle_protocol,
             )
 
     @classmethod
@@ -756,6 +793,7 @@ def pack(
     memo: PackingMemoAlias,
     references: ReferencesAlias,
     version_scraping: VersionScrapingMap | None,
+    _pickle_protocol: SupportsIndex = pickle.HIGHEST_PROTOCOL,
 ) -> None:
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
@@ -780,11 +818,20 @@ def pack(
     group_class = get_group_content_class(obj)
     if group_class is not None:
         group_class.write_group(
-            obj, file, path, memo, references, version_scraping=version_scraping
+            obj,
+            file,
+            path,
+            memo,
+            references,
+            _pickle_protocol,
+            version_scraping=version_scraping,
         )
         return
 
-    rv = obj.__reduce__()  # TODO: handle __reduce_ex__ for pickle compliance
+    try:
+        rv = obj.__reduce_ex__(_pickle_protocol)
+    except AttributeError:
+        rv = obj.__reduce__()
     if isinstance(rv, str):
         Global.write_item(
             _get_importable_string_from_string_reduction(rv, obj),
@@ -799,6 +846,7 @@ def pack(
             path,
             memo,
             references,
+            _pickle_protocol,
             reduced_value=rv,
             version_scraping=version_scraping,
         )
