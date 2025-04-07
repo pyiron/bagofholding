@@ -154,3 +154,31 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     @classmethod
     def get_version(cls) -> str:
         return str(get_version(cls.__module__, {}))
+
+    @staticmethod
+    def pickle_check(
+        obj: Any, raise_exceptions: bool = True, print_message: bool = False
+    ) -> str | None:
+        """
+        A simple helper to check if an object can be pickled and unpickled.
+        Useful if you run into trouble saving or loading and want to see whether the
+        underlying object is compliant with pickle-ability requirements to begin with.
+
+        Args:
+            obj: The object to test for pickling support.
+            raise_exceptions: If True, re-raise any exception encountered.
+            print_message: If True, print the exception message on failure.
+
+        Returns:
+            None if pickling is successful; otherwise, returns the exception message as a string.
+        """
+
+        try:
+            pickle.loads(pickle.dumps(obj))
+        except Exception as e:
+            if print_message:
+                print(e)
+            if raise_exceptions:
+                raise e
+            return str(e)
+        return None

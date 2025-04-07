@@ -1,7 +1,6 @@
 import dataclasses
 from typing import SupportsIndex
 
-
 import pyiron_workflow as pwf
 from pyiron_snippets.singleton import Singleton
 
