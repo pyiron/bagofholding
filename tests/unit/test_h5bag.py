@@ -107,8 +107,7 @@ class TestBag(unittest.TestCase):
         reducible_content = [
             (obj, c.Reducible)
             for obj in [
-                CustomReduce(10, ["iterable_item_1", "iterable_item_2"]),
-                # ^^ Custom __reduce__
+                CustomReduce(10, ["iter1", "iter2"]),  # Custom __reduce__
                 ExReducta(1),  # __reduce_ex__ pickle API
                 SomeData(),  # a dataclass
                 Parent(),  # An object with an internally cyclic relationship
