@@ -107,11 +107,11 @@ class H5Bag(Bag[H5Info]):
     def __getitem__(self, path: str) -> Metadata | None:
         return read_metadata(self.file[path])
 
-    def _get_enriched_metadata(
+    def get_enriched_metadata(
         self, path: str
     ) -> tuple[str, Metadata | None, tuple[str, ...] | None]:
         """
-        Enriched browsing information to support a browsing widget.
+        Enriched browsing information, e.g. to support a browsing widget.
         Still doesn't actually load the object, but exploits more available information.
 
         Args:

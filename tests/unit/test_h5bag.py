@@ -127,7 +127,7 @@ class TestBag(unittest.TestCase):
             with self.subTest(str(obj)):
                 H5Bag.save(obj, self.save_name)
                 bag = H5Bag(self.save_name)
-                content_name = bag._get_enriched_metadata("object")[0].split(".")[-1]
+                content_name = bag.get_enriched_metadata("object")[0].split(".")[-1]
                 self.assertEqual(content_type.__name__, content_name)
                 reloaded = bag.load()
                 self.assertTrue(np.all(obj == reloaded))

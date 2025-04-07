@@ -121,6 +121,23 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_enriched_metadata(
+        self, path: str
+    ) -> tuple[str, Metadata | None, tuple[str, ...] | None]:
+        """
+        Enriched browsing information, e.g. to support a browsing widget.
+        Still doesn't actually load the object, but exploits more available information.
+
+        Args:
+            path (str): Where in the h5 file to look
+
+        Returns:
+            (str): The content type class string (module and qualname).
+            (Metadata | None): The metadata, if any.
+            (tuple[str, ...] | None): The sub-entry name(s), if any.
+        """
+
+    @abc.abstractmethod
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
 
