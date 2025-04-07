@@ -1,6 +1,7 @@
 import dataclasses
 
 import pyiron_workflow as pwf
+from pyiron_snippets.singleton import Singleton
 
 
 @dataclasses.dataclass
@@ -84,6 +85,30 @@ class Child:
             and other.parent.data == self.parent.data
         )
 
+
+class NestedParent:
+    """This is importable right from the module."""
+
+    class NestedChild:
+        """This is not."""
+        def __init__(self):
+            self.data = "You can't import this from storables"
+
+        def __eq__(self, other):
+            return other.__class__ == self.__class__ and other.data == self.data
+
+
+class Draco(metaclass=Singleton):
+    def __init__(self, how_many="I am the last one"):
+        self.how_many = how_many
+
+    def __eq__(self, other):
+        return other is self
+
+    def __reduce__(self):
+        return "DRAGON"
+
+DRAGON = Draco()
 
 @pwf.as_macro_node
 def Subtract(self, a, b):

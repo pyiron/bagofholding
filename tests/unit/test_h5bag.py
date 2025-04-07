@@ -7,7 +7,8 @@ import os
 import unittest
 
 import numpy as np
-from objects import CustomReduce, Parent, SomeData
+from objects import CustomReduce, DRAGON, NestedParent, Parent, SomeData
+from pyiron_snippets.dotdict import DotDict
 
 import bagofholding.h5.content as c
 from bagofholding.bag import BagMismatchError
@@ -104,6 +105,7 @@ class TestBag(unittest.TestCase):
                 c.pack,  # function -- types.FunctionType
                 np.all,  # function -- types.FunctionType
                 H5Bag.read_bag_info,  # function -- types.FunctionType
+                DRAGON,  # Singleton
             ]
         ]
         reducible_content = [
@@ -114,6 +116,8 @@ class TestBag(unittest.TestCase):
                 # TODO: also __reduce_ex__
                 SomeData(),  # a dataclass
                 Parent(),  # An object with an internally cyclic relationship
+                DotDict({"forty-two": 42}),  # Inheriting from a built-in class
+                NestedParent.NestedChild(),  # Requiring qualname
             ]
         ]
 
@@ -130,5 +134,6 @@ class TestBag(unittest.TestCase):
                 content_name = bag.get_enriched_metadata("object")[0].split(".")[-1]
                 self.assertEqual(content_type.__name__, content_name)
                 reloaded = bag.load()
+                self.assertIs(type(obj), type(reloaded))
                 self.assertTrue(np.all(obj == reloaded))
                 os.remove(self.save_name)
