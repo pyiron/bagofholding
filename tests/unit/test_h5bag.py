@@ -3,7 +3,7 @@ import os
 import unittest
 
 import numpy as np
-from objects import CustomReduce, DRAGON, NestedParent, Parent, SomeData
+from objects import DRAGON, CustomReduce, ExReducta, NestedParent, Parent, SomeData
 from pyiron_snippets.dotdict import DotDict
 
 import bagofholding.h5.content as c
@@ -109,7 +109,7 @@ class TestBag(unittest.TestCase):
             for obj in [
                 CustomReduce(10, ["iterable_item_1", "iterable_item_2"]),
                 # ^^ Custom __reduce__
-                # TODO: also __reduce_ex__
+                ExReducta(1),  # __reduce_ex__ pickle API
                 SomeData(),  # a dataclass
                 Parent(),  # An object with an internally cyclic relationship
                 DotDict({"forty-two": 42}),  # Inheriting from a built-in class

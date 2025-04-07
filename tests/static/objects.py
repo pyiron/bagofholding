@@ -91,6 +91,7 @@ class NestedParent:
 
     class NestedChild:
         """This is not."""
+
         def __init__(self):
             self.data = "You can't import this from storables"
 
@@ -108,7 +109,21 @@ class Draco(metaclass=Singleton):
     def __reduce__(self):
         return "DRAGON"
 
+
 DRAGON = Draco()
+
+
+class ExReducta:
+    def __init__(self, n: int):
+        self.n = n
+
+    def __reduce_ex__(self, protocol: int):
+        return self.__class__, (self.n + 1,)
+
+    def __eq__(self, other):
+        # Equality is designed for a reloaded object to equate a stored object
+        return other.__class__ == self.__class__ and other.n == self.n + 1
+
 
 @pwf.as_macro_node
 def Subtract(self, a, b):

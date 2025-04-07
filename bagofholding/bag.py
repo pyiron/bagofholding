@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import pathlib
+import pickle
 from collections.abc import ItemsView, Iterator, Mapping
 from typing import Any, ClassVar, Generic, TypeVar
 
@@ -47,6 +48,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         obj: Any,
         filepath: str | pathlib.Path,
         version_scraping: VersionScrapingMap | None = None,
+        _pickle_protocol: int = pickle.DEFAULT_PROTOCOL,
     ) -> None:
         """
         Save a python object to file.
@@ -59,8 +61,9 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
+        # pass _pickle_protocol to invocations of __reduce_ex__
         cls._write_bag_info(filepath, cls.get_bag_info())
-        cls._save(obj, filepath, version_scraping)
+        cls._save(obj, filepath, version_scraping, _pickle_protocol)
 
     @classmethod
     @abc.abstractmethod
@@ -82,7 +85,8 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
-        version_scraping: VersionScrapingMap | None = None,
+        version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: int,
     ) -> None:
         pass
 

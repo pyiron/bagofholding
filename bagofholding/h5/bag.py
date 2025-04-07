@@ -49,7 +49,8 @@ class H5Bag(Bag[H5Info]):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
-        version_scraping: VersionScrapingMap | None = None,
+        version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: int,
     ) -> None:
         """
         Save a python object to file.
@@ -70,6 +71,7 @@ class H5Bag(Bag[H5Info]):
                 bidict.bidict(),
                 [],
                 version_scraping=version_scraping,
+                _pickle_protocol=_pickle_protocol,
             )
 
     def __init__(
