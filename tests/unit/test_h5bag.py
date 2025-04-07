@@ -76,7 +76,9 @@ class TestBag(unittest.TestCase):
             (True, c.Bool),
             (42, c.Long),
             (42.0, c.Float),
-            # (bytes(42), c.Bytes),  # TODO: BUG!!! bytes containing \00 are broken
+            (bytes("some plain old bytes", encoding="utf8"), c.Bytes),
+            (b"\x00", c.Bytes),  # h5py leverages the null character, so we need to
+            # ensure we treat our bytes specially
             (bytearray([42]), c.Bytearray),
         ]
         complex_items = [

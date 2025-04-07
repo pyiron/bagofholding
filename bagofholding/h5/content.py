@@ -229,6 +229,29 @@ class Str(SimpleItem[str]):
         return cast(str, file[path][()].decode("utf-8"))
 
 
+class Bytes(SimpleItem[bytes]):
+    @classmethod
+    def write_item(
+        cls,
+        obj: bytes,
+        file: h5py.File,
+        path: str,
+    ) -> None:
+        entry = file.create_dataset(path, data=np.void(obj))
+        cls._write_type(entry)
+
+    @classmethod
+    def read(
+        cls,
+        file: h5py.File,
+        path: str,
+        memo: UnpackingMemoAlias,
+        version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
+    ) -> bytes:
+        return bytes(file[path][()])
+
+
 class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     recast: type[ItemType]
 
@@ -264,10 +287,6 @@ class Long(NativeItem[int]):
 
 class Float(NativeItem[float]):
     recast = float
-
-
-class Bytes(NativeItem[bytes]):
-    recast = bytes
 
 
 class Bytearray(NativeItem[bytearray]):
