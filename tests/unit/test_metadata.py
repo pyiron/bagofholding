@@ -2,13 +2,45 @@ import sys
 import unittest
 
 import bidict
-import numpy
+import numpy as np
 
-from bagofholding.metadata import _get_module, get_version
+from bagofholding.metadata import (
+    EnvironmentMismatch,
+    Metadata,
+    _decompose_semver,
+    _get_module,
+    get_version,
+    validate_version,
+)
 
 
 def some_version_scraper(module_name: str) -> str | None:
-    return "some.version"
+    return "some_nonsemantic.version"
+
+
+def _modify_numpy_version(index: int) -> str:
+    semver = _decompose_semver(np.__version__)
+    if semver is None:
+        raise ValueError("Expected semantic version for numpy.")
+    return ".".join(
+        "9999999999" if i == index else str(x) for i, x in enumerate(semver)
+    )
+
+
+def numpy_unmodified(_: str) -> str:
+    return str(np.__version__)
+
+
+def numpy_modify_patch(_: str) -> str:
+    return _modify_numpy_version(2)
+
+
+def numpy_modify_minor(_: str) -> str:
+    return _modify_numpy_version(1)
+
+
+def numpy_modify_major(_: str) -> str:
+    return _modify_numpy_version(0)
 
 
 class TestMetadata(unittest.TestCase):
@@ -55,7 +87,7 @@ class TestMetadata(unittest.TestCase):
         )
 
         self.assertEqual(
-            numpy.__version__,
+            np.__version__,
             get_version("numpy.fft", {}),
             msg="The version of the root module should be accessed",
         )
@@ -65,3 +97,120 @@ class TestMetadata(unittest.TestCase):
             get_version("numpy.fft", {"numpy": some_version_scraper}),
             msg="The root module should be accessed to search the scaper map",
         )
+
+    def test_validate_version(self):
+
+        self.assertIsNone(
+            validate_version(Metadata()),
+            msg="Empty metadata can't be invalid",
+        )
+
+        numpy_metadata = Metadata(
+            module=np.__name__,
+            version=str(np.__version__),
+        )
+
+        self.assertIsNone(validate_version(numpy_metadata))
+        self.assertIsNone(validate_version(numpy_metadata, validator="exact"))
+        self.assertIsNone(
+            validate_version(
+                numpy_metadata,
+                validator="semantic-minor",
+                version_scraping={np.__name__: numpy_modify_patch},
+            )
+        )
+        self.assertIsNone(
+            validate_version(
+                numpy_metadata,
+                validator="semantic-major",
+                version_scraping={np.__name__: numpy_modify_minor},
+            )
+        )
+        self.assertIsNone(
+            validate_version(
+                numpy_metadata,
+                validator="none",
+                version_scraping={np.__name__: numpy_modify_major},
+            )
+        )
+        self.assertIsNone(
+            validate_version(
+                numpy_metadata, version_scraping={np.__name__: numpy_unmodified}
+            )
+        )
+
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                numpy_metadata,
+                version_scraping={np.__name__: numpy_modify_patch},
+            )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                numpy_metadata,
+                validator="exact",
+                version_scraping={np.__name__: numpy_modify_patch},
+            )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                numpy_metadata,
+                validator="semantic-minor",
+                version_scraping={np.__name__: numpy_modify_minor},
+            )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                numpy_metadata,
+                validator="semantic-major",
+                version_scraping={np.__name__: numpy_modify_major},
+            )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                numpy_metadata,
+                validator="semantic-major",
+                version_scraping={np.__name__: some_version_scraper},
+            )
+
+        non_semantic_metadata = Metadata(
+            module=np.__name__,
+            version=some_version_scraper(""),  # Force-override the version
+        )
+        self.assertIsNone(
+            validate_version(
+                non_semantic_metadata,
+                version_scraping={np.__name__: some_version_scraper},
+            ),
+        )
+        self.assertIsNone(
+            validate_version(non_semantic_metadata, validator="none"),
+        )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                non_semantic_metadata,
+                version_scraping={np.__name__: numpy_modify_patch},
+            )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                non_semantic_metadata,
+                validator="exact",
+                version_scraping={np.__name__: numpy_modify_patch},
+            )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                non_semantic_metadata,
+                validator="semantic-minor",
+                version_scraping={np.__name__: numpy_modify_minor},
+            )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(
+                non_semantic_metadata,
+                validator="semantic-major",
+                version_scraping={np.__name__: numpy_modify_major},
+            )
+
+        self.assertIsNone(
+            validate_version(non_semantic_metadata, validator=lambda _a, _b: True),
+        )
+        with self.assertRaises(EnvironmentMismatch):
+            validate_version(non_semantic_metadata, validator=lambda _a, _b: False)
+
+        with self.assertRaises(ValueError):
+            validate_version(non_semantic_metadata, validator="not-a-valid-keyword")

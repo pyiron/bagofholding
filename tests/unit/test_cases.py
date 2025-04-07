@@ -1,3 +1,7 @@
+"""
+Verification of different pickle-compliant test cases
+"""
+
 import pathlib
 import unittest
 

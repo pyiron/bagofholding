@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import pathlib
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from typing import Any, ClassVar
 
 import bidict
@@ -12,7 +12,7 @@ import h5py
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
-from bagofholding.metadata import Metadata
+from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
 
 @dataclasses.dataclass(frozen=True)
@@ -49,7 +49,7 @@ class H5Bag(Bag[H5Info]):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
-        version_scraping: dict[str, Callable[[str], str | None]] | None = None,
+        version_scraping: VersionScrapingMap | None = None,
     ) -> None:
         """
         Save a python object to file.
@@ -90,8 +90,19 @@ class H5Bag(Bag[H5Info]):
     def __del__(self) -> None:
         self._close()
 
-    def load(self, path: str = Bag.storage_root) -> Any:
-        return unpack(self.file, path, {})
+    def load(
+        self,
+        path: str = Bag.storage_root,
+        version_validator: VersionValidatorType = "exact",
+        version_scraping: VersionScrapingMap | None = None,
+    ) -> Any:
+        return unpack(
+            self.file,
+            path,
+            {},
+            version_validator=version_validator,
+            version_scraping=version_scraping,
+        )
 
     def __getitem__(self, path: str) -> Metadata | None:
         return read_metadata(self.file[path])
