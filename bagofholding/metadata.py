@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, ItemsView
 from dataclasses import asdict, dataclass
 from importlib import import_module
@@ -96,7 +97,8 @@ class EnvironmentMismatch(BagOfHoldingError, ModuleNotFoundError):
 
 
 VersionValidatorType: TypeAlias = (
-    Literal["exact", "semantic-minor", "semantic-major"] | Callable[[str, str], bool]
+    Literal["exact", "semantic-minor", "semantic-major", "none"]
+    | Callable[[str, str], bool]
 )
 
 
@@ -144,9 +146,9 @@ def validate_version(
         if validator == "exact":
             version_validator = versions_are_equal
         elif validator == "semantic-minor":
-            raise NotImplementedError("semantic-minor not implemented")
+            version_validator = versions_match_semantic_minor
         elif validator == "semantic-major":
-            raise NotImplementedError("semantic-major not implemented")
+            version_validator = versions_match_semantic_major
         else:
             version_validator = validator
 
@@ -162,4 +164,28 @@ def validate_version(
 
 
 def versions_are_equal(version: str, reference: str) -> bool:
+    return version == reference
+
+
+def _decompose_semver(version: str) -> tuple[int, int, int] | None:
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+    if match:
+        major, minor, patch = match.groups()
+        return int(major), int(minor), int(patch)
+    return None
+
+
+def versions_match_semantic_minor(version: str, reference: str) -> bool:
+    v_parts = _decompose_semver(version)
+    r_parts = _decompose_semver(reference)
+    if v_parts and r_parts:
+        return v_parts[:2] == r_parts[:2]
+    return version == reference
+
+
+def versions_match_semantic_major(version: str, reference: str) -> bool:
+    v_parts = _decompose_semver(version)
+    r_parts = _decompose_semver(reference)
+    if v_parts and r_parts:
+        return v_parts[0] == r_parts[0]
     return version == reference
