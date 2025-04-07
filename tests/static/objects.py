@@ -101,7 +101,7 @@ class NestedParent:
             return other.__class__ == self.__class__ and other.data == self.data
 
 
-class Draco(metaclass=Singleton):
+class Draco(metaclass=Singleton):  # type: ignore[misc]
     def __init__(self, how_many="I am the last one"):
         self.how_many = how_many
 
