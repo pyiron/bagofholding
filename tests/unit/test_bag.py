@@ -1,3 +1,7 @@
+"""
+Testing bag features.
+"""
+
 import contextlib
 import os
 import unittest
