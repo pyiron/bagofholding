@@ -152,9 +152,14 @@ def validate_version(
         else:
             version_validator = validator
 
-        if (
-            isinstance(version_validator, str) and version_validator == "none"
-        ) or version_validator(current_version, metadata.version):
+        if isinstance(version_validator, str):
+            if version_validator == "none":
+                return
+            else:
+                raise ValueError(
+                    f"Unrecognized validator keyword {version_validator} -- please supply {VersionValidatorType}"
+                )
+        elif version_validator(current_version, metadata.version):
             return
         raise EnvironmentMismatch(
             f"{metadata.module} is stored with version {metadata.version}, "

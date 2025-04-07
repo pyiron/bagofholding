@@ -211,3 +211,6 @@ class TestMetadata(unittest.TestCase):
         )
         with self.assertRaises(EnvironmentMismatch):
             validate_version(non_semantic_metadata, validator=lambda _a, _b: False)
+
+        with self.assertRaises(ValueError):
+            validate_version(non_semantic_metadata, validator="not-a-valid-keyword")
