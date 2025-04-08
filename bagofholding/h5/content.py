@@ -58,7 +58,7 @@ class Location:
 
 
 @dataclasses.dataclass
-class GroupPackingArguments:
+class PackingArguments:
     memo: PackingMemoAlias
     references: ReferencesAlias
     version_scraping: VersionScrapingMap | None
@@ -110,7 +110,9 @@ class Item(
 class Reference(Item[str, Any]):
     @classmethod
     def write_item(cls, obj: str, location: Location) -> None:
-        entry = location.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
+        entry = location.create_dataset(
+            data=obj, dtype=h5py.string_dtype(encoding="utf-8")
+        )
         cls._write_type(entry)
 
     @classmethod
@@ -191,7 +193,9 @@ class Complex(SimpleItem[complex]):
 class Str(SimpleItem[str]):
     @classmethod
     def _make_dataset(cls, obj: str, location: Location) -> h5py.Dataset:
-        return location.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
+        return location.create_dataset(
+            data=obj, dtype=h5py.string_dtype(encoding="utf-8")
+        )
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> str:
@@ -287,7 +291,7 @@ class Group(
         cls,
         obj: PackingType,
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
     ) -> None:
         pass
 
@@ -341,7 +345,7 @@ class Reducible(Group[object, object]):
         cls,
         obj: object,
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
         rv: ReduceReturnType | None = None,
     ) -> None:
         reduced_value = (
@@ -436,7 +440,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         cls,
         obj: PackingType,
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
     ) -> None:
         entry = location.create_group()
         cls._write_type(entry)
@@ -448,7 +452,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         cls,
         obj: PackingType,
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
     ) -> h5py.Group:
         pass
 
@@ -459,7 +463,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         cls,
         obj: dict[Any, Any],
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
     ) -> None:
         pack(
             tuple(obj.keys()),
@@ -515,7 +519,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         cls,
         obj: dict[str, Any],
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
     ) -> None:
         for k, v in obj.items():
             pack(
@@ -553,7 +557,7 @@ class Union(SimpleGroup[types.UnionType]):
         cls,
         obj: types.UnionType,
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
@@ -609,7 +613,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         cls,
         obj: IndexableType,
         location: Location,
-        packing: GroupPackingArguments,
+        packing: PackingArguments,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
@@ -662,7 +666,7 @@ def pack(
     _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
 ) -> None:
     location = Location(file=file, path=path)
-    packing_args = GroupPackingArguments(
+    packing_args = PackingArguments(
         memo=memo,
         references=references,
         version_scraping=version_scraping,
@@ -696,7 +700,9 @@ def pack(
 
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
-        Global.write_item(get_importable_string_from_string_reduction(rv, obj), location)
+        Global.write_item(
+            get_importable_string_from_string_reduction(rv, obj), location
+        )
         return
     else:
         Reducible.write_group(obj, location, packing_args, rv=rv)
