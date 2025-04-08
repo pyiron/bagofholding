@@ -53,6 +53,9 @@ class Location:
     def create_dataset(self, **kwargs: Any) -> h5py.Dataset:
         return self.file.create_dataset(self.path, **kwargs)
 
+    def create_group(self) -> h5py.Group:
+        return self.file.create_group(self.path)
+
 
 @dataclasses.dataclass
 class GroupPackingArguments:
@@ -343,7 +346,7 @@ class Reducible(Group[object, object]):
         reduced_value = (
             obj.__reduce_ex__(packing_args._pickle_protocol) if rv is None else rv
         )
-        entry = packing_args.loc.file.create_group(packing_args.loc.path)
+        entry = packing_args.loc.create_group()
         cls._write_type(entry)
         cls._write_metadata(
             entry,
@@ -437,7 +440,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         obj: PackingType,
         packing_args: GroupPackingArguments,
     ) -> None:
-        entry = packing_args.loc.file.create_group(packing_args.loc.path)
+        entry = packing_args.loc.create_group()
         cls._write_type(entry)
         cls._write_subcontent(obj, packing_args)
 
