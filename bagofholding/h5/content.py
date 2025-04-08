@@ -46,8 +46,8 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
@@ -99,8 +99,8 @@ class Reference(Item[str, Any]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> Any:
         reference = file[path][()].decode("utf-8")
         from_memo = memo.get(reference, NotData)
@@ -143,8 +143,8 @@ class Global(Item[GlobalType, Any]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> Any:
         import_string = file[path][()].decode("utf-8")
         return import_from_string(import_string)
@@ -167,8 +167,8 @@ class NoneItem(Item[type[None], None]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> None:
         return None
 
@@ -197,8 +197,8 @@ class Complex(SimpleItem[complex]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> complex:
         entry = file[path]
         return complex(entry[0], entry[1])
@@ -223,8 +223,8 @@ class Str(SimpleItem[str]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> str:
         return cast(str, file[path][()].decode("utf-8"))
 
@@ -246,8 +246,8 @@ class Bytes(SimpleItem[bytes]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> bytes:
         return bytes(file[path][()])
 
@@ -271,8 +271,8 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> ItemType:
         return cast(ItemType, cls.recast(file[path][()]))
 
@@ -300,7 +300,7 @@ class ComplexItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         obj: ItemType,
         file: h5py.File,
         path: str,
-        version_scraping: VersionScrapingMap | None = None,
+        version_scraping: VersionScrapingMap | None,
     ) -> None:
         entry = cls._write_item(obj, file, path)
         cls._write_type(entry)
@@ -336,8 +336,8 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(np.ndarray[tuple[int, ...], H5DtypeAlias], file[path][()])
 
@@ -355,7 +355,7 @@ class Group(
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         _pickle_protocol: SupportsIndex,
-        version_scraping: VersionScrapingMap | None = None,
+        version_scraping: VersionScrapingMap | None,
         **kwargs: Any,
     ) -> None:
         pass
@@ -414,8 +414,8 @@ class Reducible(Group[object, object]):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         _pickle_protocol: SupportsIndex,
-        version_scraping: VersionScrapingMap | None = None,
-        reduced_value: ReduceReturnType | PickleHint | None = None,
+        version_scraping: VersionScrapingMap | None,
+        reduced_value: ReduceReturnType | PickleHint | None,
         **kwargs: Any,
     ) -> None:
         try:
@@ -445,8 +445,8 @@ class Reducible(Group[object, object]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> object:
         constructor = cast(
             ConstructorType,
@@ -519,7 +519,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         memo: PackingMemoAlias,
         references: ReferencesAlias,
         _pickle_protocol: SupportsIndex,
-        version_scraping: VersionScrapingMap | None = None,
+        version_scraping: VersionScrapingMap | None,
         **kwargs: Any,
     ) -> None:
         entry = file.create_group(path)
@@ -580,8 +580,8 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> dict[Any, Any]:
         return dict(
             zip(
@@ -639,8 +639,8 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> dict[Any, Any]:
         return {
             k: unpack(
@@ -704,8 +704,8 @@ class Union(SimpleGroup[types.UnionType]):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> types.UnionType:
         return cls._recursive_or(
             unpack(
@@ -755,8 +755,8 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         file: h5py.File,
         path: str,
         memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType = "exact",
-        version_scraping: VersionScrapingMap | None = None,
+        version_validator: VersionValidatorType,
+        version_scraping: VersionScrapingMap | None,
     ) -> IndexableType:
         return cls.recast(
             unpack(
@@ -928,8 +928,8 @@ def unpack(
     file: h5py.File,
     path: str,
     memo: UnpackingMemoAlias,
-    version_validator: VersionValidatorType = "exact",
-    version_scraping: VersionScrapingMap | None = None,
+    version_validator: VersionValidatorType,
+    version_scraping: VersionScrapingMap | None,
 ) -> object:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
