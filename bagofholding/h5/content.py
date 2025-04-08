@@ -279,7 +279,6 @@ class Group(
         cls,
         obj: PackingType,
         packing_args: GroupPackingArguments,
-        **kwargs: Any,
     ) -> None:
         pass
 
@@ -333,7 +332,7 @@ class Reducible(Group[object, object]):
         cls,
         obj: object,
         packing_args: GroupPackingArguments,
-        **kwargs: Any,
+        rv: ReduceReturnType | None = None,
     ) -> None:
         try:
             reduced_value = obj.__reduce_ex__(pickle.DEFAULT_PROTOCOL)
@@ -432,7 +431,6 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         cls,
         obj: PackingType,
         packing_args: GroupPackingArguments,
-        **kwargs: Any,
     ) -> None:
         entry = packing_args.loc.file.create_group(packing_args.loc.path)
         cls._write_type(entry)
