@@ -35,13 +35,18 @@ UnpackingType = TypeVar("UnpackingType", bound=Any)
 
 PATH_DELIMITER = "/"
 
+
 @dataclasses.dataclass
 class Location:
     file: h5py.File
     path: str
-    
+
     def relative_path(self, subpath: str) -> str:
         return self.path + PATH_DELIMITER + subpath
+
+    @property
+    def entry(self) -> h5py.Group | h5py.Dataset:
+        return self.file[self.path]
 
 
 @dataclasses.dataclass
@@ -112,7 +117,7 @@ class Reference(Item[str, Any]):
         cls,
         unpacking_args: UnpackingArguments,
     ) -> Any:
-        reference = unpacking_args.loc.file[unpacking_args.loc.path][()].decode("utf-8")
+        reference = unpacking_args.loc.entry[()].decode("utf-8")
         from_memo = unpacking_args.memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
@@ -147,9 +152,7 @@ class Global(Item[GlobalType, Any]):
         cls,
         unpacking_args: UnpackingArguments,
     ) -> Any:
-        import_string = unpacking_args.loc.file[unpacking_args.loc.path][()].decode(
-            "utf-8"
-        )
+        import_string = unpacking_args.loc.entry[()].decode("utf-8")
         return import_from_string(import_string)
 
 
@@ -185,7 +188,7 @@ class Complex(SimpleItem[complex]):
         cls,
         unpacking_args: UnpackingArguments,
     ) -> complex:
-        entry = unpacking_args.loc.file[unpacking_args.loc.path]
+        entry = unpacking_args.loc.entry
         return complex(entry[0], entry[1])
 
 
@@ -202,9 +205,7 @@ class Str(SimpleItem[str]):
         cls,
         unpacking_args: UnpackingArguments,
     ) -> str:
-        return cast(
-            str, unpacking_args.loc.file[unpacking_args.loc.path][()].decode("utf-8")
-        )
+        return cast(str, unpacking_args.loc.entry[()].decode("utf-8"))
 
 
 class Bytes(SimpleItem[bytes]):
@@ -218,7 +219,7 @@ class Bytes(SimpleItem[bytes]):
         cls,
         unpacking_args: UnpackingArguments,
     ) -> bytes:
-        return bytes(unpacking_args.loc.file[unpacking_args.loc.path][()])
+        return bytes(unpacking_args.loc.entry[()])
 
 
 class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
@@ -234,9 +235,7 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         cls,
         unpacking_args: UnpackingArguments,
     ) -> ItemType:
-        return cast(
-            ItemType, cls.recast(unpacking_args.loc.file[unpacking_args.loc.path][()])
-        )
+        return cast(ItemType, cls.recast(unpacking_args.loc.entry[()]))
 
 
 class Bool(NativeItem[bool]):
@@ -296,7 +295,7 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(
             np.ndarray[tuple[int, ...], H5DtypeAlias],
-            unpacking_args.loc.file[unpacking_args.loc.path][()],
+            unpacking_args.loc.entry[()],
         )
 
 
@@ -428,9 +427,7 @@ class Reducible(Group[object, object]):
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
             )
-            for k in cls.reduction_fields[
-                2 : len(unpacking_args.loc.file[unpacking_args.loc.path])
-            ]
+            for k in cls.reduction_fields[2 : len(unpacking_args.loc.entry)]
         )
         n_items = len(rv)
         if n_items >= 3 and rv[2] is not None:
@@ -572,7 +569,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
             )
-            for k in unpacking_args.loc.file[unpacking_args.loc.path]
+            for k in unpacking_args.loc.entry
         }
 
 
@@ -628,7 +625,7 @@ class Union(SimpleGroup[types.UnionType]):
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
             )
-            for i in range(len(unpacking_args.loc.file[unpacking_args.loc.path]))
+            for i in range(len(unpacking_args.loc.entry))
         )
 
 
@@ -670,7 +667,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
             )
-            for i in range(len(unpacking_args.loc.file[unpacking_args.loc.path]))
+            for i in range(len(unpacking_args.loc.entry))
         )
 
 
