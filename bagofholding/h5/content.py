@@ -340,7 +340,7 @@ class Reducible(Group[object, object]):
     ) -> None:
         if rv is None:
             try:
-                reduced_value = obj.__reduce_ex__(pickle.DEFAULT_PROTOCOL)
+                reduced_value = obj.__reduce_ex__(packing_args._pickle_protocol)
             except AttributeError:
                 reduced_value = (
                     obj.__reduce__() if reduced_value is None else reduced_value
