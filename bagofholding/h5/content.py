@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections.abc
+import dataclasses
 import operator
 import pickle
 import types
@@ -31,6 +32,21 @@ UnpackingMemoAlias: TypeAlias = dict[str, Any]
 
 PackingType = TypeVar("PackingType", bound=Any)
 UnpackingType = TypeVar("UnpackingType", bound=Any)
+
+
+@dataclasses.dataclass
+class Location:
+    file: h5py.File
+    path: str
+
+
+@dataclasses.dataclass
+class GroupPackingArguments:
+    loc: Location
+    memo: PackingMemoAlias
+    references: ReferencesAlias
+    version_scraping: VersionScrapingMap | None
+    _pickle_protocol: SupportsIndex
 
 
 class NotData:
@@ -71,25 +87,15 @@ class Item(
 ):
     @classmethod
     @abc.abstractmethod
-    def write_item(
-        cls,
-        obj: PackingType,
-        file: h5py.File,
-        path: str,
-    ) -> None:
+    def write_item(cls, obj: PackingType, loc: Location) -> None:
         pass
 
 
 class Reference(Item[str, Any]):
     @classmethod
-    def write_item(
-        cls,
-        obj: str,
-        file: h5py.File,
-        path: str,
-    ) -> None:
-        entry = file.create_dataset(
-            path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
+    def write_item(cls, obj: str, loc: Location) -> None:
+        entry = loc.file.create_dataset(
+            loc.path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
         )
         cls._write_type(entry)
 
@@ -121,19 +127,14 @@ GlobalType: TypeAlias = type[type] | FunctionType | str
 
 class Global(Item[GlobalType, Any]):
     @classmethod
-    def write_item(
-        cls,
-        obj: GlobalType,
-        file: h5py.File,
-        path: str,
-    ) -> None:
+    def write_item(cls, obj: GlobalType, loc: Location) -> None:
         value: str
         if isinstance(obj, str):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
-        entry = file.create_dataset(
-            path, data=value, dtype=h5py.string_dtype(encoding="utf-8")
+        entry = loc.file.create_dataset(
+            loc.path, data=value, dtype=h5py.string_dtype(encoding="utf-8")
         )
         cls._write_type(entry)
 
@@ -152,13 +153,8 @@ class Global(Item[GlobalType, Any]):
 
 class NoneItem(Item[type[None], None]):
     @classmethod
-    def write_item(
-        cls,
-        obj: type[None],
-        file: h5py.File,
-        path: str,
-    ) -> None:
-        entry = file.create_dataset(path, data=h5py.Empty(dtype="f"))
+    def write_item(cls, obj: type[None], loc: Location) -> None:
+        entry = loc.file.create_dataset(loc.path, data=h5py.Empty(dtype="f"))
         cls._write_type(entry)
 
     @classmethod
@@ -182,13 +178,8 @@ class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
 
 class Complex(SimpleItem[complex]):
     @classmethod
-    def write_item(
-        cls,
-        obj: complex,
-        file: h5py.File,
-        path: str,
-    ) -> None:
-        entry = file.create_dataset(path, data=np.array([obj.real, obj.imag]))
+    def write_item(cls, obj: complex, loc: Location) -> None:
+        entry = loc.file.create_dataset(loc.path, data=np.array([obj.real, obj.imag]))
         cls._write_type(entry)
 
     @classmethod
@@ -206,14 +197,9 @@ class Complex(SimpleItem[complex]):
 
 class Str(SimpleItem[str]):
     @classmethod
-    def write_item(
-        cls,
-        obj: str,
-        file: h5py.File,
-        path: str,
-    ) -> None:
-        entry = file.create_dataset(
-            path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
+    def write_item(cls, obj: str, loc: Location) -> None:
+        entry = loc.file.create_dataset(
+            loc.path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
         )
         cls._write_type(entry)
 
@@ -231,13 +217,8 @@ class Str(SimpleItem[str]):
 
 class Bytes(SimpleItem[bytes]):
     @classmethod
-    def write_item(
-        cls,
-        obj: bytes,
-        file: h5py.File,
-        path: str,
-    ) -> None:
-        entry = file.create_dataset(path, data=np.void(obj))
+    def write_item(cls, obj: bytes, loc: Location) -> None:
+        entry = loc.file.create_dataset(loc.path, data=np.void(obj))
         cls._write_type(entry)
 
     @classmethod
@@ -256,13 +237,8 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     recast: type[ItemType]
 
     @classmethod
-    def write_item(
-        cls,
-        obj: ItemType,
-        file: h5py.File,
-        path: str,
-    ) -> None:
-        entry = file.create_dataset(path, data=obj)
+    def write_item(cls, obj: ItemType, loc: Location) -> None:
+        entry = loc.file.create_dataset(loc.path, data=obj)
         cls._write_type(entry)
 
     @classmethod
@@ -298,11 +274,10 @@ class ComplexItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     def write_item(
         cls,
         obj: ItemType,
-        file: h5py.File,
-        path: str,
-        version_scraping: VersionScrapingMap | None,
+        loc: Location,
+        version_scraping: VersionScrapingMap | None = None,
     ) -> None:
-        entry = cls._write_item(obj, file, path)
+        entry = cls._write_item(obj, loc)
         cls._write_type(entry)
         cls._write_metadata(
             entry,
@@ -314,8 +289,7 @@ class ComplexItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     def _write_item(
         cls,
         obj: ItemType,
-        file: h5py.File,
-        path: str,
+        loc: Location,
     ) -> h5py.Dataset:
         pass
 
@@ -325,10 +299,9 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     def _write_item(
         cls,
         obj: np.ndarray[tuple[int, ...], H5DtypeAlias],
-        file: h5py.File,
-        path: str,
+        loc: Location,
     ) -> h5py.Dataset:
-        return file.create_dataset(path, data=obj)
+        return loc.file.create_dataset(loc.path, data=obj)
 
     @classmethod
     def read(
@@ -347,15 +320,10 @@ class Group(
 ):
     @classmethod
     @abc.abstractmethod
-    def write_group(
+    def write_grpup(
         cls,
         obj: PackingType,
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        _pickle_protocol: SupportsIndex,
-        version_scraping: VersionScrapingMap | None,
+        packing_args: GroupPackingArguments,
         **kwargs: Any,
     ) -> None:
         pass
@@ -409,34 +377,35 @@ class Reducible(Group[object, object]):
     def write_group(
         cls,
         obj: object,
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        _pickle_protocol: SupportsIndex,
-        version_scraping: VersionScrapingMap | None,
-        reduced_value: ReduceReturnType | PickleHint | None,
+        packing_args: GroupPackingArguments,
         **kwargs: Any,
     ) -> None:
         try:
             reduced_value = obj.__reduce_ex__(pickle.DEFAULT_PROTOCOL)
         except AttributeError:
             reduced_value = obj.__reduce__() if reduced_value is None else reduced_value
-        entry = file.create_group(path)
+        entry = packing_args.loc.file.create_group(packing_args.loc.path)
         cls._write_type(entry)
         cls._write_metadata(
             entry,
-            get_metadata(obj, {} if version_scraping is None else version_scraping),
+            get_metadata(
+                obj,
+                (
+                    {}
+                    if packing_args.version_scraping is None
+                    else packing_args.version_scraping
+                ),
+            ),
         )
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
-                file,
-                relative(path, subpath),
-                memo,
-                references,
-                version_scraping=version_scraping,
-                _pickle_protocol=_pickle_protocol,
+                packing_args.loc.file,
+                relative(packing_args.loc.path, subpath),
+                packing_args.memo,
+                packing_args.references,
+                version_scraping=packing_args.version_scraping,
+                _pickle_protocol=packing_args._pickle_protocol,
             )
 
     @classmethod
@@ -514,31 +483,19 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
     def write_group(
         cls,
         obj: PackingType,
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        _pickle_protocol: SupportsIndex,
-        version_scraping: VersionScrapingMap | None,
+        packing_args: GroupPackingArguments,
         **kwargs: Any,
     ) -> None:
-        entry = file.create_group(path)
+        entry = packing_args.loc.file.create_group(packing_args.loc.path)
         cls._write_type(entry)
-        cls._write_subcontent(
-            obj, file, path, memo, references, version_scraping, _pickle_protocol
-        )
+        cls._write_subcontent(obj, packing_args)
 
     @classmethod
     @abc.abstractmethod
     def _write_subcontent(
         cls,
         obj: PackingType,
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
+        packing_args: GroupPackingArguments,
     ) -> h5py.Group:
         pass
 
@@ -548,30 +505,25 @@ class Dict(SimpleGroup[dict[Any, Any]]):
     def _write_subcontent(
         cls,
         obj: dict[Any, Any],
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
+        packing_args: GroupPackingArguments,
     ) -> None:
         pack(
             tuple(obj.keys()),
-            file,
-            relative(path, "keys"),
-            memo,
-            references,
-            version_scraping=version_scraping,
-            _pickle_protocol=_pickle_protocol,
+            packing_args.loc.file,
+            relative(packing_args.loc.path, "keys"),
+            packing_args.memo,
+            packing_args.references,
+            version_scraping=packing_args.version_scraping,
+            _pickle_protocol=packing_args._pickle_protocol,
         )
         pack(
             tuple(obj.values()),
-            file,
-            relative(path, "values"),
-            memo,
-            references,
-            version_scraping=version_scraping,
-            _pickle_protocol=_pickle_protocol,
+            packing_args.loc.file,
+            relative(packing_args.loc.path, "values"),
+            packing_args.memo,
+            packing_args.references,
+            version_scraping=packing_args.version_scraping,
+            _pickle_protocol=packing_args._pickle_protocol,
         )
 
     @classmethod
@@ -615,22 +567,17 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
     def _write_subcontent(
         cls,
         obj: dict[Any, Any],
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
+        packing_args: GroupPackingArguments,
     ) -> None:
         for k, v in obj.items():
             pack(
                 v,
-                file,
-                relative(path, k),
-                memo,
-                references,
-                version_scraping=version_scraping,
-                _pickle_protocol=_pickle_protocol,
+                packing_args.loc.file,
+                relative(packing_args.loc.path, k),
+                packing_args.memo,
+                packing_args.references,
+                version_scraping=packing_args.version_scraping,
+                _pickle_protocol=packing_args._pickle_protocol,
             )
 
     @classmethod
@@ -664,22 +611,17 @@ class Union(SimpleGroup[types.UnionType]):
     def _write_subcontent(
         cls,
         obj: types.UnionType,
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
+        packing_args: GroupPackingArguments,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
                 v,
-                file,
-                relative(path, f"i{i}"),
-                memo,
-                references,
-                version_scraping=version_scraping,
-                _pickle_protocol=_pickle_protocol,
+                packing_args.loc.file,
+                relative(packing_args.loc.path, f"i{i}"),
+                packing_args.memo,
+                packing_args.references,
+                version_scraping=packing_args.version_scraping,
+                _pickle_protocol=packing_args._pickle_protocol,
             )
 
     @staticmethod
@@ -731,22 +673,17 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
     def _write_subcontent(
         cls,
         obj: IndexableType,
-        file: h5py.File,
-        path: str,
-        memo: PackingMemoAlias,
-        references: ReferencesAlias,
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
+        packing_args: GroupPackingArguments,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
                 v,
-                file,
-                relative(path, f"i{i}"),
-                memo,
-                references,
-                version_scraping=version_scraping,
-                _pickle_protocol=_pickle_protocol,
+                packing_args.loc.file,
+                relative(packing_args.loc.path, f"i{i}"),
+                packing_args.memo,
+                packing_args.references,
+                version_scraping=packing_args.version_scraping,
+                _pickle_protocol=packing_args._pickle_protocol,
             )
 
     @classmethod
@@ -795,16 +732,25 @@ def pack(
     version_scraping: VersionScrapingMap | None,
     _pickle_protocol: SupportsIndex = pickle.HIGHEST_PROTOCOL,
 ) -> None:
+    loc = Location(file=file, path=path)
+    packing_args = GroupPackingArguments(
+        loc=loc,
+        memo=memo,
+        references=references,
+        version_scraping=version_scraping,
+        _pickle_protocol=_pickle_protocol,
+    )
+
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
     if simple_class is not None:
-        simple_class.write_item(obj, file, path)
+        simple_class.write_item(obj, loc)
         return
 
     obj_id = id(obj)
     reference = memo.get(obj_id)
     if reference is not None:
-        Reference.write_item(reference, file, path)
+        Reference.write_item(reference, loc)
         return
     else:
         memo[obj_id] = path
@@ -812,20 +758,12 @@ def pack(
 
     complex_class = get_complex_content_class(obj)
     if complex_class is not None:
-        complex_class.write_item(obj, file, path, version_scraping=version_scraping)
+        complex_class.write_item(obj, loc, version_scraping=version_scraping)
         return
 
     group_class = get_group_content_class(obj)
     if group_class is not None:
-        group_class.write_group(
-            obj,
-            file,
-            path,
-            memo,
-            references,
-            _pickle_protocol,
-            version_scraping=version_scraping,
-        )
+        group_class.write_group(obj, packing_args)
         return
 
     try:
@@ -833,23 +771,10 @@ def pack(
     except AttributeError:
         rv = obj.__reduce__()
     if isinstance(rv, str):
-        Global.write_item(
-            _get_importable_string_from_string_reduction(rv, obj),
-            file,
-            path,
-        )
+        Global.write_item(_get_importable_string_from_string_reduction(rv, obj), loc)
         return
     else:
-        Reducible.write_group(
-            obj,
-            file,
-            path,
-            memo,
-            references,
-            _pickle_protocol,
-            reduced_value=rv,
-            version_scraping=version_scraping,
-        )
+        Reducible.write_group(obj, packing_args)
         return
 
 
