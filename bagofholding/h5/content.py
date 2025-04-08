@@ -48,6 +48,9 @@ class Location:
     def entry(self) -> h5py.Group | h5py.Dataset:
         return self.file[self.path]
 
+    def create_dataset(self, **kwargs: Any) -> h5py.Dataset:
+        return self.file.create_dataset(self.path, **kwargs)
+
 
 @dataclasses.dataclass
 class GroupPackingArguments:
@@ -107,9 +110,7 @@ class Item(
 class Reference(Item[str, Any]):
     @classmethod
     def write_item(cls, obj: str, loc: Location) -> None:
-        entry = loc.file.create_dataset(
-            loc.path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
-        )
+        entry = loc.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
         cls._write_type(entry)
 
     @classmethod
@@ -142,8 +143,8 @@ class Global(Item[GlobalType, Any]):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
-        entry = loc.file.create_dataset(
-            loc.path, data=value, dtype=h5py.string_dtype(encoding="utf-8")
+        entry = loc.create_dataset(
+            data=value, dtype=h5py.string_dtype(encoding="utf-8")
         )
         cls._write_type(entry)
 
@@ -159,7 +160,7 @@ class Global(Item[GlobalType, Any]):
 class NoneItem(Item[type[None], None]):
     @classmethod
     def write_item(cls, obj: type[None], loc: Location) -> None:
-        entry = loc.file.create_dataset(loc.path, data=h5py.Empty(dtype="f"))
+        entry = loc.create_dataset(data=h5py.Empty(dtype="f"))
         cls._write_type(entry)
 
     @classmethod
@@ -180,7 +181,7 @@ class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
 class Complex(SimpleItem[complex]):
     @classmethod
     def write_item(cls, obj: complex, loc: Location) -> None:
-        entry = loc.file.create_dataset(loc.path, data=np.array([obj.real, obj.imag]))
+        entry = loc.create_dataset(data=np.array([obj.real, obj.imag]))
         cls._write_type(entry)
 
     @classmethod
@@ -195,9 +196,7 @@ class Complex(SimpleItem[complex]):
 class Str(SimpleItem[str]):
     @classmethod
     def write_item(cls, obj: str, loc: Location) -> None:
-        entry = loc.file.create_dataset(
-            loc.path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
-        )
+        entry = loc.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
         cls._write_type(entry)
 
     @classmethod
@@ -211,7 +210,7 @@ class Str(SimpleItem[str]):
 class Bytes(SimpleItem[bytes]):
     @classmethod
     def write_item(cls, obj: bytes, loc: Location) -> None:
-        entry = loc.file.create_dataset(loc.path, data=np.void(obj))
+        entry = loc.create_dataset(data=np.void(obj))
         cls._write_type(entry)
 
     @classmethod
@@ -227,7 +226,7 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
 
     @classmethod
     def write_item(cls, obj: ItemType, loc: Location) -> None:
-        entry = loc.file.create_dataset(loc.path, data=obj)
+        entry = loc.create_dataset(data=obj)
         cls._write_type(entry)
 
     @classmethod
@@ -286,7 +285,7 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
         obj: np.ndarray[tuple[int, ...], H5DtypeAlias],
         loc: Location,
     ) -> h5py.Dataset:
-        return loc.file.create_dataset(loc.path, data=obj)
+        return loc.create_dataset(data=obj)
 
     @classmethod
     def read(
