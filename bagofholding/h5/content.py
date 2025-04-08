@@ -77,10 +77,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> UnpackingType:
+    def read(cls, unpacking_args: UnpackingArguments) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
 
@@ -114,10 +111,7 @@ class Reference(Item[str, Any]):
         cls._write_type(entry)
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> Any:
+    def read(cls, unpacking_args: UnpackingArguments) -> Any:
         reference = unpacking_args.loc.entry[()].decode("utf-8")
         from_memo = unpacking_args.memo.get(reference, NotData)
         if from_memo is not NotData:
@@ -149,10 +143,7 @@ class Global(Item[GlobalType, Any]):
         cls._write_type(entry)
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> Any:
+    def read(cls, unpacking_args: UnpackingArguments) -> Any:
         import_string = unpacking_args.loc.entry[()].decode("utf-8")
         return import_from_string(import_string)
 
@@ -164,10 +155,7 @@ class NoneItem(Item[type[None], None]):
         cls._write_type(entry)
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> None:
+    def read(cls, unpacking_args: UnpackingArguments) -> None:
         return None
 
 
@@ -185,10 +173,7 @@ class Complex(SimpleItem[complex]):
         cls._write_type(entry)
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> complex:
+    def read(cls, unpacking_args: UnpackingArguments) -> complex:
         entry = unpacking_args.loc.entry
         return complex(entry[0], entry[1])
 
@@ -200,10 +185,7 @@ class Str(SimpleItem[str]):
         cls._write_type(entry)
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> str:
+    def read(cls, unpacking_args: UnpackingArguments) -> str:
         return cast(str, unpacking_args.loc.entry[()].decode("utf-8"))
 
 
@@ -214,10 +196,7 @@ class Bytes(SimpleItem[bytes]):
         cls._write_type(entry)
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> bytes:
+    def read(cls, unpacking_args: UnpackingArguments) -> bytes:
         return bytes(unpacking_args.loc.entry[()])
 
 
@@ -230,10 +209,7 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         cls._write_type(entry)
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> ItemType:
+    def read(cls, unpacking_args: UnpackingArguments) -> ItemType:
         return cast(ItemType, cls.recast(unpacking_args.loc.entry[()]))
 
 
@@ -270,11 +246,7 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def _write_item(
-        cls,
-        obj: ItemType,
-        loc: Location,
-    ) -> h5py.Dataset:
+    def _write_item(cls, obj: ItemType, loc: Location) -> h5py.Dataset:
         pass
 
 
@@ -392,10 +364,7 @@ class Reducible(Group[object, object]):
             )
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> object:
+    def read(cls, unpacking_args: UnpackingArguments) -> object:
         constructor = cast(
             ConstructorType,
             unpack(
@@ -506,10 +475,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         )
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> dict[Any, Any]:
+    def read(cls, unpacking_args: UnpackingArguments) -> dict[Any, Any]:
         return dict(
             zip(
                 cast(
@@ -556,10 +522,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
             )
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> dict[Any, Any]:
+    def read(cls, unpacking_args: UnpackingArguments) -> dict[Any, Any]:
         return {
             k: unpack(
                 unpacking_args.loc.file,
@@ -612,10 +575,7 @@ class Union(SimpleGroup[types.UnionType]):
         return union
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> types.UnionType:
+    def read(cls, unpacking_args: UnpackingArguments) -> types.UnionType:
         return cls._recursive_or(
             unpack(
                 unpacking_args.loc.file,
@@ -654,10 +614,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
             )
 
     @classmethod
-    def read(
-        cls,
-        unpacking_args: UnpackingArguments,
-    ) -> IndexableType:
+    def read(cls, unpacking_args: UnpackingArguments) -> IndexableType:
         return cls.recast(
             unpack(
                 unpacking_args.loc.file,
