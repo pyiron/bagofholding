@@ -448,7 +448,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         cls,
         obj: PackingType,
         loc: Location,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
     ) -> h5py.Group:
         pass
 
@@ -459,25 +459,25 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         cls,
         obj: dict[Any, Any],
         loc: Location,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
     ) -> None:
         pack(
             tuple(obj.keys()),
             loc.file,
             loc.relative_path("keys"),
-            packing_args.memo,
-            packing_args.references,
-            version_scraping=packing_args.version_scraping,
-            _pickle_protocol=packing_args._pickle_protocol,
+            packing.memo,
+            packing.references,
+            version_scraping=packing.version_scraping,
+            _pickle_protocol=packing._pickle_protocol,
         )
         pack(
             tuple(obj.values()),
             loc.file,
             loc.relative_path("values"),
-            packing_args.memo,
-            packing_args.references,
-            version_scraping=packing_args.version_scraping,
-            _pickle_protocol=packing_args._pickle_protocol,
+            packing.memo,
+            packing.references,
+            version_scraping=packing.version_scraping,
+            _pickle_protocol=packing._pickle_protocol,
         )
 
     @classmethod
@@ -515,17 +515,17 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         cls,
         obj: dict[str, Any],
         loc: Location,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
     ) -> None:
         for k, v in obj.items():
             pack(
                 v,
                 loc.file,
                 loc.relative_path(k),
-                packing_args.memo,
-                packing_args.references,
-                version_scraping=packing_args.version_scraping,
-                _pickle_protocol=packing_args._pickle_protocol,
+                packing.memo,
+                packing.references,
+                version_scraping=packing.version_scraping,
+                _pickle_protocol=packing._pickle_protocol,
             )
 
     @classmethod
@@ -553,17 +553,17 @@ class Union(SimpleGroup[types.UnionType]):
         cls,
         obj: types.UnionType,
         loc: Location,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
                 v,
                 loc.file,
                 loc.relative_path(f"i{i}"),
-                packing_args.memo,
-                packing_args.references,
-                version_scraping=packing_args.version_scraping,
-                _pickle_protocol=packing_args._pickle_protocol,
+                packing.memo,
+                packing.references,
+                version_scraping=packing.version_scraping,
+                _pickle_protocol=packing._pickle_protocol,
             )
 
     @staticmethod
@@ -609,17 +609,17 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         cls,
         obj: IndexableType,
         loc: Location,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
                 v,
                 loc.file,
                 loc.relative_path(f"i{i}"),
-                packing_args.memo,
-                packing_args.references,
-                version_scraping=packing_args.version_scraping,
-                _pickle_protocol=packing_args._pickle_protocol,
+                packing.memo,
+                packing.references,
+                version_scraping=packing.version_scraping,
+                _pickle_protocol=packing._pickle_protocol,
             )
 
     @classmethod
