@@ -507,7 +507,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
     @classmethod
     def _write_subcontent(
         cls,
-        obj: dict[Any, Any],
+        obj: dict[str, Any],
         packing_args: GroupPackingArguments,
     ) -> None:
         for k, v in obj.items():
@@ -522,7 +522,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
             )
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> dict[Any, Any]:
+    def read(cls, unpacking_args: UnpackingArguments) -> dict[str, Any]:
         return {
             k: unpack(
                 unpacking_args.loc.file,
