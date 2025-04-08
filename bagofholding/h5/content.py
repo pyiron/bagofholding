@@ -334,10 +334,15 @@ class Reducible(Group[object, object]):
         packing_args: GroupPackingArguments,
         rv: ReduceReturnType | None = None,
     ) -> None:
-        try:
-            reduced_value = obj.__reduce_ex__(pickle.DEFAULT_PROTOCOL)
-        except AttributeError:
-            reduced_value = obj.__reduce__() if reduced_value is None else reduced_value
+        if rv is None:
+            try:
+                reduced_value = obj.__reduce_ex__(pickle.DEFAULT_PROTOCOL)
+            except AttributeError:
+                reduced_value = (
+                    obj.__reduce__() if reduced_value is None else reduced_value
+                )
+        else:
+            reduced_value = rv
         entry = packing_args.loc.file.create_group(packing_args.loc.path)
         cls._write_type(entry)
         cls._write_metadata(
@@ -692,7 +697,7 @@ def pack(
         Global.write_item(_get_importable_string_from_string_reduction(rv, obj), loc)
         return
     else:
-        Reducible.write_group(obj, packing_args)
+        Reducible.write_group(obj, packing_args, rv=rv)
         return
 
 
