@@ -163,14 +163,21 @@ ItemType = TypeVar("ItemType", bound=Any)
 
 
 class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
-    pass
+    @classmethod
+    def write_item(cls, obj: ItemType, loc: Location) -> None:
+        entry = cls._make_dataset(obj, loc)
+        cls._write_type(entry)
+
+    @classmethod
+    @abc.abstractmethod
+    def _make_dataset(cls, obj: ItemType, loc: Location) -> h5py.Dataset:
+        pass
 
 
 class Complex(SimpleItem[complex]):
     @classmethod
-    def write_item(cls, obj: complex, loc: Location) -> None:
-        entry = loc.create_dataset(data=np.array([obj.real, obj.imag]))
-        cls._write_type(entry)
+    def _make_dataset(cls, obj: complex, loc: Location) -> h5py.Dataset:
+        return loc.create_dataset(data=np.array([obj.real, obj.imag]))
 
     @classmethod
     def read(cls, unpacking_args: UnpackingArguments) -> complex:
@@ -180,9 +187,8 @@ class Complex(SimpleItem[complex]):
 
 class Str(SimpleItem[str]):
     @classmethod
-    def write_item(cls, obj: str, loc: Location) -> None:
-        entry = loc.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
-        cls._write_type(entry)
+    def _make_dataset(cls, obj: str, loc: Location) -> h5py.Dataset:
+        return loc.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
 
     @classmethod
     def read(cls, unpacking_args: UnpackingArguments) -> str:
@@ -191,9 +197,8 @@ class Str(SimpleItem[str]):
 
 class Bytes(SimpleItem[bytes]):
     @classmethod
-    def write_item(cls, obj: bytes, loc: Location) -> None:
-        entry = loc.create_dataset(data=np.void(obj))
-        cls._write_type(entry)
+    def _make_dataset(cls, obj: bytes, loc: Location) -> h5py.Dataset:
+        return loc.create_dataset(data=np.void(obj))
 
     @classmethod
     def read(cls, unpacking_args: UnpackingArguments) -> bytes:
@@ -204,9 +209,8 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     recast: type[ItemType]
 
     @classmethod
-    def write_item(cls, obj: ItemType, loc: Location) -> None:
-        entry = loc.create_dataset(data=obj)
-        cls._write_type(entry)
+    def _make_dataset(cls, obj: ItemType, loc: Location) -> h5py.Dataset:
+        return loc.create_dataset(data=obj)
 
     @classmethod
     def read(cls, unpacking_args: UnpackingArguments) -> ItemType:
@@ -237,7 +241,7 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
         loc: Location,
         version_scraping: VersionScrapingMap | None = None,
     ) -> None:
-        entry = cls._write_item(obj, loc)
+        entry = cls._make_dataset(obj, loc)
         cls._write_type(entry)
         cls._write_metadata(
             entry,
@@ -246,13 +250,13 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def _write_item(cls, obj: ItemType, loc: Location) -> h5py.Dataset:
+    def _make_dataset(cls, obj: ItemType, loc: Location) -> h5py.Dataset:
         pass
 
 
 class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
-    def _write_item(
+    def _make_dataset(
         cls,
         obj: np.ndarray[tuple[int, ...], H5DtypeAlias],
         loc: Location,
