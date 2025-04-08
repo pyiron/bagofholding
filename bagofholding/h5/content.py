@@ -657,7 +657,7 @@ def pack(
     memo: PackingMemoAlias,
     references: ReferencesAlias,
     version_scraping: VersionScrapingMap | None,
-    _pickle_protocol: SupportsIndex = pickle.HIGHEST_PROTOCOL,
+    _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
 ) -> None:
     loc = Location(file=file, path=path)
     packing_args = GroupPackingArguments(
