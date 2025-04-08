@@ -82,7 +82,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> UnpackingType:
+    def read(cls, unpacking: UnpackingArguments) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
 
@@ -116,18 +116,18 @@ class Reference(Item[str, Any]):
         cls._write_type(entry)
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> Any:
-        reference = unpacking_args.loc.entry[()].decode("utf-8")
-        from_memo = unpacking_args.memo.get(reference, NotData)
+    def read(cls, unpacking: UnpackingArguments) -> Any:
+        reference = unpacking.loc.entry[()].decode("utf-8")
+        from_memo = unpacking.memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
         else:
             return unpack(
-                unpacking_args.loc.file,
+                unpacking.loc.file,
                 reference,
-                unpacking_args.memo,
-                version_validator=unpacking_args.version_validator,
-                version_scraping=unpacking_args.version_scraping,
+                unpacking.memo,
+                version_validator=unpacking.version_validator,
+                version_scraping=unpacking.version_scraping,
             )
 
 
@@ -148,8 +148,8 @@ class Global(Item[GlobalType, Any]):
         cls._write_type(entry)
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> Any:
-        import_string = unpacking_args.loc.entry[()].decode("utf-8")
+    def read(cls, unpacking: UnpackingArguments) -> Any:
+        import_string = unpacking.loc.entry[()].decode("utf-8")
         return import_from_string(import_string)
 
 
@@ -160,7 +160,7 @@ class NoneItem(Item[type[None], None]):
         cls._write_type(entry)
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> None:
+    def read(cls, unpacking: UnpackingArguments) -> None:
         return None
 
 
@@ -185,8 +185,8 @@ class Complex(SimpleItem[complex]):
         return loc.create_dataset(data=np.array([obj.real, obj.imag]))
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> complex:
-        entry = unpacking_args.loc.entry
+    def read(cls, unpacking: UnpackingArguments) -> complex:
+        entry = unpacking.loc.entry
         return complex(entry[0], entry[1])
 
 
@@ -196,8 +196,8 @@ class Str(SimpleItem[str]):
         return loc.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> str:
-        return cast(str, unpacking_args.loc.entry[()].decode("utf-8"))
+    def read(cls, unpacking: UnpackingArguments) -> str:
+        return cast(str, unpacking.loc.entry[()].decode("utf-8"))
 
 
 class Bytes(SimpleItem[bytes]):
@@ -206,8 +206,8 @@ class Bytes(SimpleItem[bytes]):
         return loc.create_dataset(data=np.void(obj))
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> bytes:
-        return bytes(unpacking_args.loc.entry[()])
+    def read(cls, unpacking: UnpackingArguments) -> bytes:
+        return bytes(unpacking.loc.entry[()])
 
 
 class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
@@ -218,8 +218,8 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         return loc.create_dataset(data=obj)
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> ItemType:
-        return cast(ItemType, cls.recast(unpacking_args.loc.entry[()]))
+    def read(cls, unpacking: UnpackingArguments) -> ItemType:
+        return cast(ItemType, cls.recast(unpacking.loc.entry[()]))
 
 
 class Bool(NativeItem[bool]):
@@ -271,11 +271,11 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
     def read(
         cls,
-        unpacking_args: UnpackingArguments,
+        unpacking: UnpackingArguments,
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(
             np.ndarray[tuple[int, ...], H5DtypeAlias],
-            unpacking_args.loc.entry[()],
+            unpacking.loc.entry[()],
         )
 
 
@@ -371,38 +371,38 @@ class Reducible(Group[object, object]):
             )
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> object:
+    def read(cls, unpacking: UnpackingArguments) -> object:
         constructor = cast(
             ConstructorType,
             unpack(
-                unpacking_args.loc.file,
-                unpacking_args.loc.relative_path("constructor"),
-                unpacking_args.memo,
-                version_validator=unpacking_args.version_validator,
-                version_scraping=unpacking_args.version_scraping,
+                unpacking.loc.file,
+                unpacking.loc.relative_path("constructor"),
+                unpacking.memo,
+                version_validator=unpacking.version_validator,
+                version_scraping=unpacking.version_scraping,
             ),
         )
         constructor_args = cast(
             ConstructorArgsType,
             unpack(
-                unpacking_args.loc.file,
-                unpacking_args.loc.relative_path("args"),
-                unpacking_args.memo,
-                version_validator=unpacking_args.version_validator,
-                version_scraping=unpacking_args.version_scraping,
+                unpacking.loc.file,
+                unpacking.loc.relative_path("args"),
+                unpacking.memo,
+                version_validator=unpacking.version_validator,
+                version_scraping=unpacking.version_scraping,
             ),
         )
         obj: object = constructor(*constructor_args)
-        unpacking_args.memo[unpacking_args.loc.path] = obj
+        unpacking.memo[unpacking.loc.path] = obj
         rv = (constructor, constructor_args) + tuple(
             unpack(
-                unpacking_args.loc.file,
-                unpacking_args.loc.relative_path(k),
-                unpacking_args.memo,
-                version_validator=unpacking_args.version_validator,
-                version_scraping=unpacking_args.version_scraping,
+                unpacking.loc.file,
+                unpacking.loc.relative_path(k),
+                unpacking.memo,
+                version_validator=unpacking.version_validator,
+                version_scraping=unpacking.version_scraping,
             )
-            for k in cls.reduction_fields[2 : len(unpacking_args.loc.entry)]
+            for k in cls.reduction_fields[2 : len(unpacking.loc.entry)]
         )
         n_items = len(rv)
         if n_items >= 3 and rv[2] is not None:
@@ -481,27 +481,27 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         )
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> dict[Any, Any]:
+    def read(cls, unpacking: UnpackingArguments) -> dict[Any, Any]:
         return dict(
             zip(
                 cast(
                     tuple[Any],
                     unpack(
-                        unpacking_args.loc.file,
-                        unpacking_args.loc.relative_path("keys"),
-                        unpacking_args.memo,
-                        version_validator=unpacking_args.version_validator,
-                        version_scraping=unpacking_args.version_scraping,
+                        unpacking.loc.file,
+                        unpacking.loc.relative_path("keys"),
+                        unpacking.memo,
+                        version_validator=unpacking.version_validator,
+                        version_scraping=unpacking.version_scraping,
                     ),
                 ),
                 cast(
                     tuple[Any],
                     unpack(
-                        unpacking_args.loc.file,
-                        unpacking_args.loc.relative_path("values"),
-                        unpacking_args.memo,
-                        version_validator=unpacking_args.version_validator,
-                        version_scraping=unpacking_args.version_scraping,
+                        unpacking.loc.file,
+                        unpacking.loc.relative_path("values"),
+                        unpacking.memo,
+                        version_validator=unpacking.version_validator,
+                        version_scraping=unpacking.version_scraping,
                     ),
                 ),
                 strict=True,
@@ -528,16 +528,16 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
             )
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> dict[str, Any]:
+    def read(cls, unpacking: UnpackingArguments) -> dict[str, Any]:
         return {
             k: unpack(
-                unpacking_args.loc.file,
-                unpacking_args.loc.relative_path(k),
-                unpacking_args.memo,
-                version_validator=unpacking_args.version_validator,
-                version_scraping=unpacking_args.version_scraping,
+                unpacking.loc.file,
+                unpacking.loc.relative_path(k),
+                unpacking.memo,
+                version_validator=unpacking.version_validator,
+                version_scraping=unpacking.version_scraping,
             )
-            for k in unpacking_args.loc.entry
+            for k in unpacking.loc.entry
         }
 
 
@@ -581,16 +581,16 @@ class Union(SimpleGroup[types.UnionType]):
         return union
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> types.UnionType:
+    def read(cls, unpacking: UnpackingArguments) -> types.UnionType:
         return cls._recursive_or(
             unpack(
-                unpacking_args.loc.file,
-                unpacking_args.loc.relative_path(f"i{i}"),
-                unpacking_args.memo,
-                version_validator=unpacking_args.version_validator,
-                version_scraping=unpacking_args.version_scraping,
+                unpacking.loc.file,
+                unpacking.loc.relative_path(f"i{i}"),
+                unpacking.memo,
+                version_validator=unpacking.version_validator,
+                version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(unpacking_args.loc.entry))
+            for i in range(len(unpacking.loc.entry))
         )
 
 
@@ -620,16 +620,16 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
             )
 
     @classmethod
-    def read(cls, unpacking_args: UnpackingArguments) -> IndexableType:
+    def read(cls, unpacking: UnpackingArguments) -> IndexableType:
         return cls.recast(
             unpack(
-                unpacking_args.loc.file,
-                unpacking_args.loc.relative_path(f"i{i}"),
-                unpacking_args.memo,
-                version_validator=unpacking_args.version_validator,
-                version_scraping=unpacking_args.version_scraping,
+                unpacking.loc.file,
+                unpacking.loc.relative_path(f"i{i}"),
+                unpacking.memo,
+                version_validator=unpacking.version_validator,
+                version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(unpacking_args.loc.entry))
+            for i in range(len(unpacking.loc.entry))
         )
 
 
