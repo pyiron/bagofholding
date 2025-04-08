@@ -121,6 +121,11 @@ class ExReducta:
     def __reduce_ex__(self, protocol: SupportsIndex):
         return self.__class__, (self.n + 1,)
 
+    def __reduce__(self):
+        raise RuntimeError(
+            "Python should never get here because an explicit __reduce_ex__ takes precedence"
+        )
+
     def __eq__(self, other):
         # Equality is designed for a reloaded object to equate a stored object
         return other.__class__ == self.__class__ and other.n == self.n + 1
