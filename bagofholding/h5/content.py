@@ -59,7 +59,6 @@ class Location:
 
 @dataclasses.dataclass
 class GroupPackingArguments:
-    loc: Location
     memo: PackingMemoAlias
     references: ReferencesAlias
     version_scraping: VersionScrapingMap | None
@@ -68,7 +67,6 @@ class GroupPackingArguments:
 
 @dataclasses.dataclass
 class UnpackingArguments:
-    loc: Location
     memo: UnpackingMemoAlias
     version_validator: VersionValidatorType
     version_scraping: VersionScrapingMap | None
@@ -82,7 +80,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def read(cls, unpacking: UnpackingArguments) -> UnpackingType:
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
 
@@ -116,14 +114,14 @@ class Reference(Item[str, Any]):
         cls._write_type(entry)
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> Any:
-        reference = unpacking.loc.entry[()].decode("utf-8")
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> Any:
+        reference = loc.entry[()].decode("utf-8")
         from_memo = unpacking.memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
         else:
             return unpack(
-                unpacking.loc.file,
+                loc.file,
                 reference,
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -148,8 +146,8 @@ class Global(Item[GlobalType, Any]):
         cls._write_type(entry)
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> Any:
-        import_string = unpacking.loc.entry[()].decode("utf-8")
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> Any:
+        import_string = loc.entry[()].decode("utf-8")
         return import_from_string(import_string)
 
 
@@ -160,7 +158,7 @@ class NoneItem(Item[type[None], None]):
         cls._write_type(entry)
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> None:
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> None:
         return None
 
 
@@ -185,8 +183,8 @@ class Complex(SimpleItem[complex]):
         return loc.create_dataset(data=np.array([obj.real, obj.imag]))
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> complex:
-        entry = unpacking.loc.entry
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> complex:
+        entry = loc.entry
         return complex(entry[0], entry[1])
 
 
@@ -196,8 +194,8 @@ class Str(SimpleItem[str]):
         return loc.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> str:
-        return cast(str, unpacking.loc.entry[()].decode("utf-8"))
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> str:
+        return cast(str, loc.entry[()].decode("utf-8"))
 
 
 class Bytes(SimpleItem[bytes]):
@@ -206,8 +204,8 @@ class Bytes(SimpleItem[bytes]):
         return loc.create_dataset(data=np.void(obj))
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> bytes:
-        return bytes(unpacking.loc.entry[()])
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> bytes:
+        return bytes(loc.entry[()])
 
 
 class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
@@ -218,8 +216,8 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
         return loc.create_dataset(data=obj)
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> ItemType:
-        return cast(ItemType, cls.recast(unpacking.loc.entry[()]))
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> ItemType:
+        return cast(ItemType, cls.recast(loc.entry[()]))
 
 
 class Bool(NativeItem[bool]):
@@ -271,11 +269,12 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
     def read(
         cls,
+        loc: Location,
         unpacking: UnpackingArguments,
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(
             np.ndarray[tuple[int, ...], H5DtypeAlias],
-            unpacking.loc.entry[()],
+            loc.entry[()],
         )
 
 
@@ -287,6 +286,7 @@ class Group(
     def write_group(
         cls,
         obj: PackingType,
+        loc: Location,
         packing: GroupPackingArguments,
     ) -> None:
         pass
@@ -340,30 +340,27 @@ class Reducible(Group[object, object]):
     def write_group(
         cls,
         obj: object,
+        loc: Location,
         packing: GroupPackingArguments,
         rv: ReduceReturnType | None = None,
     ) -> None:
         reduced_value = (
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
-        entry = packing.loc.create_group()
+        entry = loc.create_group()
         cls._write_type(entry)
         cls._write_metadata(
             entry,
             get_metadata(
                 obj,
-                (
-                    {}
-                    if packing.version_scraping is None
-                    else packing.version_scraping
-                ),
+                ({} if packing.version_scraping is None else packing.version_scraping),
             ),
         )
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
-                packing.loc.file,
-                packing.loc.relative_path(subpath),
+                loc.file,
+                loc.relative_path(subpath),
                 packing.memo,
                 packing.references,
                 version_scraping=packing.version_scraping,
@@ -371,12 +368,12 @@ class Reducible(Group[object, object]):
             )
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> object:
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> object:
         constructor = cast(
             ConstructorType,
             unpack(
-                unpacking.loc.file,
-                unpacking.loc.relative_path("constructor"),
+                loc.file,
+                loc.relative_path("constructor"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -385,24 +382,24 @@ class Reducible(Group[object, object]):
         constructor_args = cast(
             ConstructorArgsType,
             unpack(
-                unpacking.loc.file,
-                unpacking.loc.relative_path("args"),
+                loc.file,
+                loc.relative_path("args"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             ),
         )
         obj: object = constructor(*constructor_args)
-        unpacking.memo[unpacking.loc.path] = obj
+        unpacking.memo[loc.path] = obj
         rv = (constructor, constructor_args) + tuple(
             unpack(
-                unpacking.loc.file,
-                unpacking.loc.relative_path(k),
+                loc.file,
+                loc.relative_path(k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in cls.reduction_fields[2 : len(unpacking.loc.entry)]
+            for k in cls.reduction_fields[2 : len(loc.entry)]
         )
         n_items = len(rv)
         if n_items >= 3 and rv[2] is not None:
@@ -438,17 +435,19 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
     def write_group(
         cls,
         obj: PackingType,
+        loc: Location,
         packing: GroupPackingArguments,
     ) -> None:
-        entry = packing.loc.create_group()
+        entry = loc.create_group()
         cls._write_type(entry)
-        cls._write_subcontent(obj, packing)
+        cls._write_subcontent(obj, loc, packing)
 
     @classmethod
     @abc.abstractmethod
     def _write_subcontent(
         cls,
         obj: PackingType,
+        loc: Location,
         packing_args: GroupPackingArguments,
     ) -> h5py.Group:
         pass
@@ -459,12 +458,13 @@ class Dict(SimpleGroup[dict[Any, Any]]):
     def _write_subcontent(
         cls,
         obj: dict[Any, Any],
+        loc: Location,
         packing_args: GroupPackingArguments,
     ) -> None:
         pack(
             tuple(obj.keys()),
-            packing_args.loc.file,
-            packing_args.loc.relative_path("keys"),
+            loc.file,
+            loc.relative_path("keys"),
             packing_args.memo,
             packing_args.references,
             version_scraping=packing_args.version_scraping,
@@ -472,8 +472,8 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         )
         pack(
             tuple(obj.values()),
-            packing_args.loc.file,
-            packing_args.loc.relative_path("values"),
+            loc.file,
+            loc.relative_path("values"),
             packing_args.memo,
             packing_args.references,
             version_scraping=packing_args.version_scraping,
@@ -481,14 +481,14 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         )
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> dict[Any, Any]:
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> dict[Any, Any]:
         return dict(
             zip(
                 cast(
                     tuple[Any],
                     unpack(
-                        unpacking.loc.file,
-                        unpacking.loc.relative_path("keys"),
+                        loc.file,
+                        loc.relative_path("keys"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
                         version_scraping=unpacking.version_scraping,
@@ -497,8 +497,8 @@ class Dict(SimpleGroup[dict[Any, Any]]):
                 cast(
                     tuple[Any],
                     unpack(
-                        unpacking.loc.file,
-                        unpacking.loc.relative_path("values"),
+                        loc.file,
+                        loc.relative_path("values"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
                         version_scraping=unpacking.version_scraping,
@@ -514,13 +514,14 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
     def _write_subcontent(
         cls,
         obj: dict[str, Any],
+        loc: Location,
         packing_args: GroupPackingArguments,
     ) -> None:
         for k, v in obj.items():
             pack(
                 v,
-                packing_args.loc.file,
-                packing_args.loc.relative_path(k),
+                loc.file,
+                loc.relative_path(k),
                 packing_args.memo,
                 packing_args.references,
                 version_scraping=packing_args.version_scraping,
@@ -528,16 +529,16 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
             )
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> dict[str, Any]:
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> dict[str, Any]:
         return {
             k: unpack(
-                unpacking.loc.file,
-                unpacking.loc.relative_path(k),
+                loc.file,
+                loc.relative_path(k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in unpacking.loc.entry
+            for k in loc.entry
         }
 
 
@@ -551,13 +552,14 @@ class Union(SimpleGroup[types.UnionType]):
     def _write_subcontent(
         cls,
         obj: types.UnionType,
+        loc: Location,
         packing_args: GroupPackingArguments,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
                 v,
-                packing_args.loc.file,
-                packing_args.loc.relative_path(f"i{i}"),
+                loc.file,
+                loc.relative_path(f"i{i}"),
                 packing_args.memo,
                 packing_args.references,
                 version_scraping=packing_args.version_scraping,
@@ -581,16 +583,16 @@ class Union(SimpleGroup[types.UnionType]):
         return union
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> types.UnionType:
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> types.UnionType:
         return cls._recursive_or(
             unpack(
-                unpacking.loc.file,
-                unpacking.loc.relative_path(f"i{i}"),
+                loc.file,
+                loc.relative_path(f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(unpacking.loc.entry))
+            for i in range(len(loc.entry))
         )
 
 
@@ -606,13 +608,14 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
     def _write_subcontent(
         cls,
         obj: IndexableType,
+        loc: Location,
         packing_args: GroupPackingArguments,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
                 v,
-                packing_args.loc.file,
-                packing_args.loc.relative_path(f"i{i}"),
+                loc.file,
+                loc.relative_path(f"i{i}"),
                 packing_args.memo,
                 packing_args.references,
                 version_scraping=packing_args.version_scraping,
@@ -620,16 +623,16 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
             )
 
     @classmethod
-    def read(cls, unpacking: UnpackingArguments) -> IndexableType:
+    def read(cls, loc: Location, unpacking: UnpackingArguments) -> IndexableType:
         return cls.recast(
             unpack(
-                unpacking.loc.file,
-                unpacking.loc.relative_path(f"i{i}"),
+                loc.file,
+                loc.relative_path(f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(unpacking.loc.entry))
+            for i in range(len(loc.entry))
         )
 
 
@@ -660,7 +663,6 @@ def pack(
 ) -> None:
     loc = Location(file=file, path=path)
     packing_args = GroupPackingArguments(
-        loc=loc,
         memo=memo,
         references=references,
         version_scraping=version_scraping,
@@ -689,7 +691,7 @@ def pack(
 
     group_class = get_group_content_class(obj)
     if group_class is not None:
-        group_class.write_group(obj, packing_args)
+        group_class.write_group(obj, loc, packing_args)
         return
 
     rv = obj.__reduce_ex__(_pickle_protocol)
@@ -697,7 +699,7 @@ def pack(
         Global.write_item(get_importable_string_from_string_reduction(rv, obj), loc)
         return
     else:
-        Reducible.write_group(obj, packing_args, rv=rv)
+        Reducible.write_group(obj, loc, packing_args, rv=rv)
         return
 
 
@@ -760,12 +762,12 @@ def unpack(
                 metadata, validator=version_validator, version_scraping=version_scraping
             )
         value = content_class.read(
+            Location(file=file, path=path),
             UnpackingArguments(
-                loc=Location(file=file, path=path),
                 memo=memo,
                 version_validator=version_validator,
                 version_scraping=version_scraping,
-            )
+            ),
         )
         if path not in memo:
             memo[path] = value
