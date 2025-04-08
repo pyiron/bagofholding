@@ -254,7 +254,7 @@ class Bytearray(NativeItem[bytearray]):
     recast = bytearray
 
 
-class ComplexItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
+class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     @classmethod
     def write_item(
         cls,
