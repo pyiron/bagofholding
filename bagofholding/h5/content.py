@@ -33,11 +33,15 @@ UnpackingMemoAlias: TypeAlias = dict[str, Any]
 PackingType = TypeVar("PackingType", bound=Any)
 UnpackingType = TypeVar("UnpackingType", bound=Any)
 
+PATH_DELIMITER = "/"
 
 @dataclasses.dataclass
 class Location:
     file: h5py.File
     path: str
+    
+    def relative_path(self, subpath: str) -> str:
+        return self.path + PATH_DELIMITER + subpath
 
 
 @dataclasses.dataclass
@@ -382,7 +386,7 @@ class Reducible(Group[object, object]):
             pack(
                 value,
                 packing_args.loc.file,
-                relative(packing_args.loc.path, subpath),
+                packing_args.loc.relative_path(subpath),
                 packing_args.memo,
                 packing_args.references,
                 version_scraping=packing_args.version_scraping,
@@ -398,7 +402,7 @@ class Reducible(Group[object, object]):
             ConstructorType,
             unpack(
                 unpacking_args.loc.file,
-                relative(unpacking_args.loc.path, "constructor"),
+                unpacking_args.loc.relative_path("constructor"),
                 unpacking_args.memo,
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
@@ -408,7 +412,7 @@ class Reducible(Group[object, object]):
             ConstructorArgsType,
             unpack(
                 unpacking_args.loc.file,
-                relative(unpacking_args.loc.path, "args"),
+                unpacking_args.loc.relative_path("args"),
                 unpacking_args.memo,
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
@@ -419,7 +423,7 @@ class Reducible(Group[object, object]):
         rv = (constructor, constructor_args) + tuple(
             unpack(
                 unpacking_args.loc.file,
-                relative(unpacking_args.loc.path, k),
+                unpacking_args.loc.relative_path(k),
                 unpacking_args.memo,
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
@@ -489,7 +493,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         pack(
             tuple(obj.keys()),
             packing_args.loc.file,
-            relative(packing_args.loc.path, "keys"),
+            packing_args.loc.relative_path("keys"),
             packing_args.memo,
             packing_args.references,
             version_scraping=packing_args.version_scraping,
@@ -498,7 +502,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         pack(
             tuple(obj.values()),
             packing_args.loc.file,
-            relative(packing_args.loc.path, "values"),
+            packing_args.loc.relative_path("values"),
             packing_args.memo,
             packing_args.references,
             version_scraping=packing_args.version_scraping,
@@ -516,7 +520,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
                     tuple[Any],
                     unpack(
                         unpacking_args.loc.file,
-                        relative(unpacking_args.loc.path, "keys"),
+                        unpacking_args.loc.relative_path("keys"),
                         unpacking_args.memo,
                         version_validator=unpacking_args.version_validator,
                         version_scraping=unpacking_args.version_scraping,
@@ -526,7 +530,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
                     tuple[Any],
                     unpack(
                         unpacking_args.loc.file,
-                        relative(unpacking_args.loc.path, "values"),
+                        unpacking_args.loc.relative_path("values"),
                         unpacking_args.memo,
                         version_validator=unpacking_args.version_validator,
                         version_scraping=unpacking_args.version_scraping,
@@ -548,7 +552,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
             pack(
                 v,
                 packing_args.loc.file,
-                relative(packing_args.loc.path, k),
+                packing_args.loc.relative_path(k),
                 packing_args.memo,
                 packing_args.references,
                 version_scraping=packing_args.version_scraping,
@@ -563,7 +567,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         return {
             k: unpack(
                 unpacking_args.loc.file,
-                relative(unpacking_args.loc.path, k),
+                unpacking_args.loc.relative_path(k),
                 unpacking_args.memo,
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
@@ -588,7 +592,7 @@ class Union(SimpleGroup[types.UnionType]):
             pack(
                 v,
                 packing_args.loc.file,
-                relative(packing_args.loc.path, f"i{i}"),
+                packing_args.loc.relative_path(f"i{i}"),
                 packing_args.memo,
                 packing_args.references,
                 version_scraping=packing_args.version_scraping,
@@ -619,7 +623,7 @@ class Union(SimpleGroup[types.UnionType]):
         return cls._recursive_or(
             unpack(
                 unpacking_args.loc.file,
-                relative(unpacking_args.loc.path, f"i{i}"),
+                unpacking_args.loc.relative_path(f"i{i}"),
                 unpacking_args.memo,
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
@@ -646,7 +650,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
             pack(
                 v,
                 packing_args.loc.file,
-                relative(packing_args.loc.path, f"i{i}"),
+                packing_args.loc.relative_path(f"i{i}"),
                 packing_args.memo,
                 packing_args.references,
                 version_scraping=packing_args.version_scraping,
@@ -661,7 +665,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         return cls.recast(
             unpack(
                 unpacking_args.loc.file,
-                relative(unpacking_args.loc.path, f"i{i}"),
+                unpacking_args.loc.relative_path(f"i{i}"),
                 unpacking_args.memo,
                 version_validator=unpacking_args.version_validator,
                 version_scraping=unpacking_args.version_scraping,
@@ -857,10 +861,3 @@ def read_metadata(entry: h5py.Group | h5py.Dataset) -> Metadata | None:
 
 def maybe_decode(attr: str | bytes) -> str:
     return attr if isinstance(attr, str) else attr.decode("utf-8")
-
-
-PATH_DELIMITER = "/"
-
-
-def relative(path: str, subpath: str) -> str:
-    return path + PATH_DELIMITER + subpath
