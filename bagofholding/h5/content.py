@@ -103,13 +103,17 @@ class Item(
 ):
     @classmethod
     @abc.abstractmethod
-    def write_item(cls, obj: PackingType, location: Location) -> None:
+    def write_item(
+        cls, obj: PackingType, location: Location, packing: PackingArguments
+    ) -> None:
         pass
 
 
 class Reference(Item[str, Any]):
     @classmethod
-    def write_item(cls, obj: str, location: Location) -> None:
+    def write_item(
+        cls, obj: str, location: Location, packing: PackingArguments
+    ) -> None:
         entry = location.create_dataset(
             data=obj, dtype=h5py.string_dtype(encoding="utf-8")
         )
@@ -136,7 +140,9 @@ GlobalType: TypeAlias = type[type] | FunctionType | str
 
 class Global(Item[GlobalType, Any]):
     @classmethod
-    def write_item(cls, obj: GlobalType, location: Location) -> None:
+    def write_item(
+        cls, obj: GlobalType, location: Location, packing: PackingArguments
+    ) -> None:
         value: str
         if isinstance(obj, str):
             value = "builtins." + obj if "." not in obj else obj
@@ -155,7 +161,9 @@ class Global(Item[GlobalType, Any]):
 
 class NoneItem(Item[type[None], None]):
     @classmethod
-    def write_item(cls, obj: type[None], location: Location) -> None:
+    def write_item(
+        cls, obj: type[None], location: Location, packing: PackingArguments
+    ) -> None:
         entry = location.create_dataset(data=h5py.Empty(dtype="f"))
         cls._write_type(entry)
 
@@ -169,7 +177,9 @@ ItemType = TypeVar("ItemType", bound=Any)
 
 class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     @classmethod
-    def write_item(cls, obj: ItemType, location: Location) -> None:
+    def write_item(
+        cls, obj: ItemType, location: Location, packing: PackingArguments
+    ) -> None:
         entry = cls._make_dataset(obj, location)
         cls._write_type(entry)
 
@@ -246,13 +256,16 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
         cls,
         obj: ItemType,
         location: Location,
-        version_scraping: VersionScrapingMap | None = None,
+        packing: PackingArguments,
     ) -> None:
         entry = cls._make_dataset(obj, location)
         cls._write_type(entry)
         cls._write_metadata(
             entry,
-            get_metadata(obj, {} if version_scraping is None else version_scraping),
+            get_metadata(
+                obj,
+                {} if packing.version_scraping is None else packing.version_scraping,
+            ),
         )
 
     @classmethod
@@ -676,13 +689,13 @@ def pack(
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
     if simple_class is not None:
-        simple_class.write_item(obj, location)
+        simple_class.write_item(obj, location, packing_args)
         return
 
     obj_id = id(obj)
     reference = memo.get(obj_id)
     if reference is not None:
-        Reference.write_item(reference, location)
+        Reference.write_item(reference, location, packing_args)
         return
     else:
         memo[obj_id] = path
@@ -690,7 +703,7 @@ def pack(
 
     complex_class = get_complex_content_class(obj)
     if complex_class is not None:
-        complex_class.write_item(obj, location, version_scraping=version_scraping)
+        complex_class.write_item(obj, location, packing_args)
         return
 
     group_class = get_group_content_class(obj)
@@ -701,7 +714,7 @@ def pack(
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
         Global.write_item(
-            get_importable_string_from_string_reduction(rv, obj), location
+            get_importable_string_from_string_reduction(rv, obj), location, packing_args
         )
         return
     else:
