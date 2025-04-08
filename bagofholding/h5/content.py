@@ -49,6 +49,14 @@ class GroupPackingArguments:
     _pickle_protocol: SupportsIndex
 
 
+@dataclasses.dataclass
+class UnpackingArguments:
+    loc: Location
+    memo: UnpackingMemoAlias
+    version_validator: VersionValidatorType
+    version_scraping: VersionScrapingMap | None
+
+
 class NotData:
     pass
 
@@ -59,11 +67,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     @abc.abstractmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
@@ -102,23 +106,19 @@ class Reference(Item[str, Any]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> Any:
-        reference = file[path][()].decode("utf-8")
-        from_memo = memo.get(reference, NotData)
+        reference = unpacking_args.loc.file[unpacking_args.loc.path][()].decode("utf-8")
+        from_memo = unpacking_args.memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
         else:
             return unpack(
-                file,
+                unpacking_args.loc.file,
                 reference,
-                memo,
-                version_validator=version_validator,
-                version_scraping=version_scraping,
+                unpacking_args.memo,
+                version_validator=unpacking_args.version_validator,
+                version_scraping=unpacking_args.version_scraping,
             )
 
 
@@ -141,13 +141,11 @@ class Global(Item[GlobalType, Any]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> Any:
-        import_string = file[path][()].decode("utf-8")
+        import_string = unpacking_args.loc.file[unpacking_args.loc.path][()].decode(
+            "utf-8"
+        )
         return import_from_string(import_string)
 
 
@@ -160,11 +158,7 @@ class NoneItem(Item[type[None], None]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> None:
         return None
 
@@ -185,13 +179,9 @@ class Complex(SimpleItem[complex]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> complex:
-        entry = file[path]
+        entry = unpacking_args.loc.file[unpacking_args.loc.path]
         return complex(entry[0], entry[1])
 
 
@@ -206,13 +196,11 @@ class Str(SimpleItem[str]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> str:
-        return cast(str, file[path][()].decode("utf-8"))
+        return cast(
+            str, unpacking_args.loc.file[unpacking_args.loc.path][()].decode("utf-8")
+        )
 
 
 class Bytes(SimpleItem[bytes]):
@@ -224,13 +212,9 @@ class Bytes(SimpleItem[bytes]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> bytes:
-        return bytes(file[path][()])
+        return bytes(unpacking_args.loc.file[unpacking_args.loc.path][()])
 
 
 class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
@@ -244,13 +228,11 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> ItemType:
-        return cast(ItemType, cls.recast(file[path][()]))
+        return cast(
+            ItemType, cls.recast(unpacking_args.loc.file[unpacking_args.loc.path][()])
+        )
 
 
 class Bool(NativeItem[bool]):
@@ -306,13 +288,12 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
-        return cast(np.ndarray[tuple[int, ...], H5DtypeAlias], file[path][()])
+        return cast(
+            np.ndarray[tuple[int, ...], H5DtypeAlias],
+            unpacking_args.loc.file[unpacking_args.loc.path][()],
+        )
 
 
 class Group(
@@ -411,43 +392,41 @@ class Reducible(Group[object, object]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> object:
         constructor = cast(
             ConstructorType,
             unpack(
-                file,
-                relative(path, "constructor"),
-                memo,
-                version_validator=version_validator,
-                version_scraping=version_scraping,
+                unpacking_args.loc.file,
+                relative(unpacking_args.loc.path, "constructor"),
+                unpacking_args.memo,
+                version_validator=unpacking_args.version_validator,
+                version_scraping=unpacking_args.version_scraping,
             ),
         )
         constructor_args = cast(
             ConstructorArgsType,
             unpack(
-                file,
-                relative(path, "args"),
-                memo,
-                version_validator=version_validator,
-                version_scraping=version_scraping,
+                unpacking_args.loc.file,
+                relative(unpacking_args.loc.path, "args"),
+                unpacking_args.memo,
+                version_validator=unpacking_args.version_validator,
+                version_scraping=unpacking_args.version_scraping,
             ),
         )
         obj: object = constructor(*constructor_args)
-        memo[path] = obj
+        unpacking_args.memo[unpacking_args.loc.path] = obj
         rv = (constructor, constructor_args) + tuple(
             unpack(
-                file,
-                relative(path, k),
-                memo,
-                version_validator=version_validator,
-                version_scraping=version_scraping,
+                unpacking_args.loc.file,
+                relative(unpacking_args.loc.path, k),
+                unpacking_args.memo,
+                version_validator=unpacking_args.version_validator,
+                version_scraping=unpacking_args.version_scraping,
             )
-            for k in cls.reduction_fields[2 : len(file[path])]
+            for k in cls.reduction_fields[
+                2 : len(unpacking_args.loc.file[unpacking_args.loc.path])
+            ]
         )
         n_items = len(rv)
         if n_items >= 3 and rv[2] is not None:
@@ -529,32 +508,28 @@ class Dict(SimpleGroup[dict[Any, Any]]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> dict[Any, Any]:
         return dict(
             zip(
                 cast(
                     tuple[Any],
                     unpack(
-                        file,
-                        relative(path, "keys"),
-                        memo,
-                        version_validator=version_validator,
-                        version_scraping=version_scraping,
+                        unpacking_args.loc.file,
+                        relative(unpacking_args.loc.path, "keys"),
+                        unpacking_args.memo,
+                        version_validator=unpacking_args.version_validator,
+                        version_scraping=unpacking_args.version_scraping,
                     ),
                 ),
                 cast(
                     tuple[Any],
                     unpack(
-                        file,
-                        relative(path, "values"),
-                        memo,
-                        version_validator=version_validator,
-                        version_scraping=version_scraping,
+                        unpacking_args.loc.file,
+                        relative(unpacking_args.loc.path, "values"),
+                        unpacking_args.memo,
+                        version_validator=unpacking_args.version_validator,
+                        version_scraping=unpacking_args.version_scraping,
                     ),
                 ),
                 strict=True,
@@ -583,21 +558,17 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> dict[Any, Any]:
         return {
             k: unpack(
-                file,
-                relative(path, k),
-                memo,
-                version_validator=version_validator,
-                version_scraping=version_scraping,
+                unpacking_args.loc.file,
+                relative(unpacking_args.loc.path, k),
+                unpacking_args.memo,
+                version_validator=unpacking_args.version_validator,
+                version_scraping=unpacking_args.version_scraping,
             )
-            for k in file[path]
+            for k in unpacking_args.loc.file[unpacking_args.loc.path]
         }
 
 
@@ -643,21 +614,17 @@ class Union(SimpleGroup[types.UnionType]):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> types.UnionType:
         return cls._recursive_or(
             unpack(
-                file,
-                relative(path, f"i{i}"),
-                memo,
-                version_validator=version_validator,
-                version_scraping=version_scraping,
+                unpacking_args.loc.file,
+                relative(unpacking_args.loc.path, f"i{i}"),
+                unpacking_args.memo,
+                version_validator=unpacking_args.version_validator,
+                version_scraping=unpacking_args.version_scraping,
             )
-            for i in range(len(file[path]))
+            for i in range(len(unpacking_args.loc.file[unpacking_args.loc.path]))
         )
 
 
@@ -689,21 +656,17 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
     @classmethod
     def read(
         cls,
-        file: h5py.File,
-        path: str,
-        memo: UnpackingMemoAlias,
-        version_validator: VersionValidatorType,
-        version_scraping: VersionScrapingMap | None,
+        unpacking_args: UnpackingArguments,
     ) -> IndexableType:
         return cls.recast(
             unpack(
-                file,
-                relative(path, f"i{i}"),
-                memo,
-                version_validator=version_validator,
-                version_scraping=version_scraping,
+                unpacking_args.loc.file,
+                relative(unpacking_args.loc.path, f"i{i}"),
+                unpacking_args.memo,
+                version_validator=unpacking_args.version_validator,
+                version_scraping=unpacking_args.version_scraping,
             )
-            for i in range(len(file[path]))
+            for i in range(len(unpacking_args.loc.file[unpacking_args.loc.path]))
         )
 
 
@@ -867,11 +830,12 @@ def unpack(
                 metadata, validator=version_validator, version_scraping=version_scraping
             )
         value = content_class.read(
-            file,
-            path,
-            memo,
-            version_validator=version_validator,
-            version_scraping=version_scraping,
+            UnpackingArguments(
+                loc=Location(file=file, path=path),
+                memo=memo,
+                version_validator=version_validator,
+                version_scraping=version_scraping,
+            )
         )
         if path not in memo:
             memo[path] = value
