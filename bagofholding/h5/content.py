@@ -301,7 +301,7 @@ class Group(
 ):
     @classmethod
     @abc.abstractmethod
-    def write_grpup(
+    def write_group(
         cls,
         obj: PackingType,
         packing_args: GroupPackingArguments,
