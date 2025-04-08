@@ -85,6 +85,13 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
         pass
 
     @classmethod
+    @abc.abstractmethod
+    def write(
+        cls, obj: PackingType, location: Location, packing: PackingArguments
+    ) -> None:
+        pass
+
+    @classmethod
     def _write_type(cls, entry: h5py.Group | h5py.Dataset) -> None:
         entry.attrs["content_type"] = cls.__module__ + "." + cls.__name__
 
@@ -101,19 +108,12 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 class Item(
     Content[PackingType, UnpackingType], Generic[PackingType, UnpackingType], abc.ABC
 ):
-    @classmethod
-    @abc.abstractmethod
-    def write_item(
-        cls, obj: PackingType, location: Location, packing: PackingArguments
-    ) -> None:
-        pass
+    pass
 
 
 class Reference(Item[str, Any]):
     @classmethod
-    def write_item(
-        cls, obj: str, location: Location, packing: PackingArguments
-    ) -> None:
+    def write(cls, obj: str, location: Location, packing: PackingArguments) -> None:
         entry = location.create_dataset(
             data=obj, dtype=h5py.string_dtype(encoding="utf-8")
         )
@@ -140,7 +140,7 @@ GlobalType: TypeAlias = type[type] | FunctionType | str
 
 class Global(Item[GlobalType, Any]):
     @classmethod
-    def write_item(
+    def write(
         cls, obj: GlobalType, location: Location, packing: PackingArguments
     ) -> None:
         value: str
@@ -161,7 +161,7 @@ class Global(Item[GlobalType, Any]):
 
 class NoneItem(Item[type[None], None]):
     @classmethod
-    def write_item(
+    def write(
         cls, obj: type[None], location: Location, packing: PackingArguments
     ) -> None:
         entry = location.create_dataset(data=h5py.Empty(dtype="f"))
@@ -177,7 +177,7 @@ ItemType = TypeVar("ItemType", bound=Any)
 
 class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     @classmethod
-    def write_item(
+    def write(
         cls, obj: ItemType, location: Location, packing: PackingArguments
     ) -> None:
         entry = cls._make_dataset(obj, location)
@@ -252,7 +252,7 @@ class Bytearray(NativeItem[bytearray]):
 
 class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     @classmethod
-    def write_item(
+    def write(
         cls,
         obj: ItemType,
         location: Location,
@@ -298,15 +298,7 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
 class Group(
     Content[PackingType, UnpackingType], Generic[PackingType, UnpackingType], abc.ABC
 ):
-    @classmethod
-    @abc.abstractmethod
-    def write_group(
-        cls,
-        obj: PackingType,
-        location: Location,
-        packing: PackingArguments,
-    ) -> None:
-        pass
+    pass
 
 
 # __reduce__ return values
@@ -354,7 +346,7 @@ class Reducible(Group[object, object]):
     )
 
     @classmethod
-    def write_group(
+    def write(
         cls,
         obj: object,
         location: Location,
@@ -449,7 +441,7 @@ GroupType = TypeVar("GroupType", bound=Any)  # Bind to container?
 
 class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
     @classmethod
-    def write_group(
+    def write(
         cls,
         obj: PackingType,
         location: Location,
@@ -689,13 +681,13 @@ def pack(
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
     if simple_class is not None:
-        simple_class.write_item(obj, location, packing_args)
+        simple_class.write(obj, location, packing_args)
         return
 
     obj_id = id(obj)
     reference = memo.get(obj_id)
     if reference is not None:
-        Reference.write_item(reference, location, packing_args)
+        Reference.write(reference, location, packing_args)
         return
     else:
         memo[obj_id] = path
@@ -703,22 +695,22 @@ def pack(
 
     complex_class = get_complex_content_class(obj)
     if complex_class is not None:
-        complex_class.write_item(obj, location, packing_args)
+        complex_class.write(obj, location, packing_args)
         return
 
     group_class = get_group_content_class(obj)
     if group_class is not None:
-        group_class.write_group(obj, location, packing_args)
+        group_class.write(obj, location, packing_args)
         return
 
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
-        Global.write_item(
+        Global.write(
             get_importable_string_from_string_reduction(rv, obj), location, packing_args
         )
         return
     else:
-        Reducible.write_group(obj, location, packing_args, rv=rv)
+        Reducible.write(obj, location, packing_args, rv=rv)
         return
 
 
