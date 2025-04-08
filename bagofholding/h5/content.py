@@ -287,7 +287,7 @@ class Group(
     def write_group(
         cls,
         obj: PackingType,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
     ) -> None:
         pass
 
@@ -340,13 +340,13 @@ class Reducible(Group[object, object]):
     def write_group(
         cls,
         obj: object,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
         rv: ReduceReturnType | None = None,
     ) -> None:
         reduced_value = (
-            obj.__reduce_ex__(packing_args._pickle_protocol) if rv is None else rv
+            obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
-        entry = packing_args.loc.create_group()
+        entry = packing.loc.create_group()
         cls._write_type(entry)
         cls._write_metadata(
             entry,
@@ -354,20 +354,20 @@ class Reducible(Group[object, object]):
                 obj,
                 (
                     {}
-                    if packing_args.version_scraping is None
-                    else packing_args.version_scraping
+                    if packing.version_scraping is None
+                    else packing.version_scraping
                 ),
             ),
         )
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
-                packing_args.loc.file,
-                packing_args.loc.relative_path(subpath),
-                packing_args.memo,
-                packing_args.references,
-                version_scraping=packing_args.version_scraping,
-                _pickle_protocol=packing_args._pickle_protocol,
+                packing.loc.file,
+                packing.loc.relative_path(subpath),
+                packing.memo,
+                packing.references,
+                version_scraping=packing.version_scraping,
+                _pickle_protocol=packing._pickle_protocol,
             )
 
     @classmethod
@@ -438,11 +438,11 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
     def write_group(
         cls,
         obj: PackingType,
-        packing_args: GroupPackingArguments,
+        packing: GroupPackingArguments,
     ) -> None:
-        entry = packing_args.loc.create_group()
+        entry = packing.loc.create_group()
         cls._write_type(entry)
-        cls._write_subcontent(obj, packing_args)
+        cls._write_subcontent(obj, packing)
 
     @classmethod
     @abc.abstractmethod
