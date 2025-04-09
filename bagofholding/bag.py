@@ -47,6 +47,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
+        require_versions: bool = False,
         version_scraping: VersionScrapingMap | None = None,
         _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
     ) -> None:
@@ -56,14 +57,16 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         Args:
             obj (Any): The (pickleble) python object to be saved.
             filepath (str|pathlib.Path): The path to save the object to.
+            require_versions (bool): Whether to require a metadata for reduced
+                and complex objects to contain a non-None version. (Default is False,
+                objects can be stored from non-versioned packages/modules.)
             version_scraping (dict[str, Callable[[str], str]] | None): An optional
                 dictionary mapping module names to a callable that takes this name and
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
-        # pass _pickle_protocol to invocations of __reduce_ex__
         cls._write_bag_info(filepath, cls.get_bag_info())
-        cls._save(obj, filepath, version_scraping, _pickle_protocol)
+        cls._save(obj, filepath, require_versions, version_scraping, _pickle_protocol)
 
     @classmethod
     @abc.abstractmethod
@@ -85,9 +88,11 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
+        require_versions: bool,
         version_scraping: VersionScrapingMap | None,
         _pickle_protocol: SupportsIndex,
     ) -> None:
+        # pass _pickle_protocol to invocations of __reduce_ex__
         pass
 
     def __init__(

@@ -49,20 +49,11 @@ class H5Bag(Bag[H5Info]):
         cls,
         obj: Any,
         filepath: str | pathlib.Path,
+        require_versions: bool,
         version_scraping: VersionScrapingMap | None,
         _pickle_protocol: SupportsIndex,
     ) -> None:
-        """
-        Save a python object to file.
 
-        Args:
-            obj (Any): The (pickleble) python object to be saved.
-            filepath (str|pathlib.Path): The path to save the object to.
-            version_scraping (dict[str, Callable[[str], str]] | None): An optional
-                dictionary mapping module names to a callable that takes this name and
-                returns a version (or None). The default callable imports the module
-                string and looks for a `__version__` attribute.
-        """
         with h5py.File(filepath, "a", libver=cls.libver_str) as f:
             pack(
                 obj,
@@ -70,6 +61,7 @@ class H5Bag(Bag[H5Info]):
                 cls.storage_root,
                 bidict.bidict(),
                 [],
+                require_versions,
                 version_scraping=version_scraping,
                 _pickle_protocol=_pickle_protocol,
             )

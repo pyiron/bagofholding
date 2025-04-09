@@ -61,6 +61,7 @@ class Location:
 class PackingArguments:
     memo: PackingMemoAlias
     references: ReferencesAlias
+    require_versions: bool
     version_scraping: VersionScrapingMap | None
     _pickle_protocol: SupportsIndex
 
@@ -372,6 +373,7 @@ class Reducible(Group[object, object]):
                 location.relative_path(subpath),
                 packing.memo,
                 packing.references,
+                packing.require_versions,
                 version_scraping=packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
@@ -476,6 +478,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             location.relative_path("keys"),
             packing.memo,
             packing.references,
+            packing.require_versions,
             version_scraping=packing.version_scraping,
             _pickle_protocol=packing._pickle_protocol,
         )
@@ -485,6 +488,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             location.relative_path("values"),
             packing.memo,
             packing.references,
+            packing.require_versions,
             version_scraping=packing.version_scraping,
             _pickle_protocol=packing._pickle_protocol,
         )
@@ -533,6 +537,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
                 location.relative_path(k),
                 packing.memo,
                 packing.references,
+                packing.require_versions,
                 version_scraping=packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
@@ -571,6 +576,7 @@ class Union(SimpleGroup[types.UnionType]):
                 location.relative_path(f"i{i}"),
                 packing.memo,
                 packing.references,
+                packing.require_versions,
                 version_scraping=packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
@@ -627,6 +633,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 location.relative_path(f"i{i}"),
                 packing.memo,
                 packing.references,
+                packing.require_versions,
                 version_scraping=packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
@@ -667,6 +674,7 @@ def pack(
     path: str,
     memo: PackingMemoAlias,
     references: ReferencesAlias,
+    require_versions: bool,
     version_scraping: VersionScrapingMap | None,
     _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
 ) -> None:
@@ -674,6 +682,7 @@ def pack(
     packing_args = PackingArguments(
         memo=memo,
         references=references,
+        require_versions=require_versions,
         version_scraping=version_scraping,
         _pickle_protocol=_pickle_protocol,
     )
