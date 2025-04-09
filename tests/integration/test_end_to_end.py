@@ -4,8 +4,8 @@ import pickle
 import unittest
 
 import numpy as np
-from pyiron_snippets.dotdict import DotDict
 from objects import CustomReduce, Parent, SomeData, build_workflow
+from pyiron_snippets.dotdict import DotDict
 
 from bagofholding import H5Bag
 
