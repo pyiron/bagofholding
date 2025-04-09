@@ -4,7 +4,7 @@ import pickle
 import time
 import unittest
 
-from static.objects import build_workflow
+from objects import build_workflow
 
 from bagofholding import H5Bag
 
@@ -17,21 +17,24 @@ class TestBenchmark(unittest.TestCase):
 
     def test_timing(self):
         fname = "wf.pckl"
+        n_pickle_repeats = 10
 
         for n in [3, 30]:
             wf = build_workflow(n)
             with self.subTest(f"------ {len(wf)}-sized graph ------"):
                 t0 = time.time()
-                with open(fname, "wb") as f:
-                    pickle.dump(wf, f)
-                pt_save = time.time() - t0
+                for _ in range(n_pickle_repeats):
+                    with open(fname, "wb") as f:
+                        pickle.dump(wf, f)
+                pt_save = (time.time() - t0) / n_pickle_repeats
 
                 psize = os.path.getsize(fname)
 
                 t1 = time.time()
-                with open(fname, "rb") as f:
-                    pickle.load(f)
-                pt_load = time.time() - t1
+                for _ in range(n_pickle_repeats):
+                    with open(fname, "rb") as f:
+                        pickle.load(f)
+                pt_load = (time.time() - t1) / n_pickle_repeats
 
                 with contextlib.suppress(FileNotFoundError):
                     os.remove(fname)
