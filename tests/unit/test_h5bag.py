@@ -152,7 +152,9 @@ class TestBag(unittest.TestCase):
             "this is not supposed to matter",
         )
 
-        with self.assertRaises(NoVersionError):
+        with self.assertRaises(
+            NoVersionError, msg="Fail hard when version is required but missing"
+        ):
             H5Bag.save(obj, self.save_name, require_versions=True)
 
     def test_forbidden_modules(self):
@@ -166,7 +168,9 @@ class TestBag(unittest.TestCase):
             msg="The module is not forbidden, so saving should proceed fine.",
         )
 
-        with self.assertRaises(ModuleForbiddenError):
+        with self.assertRaises(
+            ModuleForbiddenError, msg="Fail hard when module forbidden"
+        ):
             H5Bag.save(
                 obj, self.save_name, forbidden_modules=(obj.__module__.split(".")[0],)
             )
