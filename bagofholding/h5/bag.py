@@ -50,6 +50,7 @@ class H5Bag(Bag[H5Info]):
         obj: Any,
         filepath: str | pathlib.Path,
         require_versions: bool,
+        forbidden_modules: list[str] | tuple[str, ...],
         version_scraping: VersionScrapingMap | None,
         _pickle_protocol: SupportsIndex,
     ) -> None:
@@ -62,6 +63,7 @@ class H5Bag(Bag[H5Info]):
                 bidict.bidict(),
                 [],
                 require_versions,
+                forbidden_modules,
                 version_scraping=version_scraping,
                 _pickle_protocol=_pickle_protocol,
             )

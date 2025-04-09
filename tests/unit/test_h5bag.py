@@ -3,7 +3,6 @@ import os
 import unittest
 
 import numpy as np
-
 import objects
 from objects import DRAGON, CustomReduce, ExReducta, NestedParent, Parent, SomeData
 from pyiron_snippets.dotdict import DotDict
@@ -11,7 +10,11 @@ from pyiron_snippets.dotdict import DotDict
 import bagofholding.h5.content as c
 from bagofholding.bag import BagMismatchError
 from bagofholding.h5.bag import H5Bag, H5Info
-from bagofholding.metadata import EnvironmentMismatch, NoVersionError
+from bagofholding.metadata import (
+    EnvironmentMismatch,
+    ModuleForbiddenError,
+    NoVersionError,
+)
 
 
 class BagVariant(H5Bag):
@@ -146,8 +149,24 @@ class TestBag(unittest.TestCase):
             reloaded,
             obj,
             msg="The objects module is not versioned, but without requiring versions "
-                "this is not supposed to matter"
+            "this is not supposed to matter",
         )
 
         with self.assertRaises(NoVersionError):
             H5Bag.save(obj, self.save_name, require_versions=True)
+
+    def test_forbidden_modules(self):
+        obj = objects.SomeData()
+
+        H5Bag.save(obj, self.save_name, forbidden_modules=())
+        reloaded = H5Bag(self.save_name).load()
+        self.assertEqual(
+            reloaded,
+            obj,
+            msg="The module is not forbidden, so saving should proceed fine.",
+        )
+
+        with self.assertRaises(ModuleForbiddenError):
+            H5Bag.save(
+                obj, self.save_name, forbidden_modules=(obj.__module__.split(".")[0],)
+            )

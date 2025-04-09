@@ -16,6 +16,10 @@ class NoVersionError(BagOfHoldingError, ValueError):
     pass
 
 
+class ModuleForbiddenError(BagOfHoldingError, ValueError):
+    pass
+
+
 @dataclass
 class Metadata:
     qualname: str | None = None
@@ -30,6 +34,7 @@ class Metadata:
 def get_metadata(
     obj: Any,
     require_versions: bool = False,
+    forbidden_modules: list[str] | tuple[str, ...] = (),
     version_scraping: VersionScrapingMap | None = None,
 ) -> Metadata | None:
     """
@@ -52,6 +57,12 @@ def get_metadata(
     if module == "builtins":
         return None
     else:
+        if module.split(".")[0] in forbidden_modules:
+            raise ModuleForbiddenError(
+                f"Module '{module}' is forbidden as a source of stored objects. Change "
+                f"the `forbidden_modules` or move this object to an allowed module."
+            )
+
         version = get_version(
             module, {} if version_scraping is None else version_scraping
         )
@@ -62,6 +73,7 @@ def get_metadata(
                 f"version for this package, or add versioning to the unversioned "
                 f"package."
             )
+
         return Metadata(
             qualname=obj.__class__.__qualname__,
             module=module,
