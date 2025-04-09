@@ -14,6 +14,7 @@ import bidict
 import h5py
 import numpy as np
 
+from bagofholding.exception import BagOfHoldingError
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
 from bagofholding.metadata import (
     Metadata,
@@ -681,6 +682,10 @@ class FrozenSet(Indexable[frozenset[Any]]):
     recast = frozenset
 
 
+class PickleProtocolError(BagOfHoldingError, ValueError):
+    pass
+
+
 def pack(
     obj: object,
     file: h5py.File,
@@ -692,6 +697,11 @@ def pack(
     version_scraping: VersionScrapingMap | None,
     _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
 ) -> None:
+    if _pickle_protocol not in (4, 3, 2, 1, 0):
+        raise PickleProtocolError(
+            f"pickle protocol must be <= 4, got {_pickle_protocol}"
+        )
+
     location = Location(file=file, path=path)
     packing_args = PackingArguments(
         memo=memo,

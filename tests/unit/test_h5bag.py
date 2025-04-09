@@ -10,6 +10,7 @@ from pyiron_snippets.dotdict import DotDict
 import bagofholding.h5.content as c
 from bagofholding.bag import BagMismatchError
 from bagofholding.h5.bag import H5Bag, H5Info
+from bagofholding.h5.content import PickleProtocolError
 from bagofholding.metadata import (
     EnvironmentMismatchError,
     ModuleForbiddenError,
@@ -174,3 +175,9 @@ class TestBag(unittest.TestCase):
             H5Bag.save(
                 obj, self.save_name, forbidden_modules=(obj.__module__.split(".")[0],)
             )
+
+    def test_bad_protocol(self):
+        with self.assertRaises(
+            PickleProtocolError, msg="We don't support out of band data transfers"
+        ):
+            H5Bag.save(42, "will_fail.h5", _pickle_protocol=5)
