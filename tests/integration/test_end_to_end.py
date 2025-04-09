@@ -5,7 +5,7 @@ import unittest
 
 import numpy as np
 from pyiron_snippets.dotdict import DotDict
-from static.objects import CustomReduce, Parent, SomeData, build_workflow
+from objects import CustomReduce, Parent, SomeData, build_workflow
 
 from bagofholding import H5Bag
 
