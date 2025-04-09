@@ -64,7 +64,7 @@ class H5Bag(Bag[H5Info]):
                 [],
                 require_versions,
                 forbidden_modules,
-                version_scraping=version_scraping,
+                version_scraping,
                 _pickle_protocol=_pickle_protocol,
             )
 

@@ -382,7 +382,7 @@ class Reducible(Group[object, object]):
                 packing.references,
                 packing.require_versions,
                 packing.forbidden_modules,
-                version_scraping=packing.version_scraping,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -488,7 +488,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             packing.references,
             packing.require_versions,
             packing.forbidden_modules,
-            version_scraping=packing.version_scraping,
+            packing.version_scraping,
             _pickle_protocol=packing._pickle_protocol,
         )
         pack(
@@ -499,7 +499,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             packing.references,
             packing.require_versions,
             packing.forbidden_modules,
-            version_scraping=packing.version_scraping,
+            packing.version_scraping,
             _pickle_protocol=packing._pickle_protocol,
         )
 
@@ -549,7 +549,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
                 packing.references,
                 packing.require_versions,
                 packing.forbidden_modules,
-                version_scraping=packing.version_scraping,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -589,7 +589,7 @@ class Union(SimpleGroup[types.UnionType]):
                 packing.references,
                 packing.require_versions,
                 packing.forbidden_modules,
-                version_scraping=packing.version_scraping,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -647,7 +647,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 packing.references,
                 packing.require_versions,
                 packing.forbidden_modules,
-                version_scraping=packing.version_scraping,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
