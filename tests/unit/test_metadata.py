@@ -5,7 +5,7 @@ import bidict
 import numpy as np
 
 from bagofholding.metadata import (
-    EnvironmentMismatch,
+    EnvironmentMismatchError,
     Metadata,
     _decompose_semver,
     _get_module,
@@ -139,30 +139,30 @@ class TestMetadata(unittest.TestCase):
             )
         )
 
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 numpy_metadata,
                 version_scraping={np.__name__: numpy_modify_patch},
             )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 numpy_metadata,
                 validator="exact",
                 version_scraping={np.__name__: numpy_modify_patch},
             )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 numpy_metadata,
                 validator="semantic-minor",
                 version_scraping={np.__name__: numpy_modify_minor},
             )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 numpy_metadata,
                 validator="semantic-major",
                 version_scraping={np.__name__: numpy_modify_major},
             )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 numpy_metadata,
                 validator="semantic-major",
@@ -182,24 +182,24 @@ class TestMetadata(unittest.TestCase):
         self.assertIsNone(
             validate_version(non_semantic_metadata, validator="none"),
         )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 non_semantic_metadata,
                 version_scraping={np.__name__: numpy_modify_patch},
             )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 non_semantic_metadata,
                 validator="exact",
                 version_scraping={np.__name__: numpy_modify_patch},
             )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 non_semantic_metadata,
                 validator="semantic-minor",
                 version_scraping={np.__name__: numpy_modify_minor},
             )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 non_semantic_metadata,
                 validator="semantic-major",
@@ -209,7 +209,7 @@ class TestMetadata(unittest.TestCase):
         self.assertIsNone(
             validate_version(non_semantic_metadata, validator=lambda _a, _b: True),
         )
-        with self.assertRaises(EnvironmentMismatch):
+        with self.assertRaises(EnvironmentMismatchError):
             validate_version(non_semantic_metadata, validator=lambda _a, _b: False)
 
         with self.assertRaises(ValueError):

@@ -61,6 +61,8 @@ class Location:
 class PackingArguments:
     memo: PackingMemoAlias
     references: ReferencesAlias
+    require_versions: bool
+    forbidden_modules: list[str] | tuple[str, ...]
     version_scraping: VersionScrapingMap | None
     _pickle_protocol: SupportsIndex
 
@@ -264,6 +266,8 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
             entry,
             get_metadata(
                 obj,
+                packing.require_versions,
+                packing.forbidden_modules,
                 {} if packing.version_scraping is None else packing.version_scraping,
             ),
         )
@@ -362,7 +366,11 @@ class Reducible(Group[object, object]):
             entry,
             get_metadata(
                 obj,
-                ({} if packing.version_scraping is None else packing.version_scraping),
+                packing.require_versions,
+                packing.forbidden_modules,
+                get_metadata(
+                    {} if packing.version_scraping is None else packing.version_scraping
+                ),
             ),
         )
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
@@ -372,7 +380,9 @@ class Reducible(Group[object, object]):
                 location.relative_path(subpath),
                 packing.memo,
                 packing.references,
-                version_scraping=packing.version_scraping,
+                packing.require_versions,
+                packing.forbidden_modules,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -476,7 +486,9 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             location.relative_path("keys"),
             packing.memo,
             packing.references,
-            version_scraping=packing.version_scraping,
+            packing.require_versions,
+            packing.forbidden_modules,
+            packing.version_scraping,
             _pickle_protocol=packing._pickle_protocol,
         )
         pack(
@@ -485,7 +497,9 @@ class Dict(SimpleGroup[dict[Any, Any]]):
             location.relative_path("values"),
             packing.memo,
             packing.references,
-            version_scraping=packing.version_scraping,
+            packing.require_versions,
+            packing.forbidden_modules,
+            packing.version_scraping,
             _pickle_protocol=packing._pickle_protocol,
         )
 
@@ -533,7 +547,9 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
                 location.relative_path(k),
                 packing.memo,
                 packing.references,
-                version_scraping=packing.version_scraping,
+                packing.require_versions,
+                packing.forbidden_modules,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -571,7 +587,9 @@ class Union(SimpleGroup[types.UnionType]):
                 location.relative_path(f"i{i}"),
                 packing.memo,
                 packing.references,
-                version_scraping=packing.version_scraping,
+                packing.require_versions,
+                packing.forbidden_modules,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -627,7 +645,9 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 location.relative_path(f"i{i}"),
                 packing.memo,
                 packing.references,
-                version_scraping=packing.version_scraping,
+                packing.require_versions,
+                packing.forbidden_modules,
+                packing.version_scraping,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -667,6 +687,8 @@ def pack(
     path: str,
     memo: PackingMemoAlias,
     references: ReferencesAlias,
+    require_versions: bool,
+    forbidden_modules: list[str] | tuple[str, ...],
     version_scraping: VersionScrapingMap | None,
     _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
 ) -> None:
@@ -674,6 +696,8 @@ def pack(
     packing_args = PackingArguments(
         memo=memo,
         references=references,
+        require_versions=require_versions,
+        forbidden_modules=forbidden_modules,
         version_scraping=version_scraping,
         _pickle_protocol=_pickle_protocol,
     )

@@ -12,6 +12,14 @@ from jedi.inference.gradual.typing import TypeAlias
 from bagofholding.exception import BagOfHoldingError
 
 
+class NoVersionError(BagOfHoldingError, ValueError):
+    pass
+
+
+class ModuleForbiddenError(BagOfHoldingError, ValueError):
+    pass
+
+
 @dataclass
 class Metadata:
     qualname: str | None = None
@@ -25,12 +33,17 @@ class Metadata:
 
 def get_metadata(
     obj: Any,
+    require_versions: bool = False,
+    forbidden_modules: list[str] | tuple[str, ...] = (),
     version_scraping: VersionScrapingMap | None = None,
 ) -> Metadata | None:
     """
 
     Args:
         obj (Any): The object who's module to extract metadata from.
+        require_versions (bool): Whether to require a metadata for reduced and complex
+            objects to contain a non-None version. (Default is False, objects can be
+             stored from non-versioned packages/modules.)
         version_scraping (dict[str, Callable[[str], str]] | None): An optional
             dictionary mapping module names to a callable that takes this name and
             returns a version (or None). The default callable imports the module
@@ -44,12 +57,27 @@ def get_metadata(
     if module == "builtins":
         return None
     else:
+        if module.split(".")[0] in forbidden_modules:
+            raise ModuleForbiddenError(
+                f"Module '{module}' is forbidden as a source of stored objects. Change "
+                f"the `forbidden_modules` or move this object to an allowed module."
+            )
+
+        version = get_version(
+            module, {} if version_scraping is None else version_scraping
+        )
+        if require_versions and version is None:
+            raise NoVersionError(
+                f"Could not find a version for {module}. Either disable "
+                f"`require_versions`, use `version_scraping` to find an existing "
+                f"version for this package, or add versioning to the unversioned "
+                f"package."
+            )
+
         return Metadata(
             qualname=obj.__class__.__qualname__,
             module=module,
-            version=get_version(
-                module, {} if version_scraping is None else version_scraping
-            ),
+            version=version,
             meta=str(obj.__metadata__) if hasattr(obj, "__metadata__") else None,
         )
 
@@ -92,7 +120,7 @@ def _scrape_version_attribute(module_name: str) -> str | None:
         return None
 
 
-class EnvironmentMismatch(BagOfHoldingError, ModuleNotFoundError):
+class EnvironmentMismatchError(BagOfHoldingError, ModuleNotFoundError):
     pass
 
 
@@ -138,7 +166,7 @@ def validate_version(
         try:
             current_version = str(get_version(metadata.module, version_scraping))
         except ModuleNotFoundError as e:
-            raise EnvironmentMismatch(
+            raise EnvironmentMismatchError(
                 f"When unpacking an object, encountered a module {metadata.module}  "
                 f"in the metadata that could not be found in the current environment."
             ) from e
@@ -161,7 +189,7 @@ def validate_version(
                 )
         elif version_validator(current_version, metadata.version):
             return
-        raise EnvironmentMismatch(
+        raise EnvironmentMismatchError(
             f"{metadata.module} is stored with version {metadata.version}, "
             f"but the current environment has {current_version}. This does not pass "
             f"validation criterion: {version_validator}"
