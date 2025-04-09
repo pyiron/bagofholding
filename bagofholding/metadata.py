@@ -120,7 +120,7 @@ def _scrape_version_attribute(module_name: str) -> str | None:
         return None
 
 
-class EnvironmentMismatch(BagOfHoldingError, ModuleNotFoundError):
+class EnvironmentMismatchError(BagOfHoldingError, ModuleNotFoundError):
     pass
 
 
@@ -166,7 +166,7 @@ def validate_version(
         try:
             current_version = str(get_version(metadata.module, version_scraping))
         except ModuleNotFoundError as e:
-            raise EnvironmentMismatch(
+            raise EnvironmentMismatchError(
                 f"When unpacking an object, encountered a module {metadata.module}  "
                 f"in the metadata that could not be found in the current environment."
             ) from e
@@ -189,7 +189,7 @@ def validate_version(
                 )
         elif version_validator(current_version, metadata.version):
             return
-        raise EnvironmentMismatch(
+        raise EnvironmentMismatchError(
             f"{metadata.module} is stored with version {metadata.version}, "
             f"but the current environment has {current_version}. This does not pass "
             f"validation criterion: {version_validator}"

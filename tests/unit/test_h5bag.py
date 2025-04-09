@@ -11,7 +11,7 @@ import bagofholding.h5.content as c
 from bagofholding.bag import BagMismatchError
 from bagofholding.h5.bag import H5Bag, H5Info
 from bagofholding.metadata import (
-    EnvironmentMismatch,
+    EnvironmentMismatchError,
     ModuleForbiddenError,
     NoVersionError,
 )
@@ -61,7 +61,7 @@ class TestBag(unittest.TestCase):
             msg="Object version metadata should be automatically scraped",
         )
         with self.assertRaises(
-            EnvironmentMismatch, msg="Fail hard when env mismatches"
+            EnvironmentMismatchError, msg="Fail hard when env mismatches"
         ):
             bag.load(version_scraping={"numpy": always_42})
 
