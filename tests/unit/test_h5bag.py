@@ -3,13 +3,15 @@ import os
 import unittest
 
 import numpy as np
+
+import objects
 from objects import DRAGON, CustomReduce, ExReducta, NestedParent, Parent, SomeData
 from pyiron_snippets.dotdict import DotDict
 
 import bagofholding.h5.content as c
 from bagofholding.bag import BagMismatchError
 from bagofholding.h5.bag import H5Bag, H5Info
-from bagofholding.metadata import EnvironmentMismatch
+from bagofholding.metadata import EnvironmentMismatch, NoVersionError
 
 
 class BagVariant(H5Bag):
@@ -134,3 +136,18 @@ class TestBag(unittest.TestCase):
                 self.assertIs(type(obj), type(reloaded))
                 self.assertTrue(np.all(obj == reloaded))
                 os.remove(self.save_name)
+
+    def test_versions_required(self):
+        obj = objects.SomeData()
+
+        H5Bag.save(obj, self.save_name, require_versions=False)
+        reloaded = H5Bag(self.save_name).load()
+        self.assertEqual(
+            reloaded,
+            obj,
+            msg="The objects module is not versioned, but without requiring versions "
+                "this is not supposed to matter"
+        )
+
+        with self.assertRaises(NoVersionError):
+            H5Bag.save(obj, self.save_name, require_versions=True)

@@ -265,6 +265,7 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
             entry,
             get_metadata(
                 obj,
+                packing.require_versions,
                 {} if packing.version_scraping is None else packing.version_scraping,
             ),
         )
@@ -363,6 +364,7 @@ class Reducible(Group[object, object]):
             entry,
             get_metadata(
                 obj,
+                packing.require_versions,
                 ({} if packing.version_scraping is None else packing.version_scraping),
             ),
         )

@@ -12,6 +12,10 @@ from jedi.inference.gradual.typing import TypeAlias
 from bagofholding.exception import BagOfHoldingError
 
 
+class NoVersionError(BagOfHoldingError, ValueError):
+    pass
+
+
 @dataclass
 class Metadata:
     qualname: str | None = None
@@ -25,12 +29,16 @@ class Metadata:
 
 def get_metadata(
     obj: Any,
+    require_versions: bool = False,
     version_scraping: VersionScrapingMap | None = None,
 ) -> Metadata | None:
     """
 
     Args:
         obj (Any): The object who's module to extract metadata from.
+        require_versions (bool): Whether to require a metadata for reduced and complex
+            objects to contain a non-None version. (Default is False, objects can be
+             stored from non-versioned packages/modules.)
         version_scraping (dict[str, Callable[[str], str]] | None): An optional
             dictionary mapping module names to a callable that takes this name and
             returns a version (or None). The default callable imports the module
@@ -44,12 +52,20 @@ def get_metadata(
     if module == "builtins":
         return None
     else:
+        version = get_version(
+            module, {} if version_scraping is None else version_scraping
+        )
+        if require_versions and version is None:
+            raise NoVersionError(
+                f"Could not find a version for {module}. Either disable "
+                f"`require_versions`, use `version_scraping` to find an existing "
+                f"version for this package, or add versioning to the unversioned "
+                f"package."
+            )
         return Metadata(
             qualname=obj.__class__.__qualname__,
             module=module,
-            version=get_version(
-                module, {} if version_scraping is None else version_scraping
-            ),
+            version=version,
             meta=str(obj.__metadata__) if hasattr(obj, "__metadata__") else None,
         )
 
