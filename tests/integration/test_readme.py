@@ -1,9 +1,25 @@
+import contextlib
 import doctest
+import os
 import unittest
 
 
+def remove_save_file(_):
+    for filename in ["file.h5", "something.h5", "custom.h5", "will_fail.h5"]:
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(os.path.join(os.getcwd(), filename))
+
+
 def load_tests(loader, tests, ignore):
-    tests.addTests(doctest.DocFileSuite("../../docs/README.md"))
+    tests.addTests(
+        doctest.DocFileSuite(
+            "../../docs/README.md",
+            optionflags=doctest.ELLIPSIS,
+            tearDown=remove_save_file,
+            globs={"__name__": "__main__"},
+        )
+    )
+
     return tests
 
 
