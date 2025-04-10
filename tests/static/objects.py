@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import dataclasses
 from typing import SupportsIndex
 
-import pyiron_workflow as pwf
+import numpy as np
 from pyiron_snippets.singleton import Singleton
 
 
@@ -131,17 +133,26 @@ class ExReducta:
         return other.__class__ == self.__class__ and other.n == self.n + 1
 
 
-@pwf.as_macro_node
-def Subtract(self, a, b):
-    self.diff = a - b
-    return self.diff
+class Recursing:
 
+    def __init__(self, n: int):
+        self.child: Recursing | None
 
-def build_workflow(n=3) -> pwf.Workflow:
-    wf = pwf.Workflow("some_wf")
-    for i in range(n):
-        wf.add_child(pwf.standard_nodes.UserInput(1, label=f"i{i}"))
-    wf.diff = Subtract(wf.i2, wf.i1)
-    wf.sum = wf.i1 + wf.i2
-    wf()
-    return wf
+        if n > 0:
+            self.child = Recursing(n - 1)
+        else:
+            self.child = None
+
+        self.data = np.arange(n)
+        self.label = f"Recursive{n}"
+
+    def __len__(self):
+        return len(self.data)
+
+    def __eq__(self, other):
+        return (
+            other.__class__ == self.__class__
+            and np.all(other.data == self.data)
+            and other.label == self.label
+            and other.child == self.child
+        )
