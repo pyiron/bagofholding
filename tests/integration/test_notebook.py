@@ -11,6 +11,14 @@ class TestNotebook(unittest.TestCase):
         directly.
         """
         print(__file__)
-        result = subprocess.run(["pytest", "--nbval", os.path.join(os.path.dirname(__file__), "../../notebooks/tutorial.ipynb")])
+        result = subprocess.run(
+            [
+                "pytest",
+                "--nbval",
+                os.path.join(
+                    os.path.dirname(__file__), "../../notebooks/tutorial.ipynb"
+                ),
+            ]
+        )
         if result.returncode != 0:
             self.fail(f"nbval failed with exit code {result.returncode}")
