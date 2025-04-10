@@ -4,7 +4,15 @@ import unittest
 
 import numpy as np
 import objects
-from objects import DRAGON, CustomReduce, ExReducta, NestedParent, Parent, SomeData
+from objects import (
+    DRAGON,
+    CustomReduce,
+    ExReducta,
+    NestedParent,
+    Parent,
+    Recursing,
+    SomeData,
+)
 from pyiron_snippets.dotdict import DotDict
 
 import bagofholding.h5.content as c
@@ -120,6 +128,7 @@ class TestBag(unittest.TestCase):
                 Parent(),  # An object with an internally cyclic relationship
                 DotDict({"forty-two": 42}),  # Inheriting from a built-in class
                 NestedParent.NestedChild(),  # Requiring qualname
+                Recursing(2),
             ]
         ]
 

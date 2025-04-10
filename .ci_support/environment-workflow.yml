@@ -1,4 +1,0 @@
-channels:
-  - conda-forge
-dependencies:
-  - pyiron_workflow =0.12.0

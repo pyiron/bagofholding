@@ -4,7 +4,7 @@ import pickle
 import time
 import unittest
 
-from objects import build_workflow
+from objects import Recursing
 
 from bagofholding import H5Bag
 
@@ -20,7 +20,7 @@ class TestBenchmark(unittest.TestCase):
         n_pickle_repeats = 10
 
         for n in [3, 30]:
-            wf = build_workflow(n)
+            wf = Recursing(n)
             with self.subTest(f"------ {len(wf)}-sized graph ------"):
                 t0 = time.time()
                 for _ in range(n_pickle_repeats):
@@ -52,9 +52,9 @@ class TestBenchmark(unittest.TestCase):
                     t2 = time.time()
                     paths = b.list_paths()
                     t3 = time.time()
-                    metadata = b["object/state/diff/"]
+                    metadata = b["object/state/child/"]
                     t4 = time.time()
-                    partial = b.load("object/state/diff/")
+                    partial = b.load("object/state/child/")
                     t5 = time.time()
                     b.load()
                     h5t_load = time.time() - t5

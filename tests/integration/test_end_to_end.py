@@ -4,8 +4,8 @@ import pickle
 import unittest
 
 import numpy as np
+from objects import CustomReduce, Parent, Recursing, SomeData
 from pyiron_snippets.dotdict import DotDict
-from static.objects import CustomReduce, Parent, SomeData, build_workflow
 
 from bagofholding import H5Bag
 
@@ -26,7 +26,6 @@ class TestEndToEnd(unittest.TestCase):
             np.array([Parent("p"), Parent("q")]),
             np.array([SomeData(), SomeData()]),
         )
-        self.wf = build_workflow(3)
         self.bags = [H5Bag]
         self.fname = "obj.bag"
 
@@ -61,12 +60,10 @@ class TestEndToEnd(unittest.TestCase):
     def test_workflow(self):
         for bag_class in self.bags:
             with self.subTest(name=f"{bag_class.__name__}"):
-                bag_class.save(self.wf, filepath=self.fname)
-                wf2 = bag_class(filepath=self.fname).load()
-                self.assertDictEqual(
-                    wf2.outputs.to_value_dict(), self.wf.outputs.to_value_dict()
-                )
-                self.assertTupleEqual(wf2.child_labels, self.wf.child_labels)
+                r = Recursing(3)
+                bag_class.save(r, filepath=self.fname)
+                r2 = bag_class(filepath=self.fname).load()
+                self.assertEqual(r, r2)
 
     def test_subaccess(self):
         for bag_class in self.bags:
