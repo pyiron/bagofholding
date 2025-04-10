@@ -183,3 +183,45 @@ class TestBag(unittest.TestCase):
             H5Bag.save(
                 obj, self.save_name, forbidden_modules=(obj.__module__.split(".")[0],)
             )
+
+    def test_list_paths(self):
+        H5Bag.save(Parent(), self.save_name)
+        paths = H5Bag(self.save_name).list_paths()
+        self.assertSetEqual(
+            {
+                "object",
+                "object/args",
+                "object/args/i0",
+                "object/constructor",
+                "object/item_iterator",
+                "object/kv_iterator",
+                "object/state",
+                "object/state/child",
+                "object/state/child/args",
+                "object/state/child/args/i0",
+                "object/state/child/constructor",
+                "object/state/child/item_iterator",
+                "object/state/child/kv_iterator",
+                "object/state/child/state",
+                "object/state/child/state/data",
+                "object/state/child/state/modified_data",
+                "object/state/child/state/name",
+                "object/state/child/state/parent",
+                "object/state/data",
+                "object/state/data/i0",
+                "object/state/data/i1",
+                "object/state/data/i2",
+                "object/state/name",
+            },
+            set(paths),
+            msg=f"Got instead {paths}",
+        )
+
+    def test_subaccess(self):
+        r = Recursing(2)
+        H5Bag.save(r, self.save_name)
+        self.assertEqual(
+            r.label,
+            H5Bag(self.save_name).load("object/state/label"),
+            msg="We allow loading only part of the object",
+        )
