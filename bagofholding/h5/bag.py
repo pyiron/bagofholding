@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import pathlib
 from collections.abc import Iterator
@@ -21,8 +20,6 @@ class H5Info(BagInfo):
 
 
 class H5Bag(Bag[H5Info]):
-    filepath: pathlib.Path
-    file: h5py.File
     libver_str: ClassVar[str] = "latest"
 
     @classmethod
@@ -68,23 +65,10 @@ class H5Bag(Bag[H5Info]):
                 _pickle_protocol=_pickle_protocol,
             )
 
-    def __init__(
-        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
-    ) -> None:
-        super().__init__(filepath, *args, **kwargs)
-        self.file = h5py.File(filepath, mode="r", libver=self.libver_str)
-
     def read_bag_info(self, filepath: pathlib.Path) -> H5Info:
         with h5py.File(filepath, "r", libver=self.libver_str) as f:
             info = H5Info(**{k: f.attrs[k] for k in H5Info.__dataclass_fields__})
         return info
-
-    def _close(self) -> None:
-        with contextlib.suppress(AttributeError):
-            self.file.close()
-
-    def __del__(self) -> None:
-        self._close()
 
     def load(
         self,
@@ -92,16 +76,19 @@ class H5Bag(Bag[H5Info]):
         version_validator: VersionValidatorType = "exact",
         version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
-        return unpack(
-            self.file,
-            path,
-            {},
-            version_validator=version_validator,
-            version_scraping=version_scraping,
-        )
+        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
+            unpacked = unpack(
+                f,
+                path,
+                {},
+                version_validator=version_validator,
+                version_scraping=version_scraping,
+            )
+        return unpacked
 
     def __getitem__(self, path: str) -> Metadata | None:
-        return read_metadata(self.file[path])
+        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
+            return read_metadata(f[path])
 
     def get_enriched_metadata(
         self, path: str
@@ -118,17 +105,19 @@ class H5Bag(Bag[H5Info]):
             (Metadata | None): The metadata, if any.
             (tuple[str, ...] | None): The sub-entry name(s), if any.
         """
-        entry = self.file[path]
-        return (
-            maybe_decode(entry.attrs["content_type"]),
-            read_metadata(entry),
-            tuple(entry.keys()) if isinstance(entry, h5py.Group) else None,
-        )
+        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
+            entry = f[path]
+            return (
+                maybe_decode(entry.attrs["content_type"]),
+                read_metadata(entry),
+                tuple(entry.keys()) if isinstance(entry, h5py.Group) else None,
+            )
 
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
         paths: list[str] = []
-        self.file.visit(paths.append)
+        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
+            f.visit(paths.append)
         return paths
 
     def __len__(self) -> int:
