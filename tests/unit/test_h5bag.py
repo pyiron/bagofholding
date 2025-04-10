@@ -231,4 +231,4 @@ class TestBag(unittest.TestCase):
         with self.assertRaises(
             PickleProtocolError, msg="We don't support out of band data transfers"
         ):
-            H5Bag.save(42, "will_fail.h5", _pickle_protocol=5)
+            H5Bag.save(42, self.save_name, _pickle_protocol=5)
