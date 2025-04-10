@@ -1,6 +1,6 @@
 # bagofholding
 
-Get robust, transparent, long-term storage for `pickle`-compliant python objects.
+`bagofholding` is designed to be an easy stand-in for `pickle` serialization for python object that is transparent, flexible, and suitable for long-term storage.
 
 ## Advantages
 ### Drop-in replacement
@@ -29,13 +29,10 @@ Readers familiar with `pickle` will be able to see that the "reduced" structure 
 ```python
 >>> class MyThing:
 ...     def __init__(self, answer: int, question: str):
-...         print("I'm instantiating")
 ...         self.answer = answer
 ...         self.question = question
 >>>
 >>> something = MyThing(42, "still computing...")
-I'm instantiating
-
 >>> boh.H5Bag.save(something, "something.h5")
 >>> bag = boh.H5Bag("something.h5")
 >>> bag.list_paths()
@@ -67,7 +64,6 @@ Stored objects can also be re-instantiated _in part_ by leveraging their storage
 ```
 
 Note that we didn't re-instantiate any part of the object other than this one integer!
-This is demonstrated more convincingly in the example notebook, but here simply note that we don't get the `"I'm instantiating"` announcement.
 
 This feature is incredibly useful for long-term storage and data transferability, as the loading environment does not need to fully match the saving environment -- only the environment required to load the actual piece of data desired matches.
 Consider some complex object which, ultimately, contains important or expensive-to-calculate numeric data, e.g. in the form of numpy array.
@@ -115,50 +111,9 @@ H5Info(qualname='H5Bag', module='bagofholding.h5.bag', version='...', libver_str
 
 (In reality you will see a version code, it is omitted here because this example is executed automatically in the test suite.)
 
-### Customization
+## Going further
 
-Because it is modeled on the `pickle` API, power users can customize the `bagofholding` storage behavior using familiar tools like custom `__reduce__` or `__getstate__` methods on their classes.
-E.g., below we see that modifying the state manipulation impacts what is displayed on browsing:
-
-```python
->>> class Customized:
-...     def __init__(self, x):
-...         self.x = x
-... 
-...     def __getstate__(self):
-...         return {"by_default_this_would_just_be_x": self.x}
-... 
-...     def __setstate__(self, state):
-...         self.x = state["by_default_this_would_just_be_x"]
->>>
->>> boh.H5Bag.save(Customized(42), "custom.h5")
->>> boh.H5Bag("custom.h5").list_paths()[-1]
-'object/state/by_default_this_would_just_be_x'
-
-```
-
-## Limitations
-
-`bagofholding` uses many of the same patterns as `pickle`, and thus is only expected to work for objects which could otherwise be pickled.
-Bag objects offer a convenience method to quickly test this:
-
-```python
->>> boh.H5Bag.pickle_check(lambda x: x, raise_exceptions=False)
-"Can't pickle <function <lambda> at ...>: attribute lookup <lambda> on __main__ failed"
-
-```
-
-And although the same patterns as `pickle` are exploited, `bagofholding` does not actually _execute_ `pickle`.
-To this end, the highest protocol value exploiting out-of-band data is not supported:
-
-```python
->>> try:
-...     boh.H5Bag.save(42, "will_fail.h5", _pickle_protocol=5)
-... except boh.PickleProtocolError as e:
-...     print(e)
-pickle protocol must be <= 4, got 5
-
-```
+For a more in-depth look at the above features and to explore other aspects of `bagofholding`, check out [the tutorial notebook](../notebooks/tutorial.ipynb).
 
 Finally, `bagofholding` prioritizes transparency in what is stored and ease-of-use for both savers and loaders/browsers.
 As such, the current hdf5-based implementation is likely to be significantly less performant than raw pickling, due to the creation of many small datasets that allow the h5 file to directly replicate the underlying structure of the python objects being saved.
