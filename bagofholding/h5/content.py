@@ -155,6 +155,15 @@ class Global(Item[GlobalType, Any]):
             data=value, dtype=h5py.string_dtype(encoding="utf-8")
         )
         cls._write_type(entry)
+        cls._write_metadata(
+            entry,
+            get_metadata(
+                obj,
+                packing.require_versions,
+                packing.forbidden_modules,
+                {} if packing.version_scraping is None else packing.version_scraping,
+            ),
+        )
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
