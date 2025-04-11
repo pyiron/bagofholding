@@ -54,9 +54,6 @@ class Location:
     bag: H5Bag
     path: str
 
-    def relative_path(self, subpath: str) -> str:
-        return self.bag.join(self.path, subpath)
-
     @property
     def entry(self) -> h5py.Group | h5py.Dataset:
         return self.bag.file[self.path]
@@ -397,7 +394,7 @@ class Reducible(Group[object, object]):
             pack(
                 value,
                 location.bag,
-                location.relative_path(subpath),
+                location.bag.join(location.path, subpath),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -412,7 +409,7 @@ class Reducible(Group[object, object]):
             ConstructorType,
             unpack(
                 location.bag,
-                location.relative_path("constructor"),
+                location.bag.join(location.path, "constructor"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -422,7 +419,7 @@ class Reducible(Group[object, object]):
             ConstructorArgsType,
             unpack(
                 location.bag,
-                location.relative_path("args"),
+                location.bag.join(location.path, "args"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -433,7 +430,7 @@ class Reducible(Group[object, object]):
         rv = (constructor, constructor_args) + tuple(
             unpack(
                 location.bag,
-                location.relative_path(k),
+                location.bag.join(location.path, k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -503,7 +500,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         pack(
             tuple(obj.keys()),
             location.bag,
-            location.relative_path("keys"),
+            location.bag.join(location.path, "keys"),
             packing.memo,
             packing.references,
             packing.require_versions,
@@ -514,7 +511,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         pack(
             tuple(obj.values()),
             location.bag,
-            location.relative_path("values"),
+            location.bag.join(location.path, "values"),
             packing.memo,
             packing.references,
             packing.require_versions,
@@ -531,7 +528,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
                     tuple[Any],
                     unpack(
                         location.bag,
-                        location.relative_path("keys"),
+                        location.bag.join(location.path, "keys"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
                         version_scraping=unpacking.version_scraping,
@@ -541,7 +538,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
                     tuple[Any],
                     unpack(
                         location.bag,
-                        location.relative_path("values"),
+                        location.bag.join(location.path, "values"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
                         version_scraping=unpacking.version_scraping,
@@ -564,7 +561,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
             pack(
                 v,
                 location.bag,
-                location.relative_path(k),
+                location.bag.join(location.path, k),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -578,7 +575,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         return {
             k: unpack(
                 location.bag,
-                location.relative_path(k),
+                location.bag.join(location.path, k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -604,7 +601,7 @@ class Union(SimpleGroup[types.UnionType]):
             pack(
                 v,
                 location.bag,
-                location.relative_path(f"i{i}"),
+                location.bag.join(location.path, f"i{i}"),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -634,7 +631,7 @@ class Union(SimpleGroup[types.UnionType]):
         return cls._recursive_or(
             unpack(
                 location.bag,
-                location.relative_path(f"i{i}"),
+                location.bag.join(location.path, f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -662,7 +659,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
             pack(
                 v,
                 location.bag,
-                location.relative_path(f"i{i}"),
+                location.bag.join(location.path, f"i{i}"),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -676,7 +673,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         return cls.recast(
             unpack(
                 location.bag,
-                location.relative_path(f"i{i}"),
+                location.bag.join(location.path, f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
