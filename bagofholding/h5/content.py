@@ -811,10 +811,9 @@ def unpack(
 ) -> object:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
-        entry = bag.file[path]
-        content_class_string = maybe_decode(entry.attrs["content_type"])
+        content_class_string = bag.unpack_meta(path, "content_type")
         content_class = import_from_string(content_class_string)
-        metadata = read_metadata(entry)
+        metadata = bag.unpack_metadata(path)
         if metadata is not None:
             validate_version(
                 metadata, validator=version_validator, version_scraping=version_scraping
@@ -831,19 +830,3 @@ def unpack(
             memo[path] = value
         return value
     return memo_value
-
-
-def read_metadata(entry: h5py.Group | h5py.Dataset) -> Metadata | None:
-    metadata = {}
-    has_metadata = False
-    for meta_key in Metadata.__dataclass_fields__:
-        try:
-            metadata[meta_key] = maybe_decode(entry.attrs[meta_key])
-            has_metadata = True
-        except KeyError:
-            metadata[meta_key] = ""
-    return Metadata(**metadata) if has_metadata else None
-
-
-def maybe_decode(attr: str | bytes) -> str:
-    return attr if isinstance(attr, str) else attr.decode("utf-8")

@@ -11,7 +11,7 @@ import h5py
 
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
+from bagofholding.h5.content import pack, unpack
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
@@ -120,7 +120,7 @@ class H5Bag(Bag[H5Info]):
 
     def __getitem__(self, path: str) -> Metadata | None:
         with self:
-            return read_metadata(self.file[path])
+            return self.unpack_metadata(path)
 
     def get_enriched_metadata(
         self, path: str
@@ -140,8 +140,8 @@ class H5Bag(Bag[H5Info]):
         with self:
             entry = self.file[path]
             return (
-                maybe_decode(entry.attrs["content_type"]),
-                read_metadata(entry),
+                self.unpack_meta(path, "content_type"),
+                self.unpack_metadata(path),
                 tuple(entry.keys()) if isinstance(entry, h5py.Group) else None,
             )
 
@@ -199,3 +199,21 @@ class H5Bag(Bag[H5Info]):
 
     def pack_meta(self, path: str, key: str, value: str) -> None:
         self.file[path].attrs[key] = value
+
+    def unpack_meta(self, path: str, key: str) -> str:
+        return self.maybe_decode(self.file[path].attrs[key])
+
+    def unpack_metadata(self, path: str) -> Metadata | None:
+        metadata = {}
+        has_metadata = False
+        for meta_key in Metadata.__dataclass_fields__:
+            try:
+                metadata[meta_key] = self.unpack_meta(path, meta_key)
+                has_metadata = True
+            except KeyError:
+                metadata[meta_key] = ""
+        return Metadata(**metadata) if has_metadata else None
+
+    @staticmethod
+    def maybe_decode(attr: str | bytes) -> str:
+        return attr if isinstance(attr, str) else attr.decode("utf-8")
