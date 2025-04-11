@@ -34,6 +34,22 @@ class H5Bag(Bag[H5Info]):
     _file: h5py.File | None
     _context_depth: int
 
+    @classmethod
+    def get_bag_info(cls) -> H5Info:
+        return H5Info(
+            qualname=cls.__qualname__,
+            module=cls.__module__,
+            version=cls.get_version(),
+            libver_str=cls.libver_str,
+        )
+
+    def __init__(
+        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
+    ) -> None:
+        self.file = None
+        self._context_depth = 0
+        super().__init__(filepath)
+
     @property
     def file(self) -> h5py.File:
         if self._file is None:
@@ -54,15 +70,6 @@ class H5Bag(Bag[H5Info]):
                 self.file.attrs[k] = v
         finally:
             self.close()
-
-    @classmethod
-    def get_bag_info(cls) -> H5Info:
-        return H5Info(
-            qualname=cls.__qualname__,
-            module=cls.__module__,
-            version=cls.get_version(),
-            libver_str=cls.libver_str,
-        )
 
     def _save(
         self,
@@ -87,13 +94,6 @@ class H5Bag(Bag[H5Info]):
             )
         finally:
             self.close()
-
-    def __init__(
-        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
-    ) -> None:
-        self.file = None
-        self._context_depth = 0
-        super().__init__(filepath)
 
     def read_bag_info(self, filepath: pathlib.Path) -> H5Info:
         with self:

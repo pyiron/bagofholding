@@ -43,6 +43,11 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     filepath: pathlib.Path
 
     @classmethod
+    @abc.abstractmethod
+    def get_bag_info(cls) -> InfoType:
+        pass
+
+    @classmethod
     def save(
         cls,
         obj: Any,
@@ -81,29 +86,9 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
             _pickle_protocol,
         )
 
-    @abc.abstractmethod
-    def _write_bag_info(
-        self,
-        bag_info: InfoType,
-    ) -> None:
-        pass
-
     @classmethod
-    @abc.abstractmethod
-    def get_bag_info(cls) -> InfoType:
-        pass
-
-    @abc.abstractmethod
-    def _save(
-        self,
-        obj: Any,
-        require_versions: bool,
-        forbidden_modules: list[str] | tuple[str, ...],
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
-    ) -> None:
-        # pass _pickle_protocol to invocations of __reduce_ex__
-        pass
+    def get_version(cls) -> str:
+        return str(get_version(cls.__module__, {}))
 
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
@@ -120,6 +105,25 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 )
         except FileNotFoundError:
             pass
+
+    @abc.abstractmethod
+    def _write_bag_info(
+            self,
+            bag_info: InfoType,
+    ) -> None:
+        pass
+
+    @abc.abstractmethod
+    def _save(
+            self,
+            obj: Any,
+            require_versions: bool,
+            forbidden_modules: list[str] | tuple[str, ...],
+            version_scraping: VersionScrapingMap | None,
+            _pickle_protocol: SupportsIndex,
+    ) -> None:
+        # pass _pickle_protocol to invocations of __reduce_ex__
+        pass
 
     @abc.abstractmethod
     def read_bag_info(self, filepath: pathlib.Path) -> InfoType:
@@ -168,10 +172,6 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.list_paths())
-
-    @classmethod
-    def get_version(cls) -> str:
-        return str(get_version(cls.__module__, {}))
 
     @staticmethod
     def pickle_check(
