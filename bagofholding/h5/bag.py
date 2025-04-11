@@ -3,15 +3,25 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 from collections.abc import Iterator
-from typing import Any, ClassVar, SupportsIndex
+from types import TracebackType
+from typing import Any, ClassVar, Literal, Self, SupportsIndex
 
 import bidict
 import h5py
 
 from bagofholding.bag import Bag, BagInfo
+from bagofholding.exception import BagOfHoldingError
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
+
+
+class FileAlreadyOpenError(BagOfHoldingError):
+    pass
+
+
+class FileNotOpenError(BagOfHoldingError):
+    pass
 
 
 @dataclasses.dataclass(frozen=True)
@@ -21,18 +31,29 @@ class H5Info(BagInfo):
 
 class H5Bag(Bag[H5Info]):
     libver_str: ClassVar[str] = "latest"
-    file: h5py.File | None
+    _file: h5py.File | None
     _context_depth: int
 
-    @classmethod
+    @property
+    def file(self) -> h5py.File:
+        if self._file is None:
+            raise FileNotOpenError(f"{self.filepath} is not open; use `open` or `with`")
+        return self._file
+
+    @file.setter
+    def file(self, new_file: h5py.File | None) -> None:
+        self._file = new_file
+
     def _write_bag_info(
-        cls,
-        filepath: str | pathlib.Path,
+        self,
         bag_info: H5Info,
     ) -> None:
-        with h5py.File(filepath, "w", libver=cls.libver_str) as f:
-            for k, v in cls.get_bag_info().field_items():
-                f.attrs[k] = v
+        try:
+            self.open("w")
+            for k, v in bag_info.field_items():
+                self.file.attrs[k] = v
+        finally:
+            self.close()
 
     @classmethod
     def get_bag_info(cls) -> H5Info:
@@ -43,22 +64,20 @@ class H5Bag(Bag[H5Info]):
             libver_str=cls.libver_str,
         )
 
-    @classmethod
     def _save(
-        cls,
+        self,
         obj: Any,
-        filepath: str | pathlib.Path,
         require_versions: bool,
         forbidden_modules: list[str] | tuple[str, ...],
         version_scraping: VersionScrapingMap | None,
         _pickle_protocol: SupportsIndex,
     ) -> None:
-
-        with h5py.File(filepath, "a", libver=cls.libver_str) as f:
+        try:
+            self.open("a")
             pack(
                 obj,
-                f,
-                cls.storage_root,
+                self.file,
+                self.storage_root,
                 bidict.bidict(),
                 [],
                 require_versions,
@@ -66,6 +85,8 @@ class H5Bag(Bag[H5Info]):
                 version_scraping,
                 _pickle_protocol=_pickle_protocol,
             )
+        finally:
+            self.close()
 
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
@@ -76,7 +97,9 @@ class H5Bag(Bag[H5Info]):
 
     def read_bag_info(self, filepath: pathlib.Path) -> H5Info:
         with self:
-            info = H5Info(**{k: self.file.attrs[k] for k in H5Info.__dataclass_fields__})
+            info = H5Info(
+                **{k: self.file.attrs[k] for k in H5Info.__dataclass_fields__}
+            )
         return info
 
     def load(
@@ -143,21 +166,33 @@ class H5Bag(Bag[H5Info]):
         except ImportError:
             return self.list_paths()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         self._context_depth += 1
-        if self.file is None:
-            self.file = h5py.File(self.filepath, "r", libver=self.libver_str)
+        if self._file is None:
+            self.open("r")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def open(self, mode: Literal["r", "r+", "w", "w-", "x", "a"]) -> h5py.File:
+        if self._file is None:
+            self.file = h5py.File(self.filepath, mode, libver=self.libver_str)
+            return self.file
+        else:
+            raise FileAlreadyOpenError(f"The bag at {self.filepath} is already open")
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self._context_depth -= 1
         if self._context_depth == 0:
             self.close()
 
-    def close(self):
-        if self.file is not None:
+    def close(self) -> None:
+        if self._file is not None:
             self.file.close()
-            self.file = None
+            self._file = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.close()

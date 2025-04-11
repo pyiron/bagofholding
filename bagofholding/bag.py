@@ -71,21 +71,19 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
-        cls._write_bag_info(filepath, cls.get_bag_info())
-        cls._save(
+        bag = cls(filepath)
+        bag._write_bag_info(cls.get_bag_info())
+        bag._save(
             obj,
-            filepath,
             require_versions,
             forbidden_modules,
             version_scraping,
             _pickle_protocol,
         )
 
-    @classmethod
     @abc.abstractmethod
     def _write_bag_info(
-        cls,
-        filepath: str | pathlib.Path,
+        self,
         bag_info: InfoType,
     ) -> None:
         pass
@@ -95,12 +93,10 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     def get_bag_info(cls) -> InfoType:
         pass
 
-    @classmethod
     @abc.abstractmethod
     def _save(
-        cls,
+        self,
         obj: Any,
-        filepath: str | pathlib.Path,
         require_versions: bool,
         forbidden_modules: list[str] | tuple[str, ...],
         version_scraping: VersionScrapingMap | None,
@@ -114,13 +110,16 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
-        self.bag_info = self.read_bag_info(self.filepath)
-        if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
-            raise BagMismatchError(
-                f"The bag class {self.__class__} does not match the bag saved at "
-                f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
-                f"is {self.bag_info}"
-            )
+        try:
+            self.bag_info = self.read_bag_info(self.filepath)
+            if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
+                raise BagMismatchError(
+                    f"The bag class {self.__class__} does not match the bag saved at "
+                    f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
+                    f"is {self.bag_info}"
+                )
+        except FileNotFoundError:
+            pass
 
     @abc.abstractmethod
     def read_bag_info(self, filepath: pathlib.Path) -> InfoType:

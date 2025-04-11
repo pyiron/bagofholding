@@ -25,8 +25,8 @@ class TestBenchmark(unittest.TestCase):
 
     def test_context_benefit(self):
         for depth, n_reps in zip(
-                (2, 20, 200),
-                (500, 50, 5),
+            (2, 20, 200),
+            (500, 50, 5),
         ):
             with self.subTest(f"depth={depth}, reps={n_reps}"):
                 r = Recursing(depth)
@@ -49,7 +49,7 @@ class TestBenchmark(unittest.TestCase):
                     dt_context,
                     dt_direct,
                     msg="Expected the with-context speed to be faster since the file "
-                        "is not re-opened multiple times"
+                    "is not re-opened multiple times",
                 )
 
                 tolerable_overhead_ms = 10
@@ -58,7 +58,7 @@ class TestBenchmark(unittest.TestCase):
                     average_overhead_ms,
                     tolerable_overhead_ms,
                     msg="Average file-opening overhead exceeded the (somewhat "
-                        "arbitrary) threshold"
+                    "arbitrary) threshold",
                 )
 
     def test_timing(self):
