@@ -102,9 +102,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
         pass
 
     @staticmethod
-    def _write_metadata(
-        bag: H5Bag, path: str, metadata: Metadata | None
-    ) -> None:
+    def _write_metadata(bag: H5Bag, path: str, metadata: Metadata | None) -> None:
         if metadata is not None:
             for k, v in metadata.field_items():
                 if v is not None:
@@ -120,9 +118,7 @@ class Item(
 class Reference(Item[str, Any]):
     @classmethod
     def write(cls, obj: str, location: Location, packing: PackingArguments) -> None:
-        entry = location.create_dataset(
-            data=obj, dtype=h5py.string_dtype(encoding="utf-8")
-        )
+        location.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
         location.bag.pack_type(location.path, cls)
 
     @classmethod
@@ -154,9 +150,7 @@ class Global(Item[GlobalType, Any]):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
-        location.create_dataset(
-            data=value, dtype=h5py.string_dtype(encoding="utf-8")
-        )
+        location.create_dataset(data=value, dtype=h5py.string_dtype(encoding="utf-8"))
         location.bag.pack_type(location.path, cls)
         cls._write_metadata(
             location.bag,
@@ -180,7 +174,7 @@ class NoneItem(Item[type[None], None]):
     def write(
         cls, obj: type[None], location: Location, packing: PackingArguments
     ) -> None:
-        entry = location.create_dataset(data=h5py.Empty(dtype="f"))
+        location.create_dataset(data=h5py.Empty(dtype="f"))
         location.bag.pack_type(location.path, cls)
 
     @classmethod
@@ -196,7 +190,7 @@ class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     def write(
         cls, obj: ItemType, location: Location, packing: PackingArguments
     ) -> None:
-        entry = cls._make_dataset(obj, location)
+        cls._make_dataset(obj, location)
         location.bag.pack_type(location.path, cls)
 
     @classmethod
@@ -473,7 +467,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         location: Location,
         packing: PackingArguments,
     ) -> None:
-        entry = location.create_group()
+        location.create_group()
         location.bag.pack_type(location.path, cls)
         cls._write_subcontent(obj, location, packing)
 
