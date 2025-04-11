@@ -26,7 +26,6 @@ import numpy as np
 from bagofholding.exception import BagOfHoldingError
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
 from bagofholding.metadata import (
-    Metadata,
     VersionScrapingMap,
     VersionValidatorType,
     get_metadata,

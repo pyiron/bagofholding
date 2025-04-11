@@ -203,7 +203,9 @@ class H5Bag(Bag[H5Info]):
     def unpack_meta(self, path: str, key: str) -> str:
         return self.maybe_decode(self.file[path].attrs[key])
 
-    def pack_content_type(self, path: str, content_type: type[Content[Any, Any]]) -> None:
+    def pack_content_type(
+        self, path: str, content_type: type[Content[Any, Any]]
+    ) -> None:
         self.pack_meta(path, content_type.key, content_type.full_name())
 
     def unpack_content_type(self, path: str) -> str:
@@ -216,7 +218,7 @@ class H5Bag(Bag[H5Info]):
                     self.pack_meta(path, k, v)
 
     def unpack_metadata(self, path: str) -> Metadata | None:
-        metadata = {}
+        metadata: dict[str, str | None] = {}
         has_metadata = False
         for meta_key in Metadata.__dataclass_fields__:
             try:
