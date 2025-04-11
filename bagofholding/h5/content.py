@@ -101,12 +101,16 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     ) -> None:
         pass
 
+    @classmethod
+    def _pack_type(cls, bag: H5Bag, path: str) -> None:
+        bag.pack_meta(path, "content_type", cls.__module__ + "." + cls.__name__)
+
     @staticmethod
     def _write_metadata(bag: H5Bag, path: str, metadata: Metadata | None) -> None:
         if metadata is not None:
             for k, v in metadata.field_items():
                 if v is not None:
-                    bag._pack_metadata_piece(path, k, v)
+                    bag.pack_meta(path, k, v)
 
 
 class Item(
@@ -119,7 +123,7 @@ class Reference(Item[str, Any]):
     @classmethod
     def write(cls, obj: str, location: Location, packing: PackingArguments) -> None:
         location.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
-        location.bag.pack_type(location.path, cls)
+        cls._pack_type(location.bag, location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
@@ -151,7 +155,7 @@ class Global(Item[GlobalType, Any]):
         else:
             value = obj.__module__ + "." + obj.__qualname__
         location.create_dataset(data=value, dtype=h5py.string_dtype(encoding="utf-8"))
-        location.bag.pack_type(location.path, cls)
+        cls._pack_type(location.bag, location.path)
         cls._write_metadata(
             location.bag,
             location.path,
@@ -175,7 +179,7 @@ class NoneItem(Item[type[None], None]):
         cls, obj: type[None], location: Location, packing: PackingArguments
     ) -> None:
         location.create_dataset(data=h5py.Empty(dtype="f"))
-        location.bag.pack_type(location.path, cls)
+        cls._pack_type(location.bag, location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> None:
@@ -191,7 +195,7 @@ class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
         cls, obj: ItemType, location: Location, packing: PackingArguments
     ) -> None:
         cls._make_dataset(obj, location)
-        location.bag.pack_type(location.path, cls)
+        cls._pack_type(location.bag, location.path)
 
     @classmethod
     @abc.abstractmethod
@@ -269,7 +273,7 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
         packing: PackingArguments,
     ) -> None:
         cls._make_dataset(obj, location)
-        location.bag.pack_type(location.path, cls)
+        cls._pack_type(location.bag, location.path)
         cls._write_metadata(
             location.bag,
             location.path,
@@ -370,7 +374,7 @@ class Reducible(Group[object, object]):
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
         location.create_group()
-        location.bag.pack_type(location.path, cls)
+        cls._pack_type(location.bag, location.path)
         cls._write_metadata(
             location.bag,
             location.path,
@@ -468,7 +472,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         packing: PackingArguments,
     ) -> None:
         location.create_group()
-        location.bag.pack_type(location.path, cls)
+        cls._pack_type(location.bag, location.path)
         cls._write_subcontent(obj, location, packing)
 
     @classmethod
