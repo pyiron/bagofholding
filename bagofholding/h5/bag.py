@@ -211,7 +211,7 @@ class H5Bag(Bag[H5Info]):
                 metadata[meta_key] = self.unpack_meta(path, meta_key)
                 has_metadata = True
             except KeyError:
-                metadata[meta_key] = ""
+                metadata[meta_key] = None
         return Metadata(**metadata) if has_metadata else None
 
     @staticmethod
