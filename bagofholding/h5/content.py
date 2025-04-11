@@ -8,7 +8,16 @@ import pickle
 import types
 from collections.abc import Callable, Iterator
 from types import BuiltinFunctionType, FunctionType
-from typing import Any, ClassVar, Generic, SupportsIndex, TypeAlias, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Generic,
+    SupportsIndex,
+    TypeAlias,
+    TypeVar,
+    cast,
+)
 
 import bidict
 import h5py
@@ -28,6 +37,9 @@ from bagofholding.retrieve import (
     import_from_string,
 )
 
+if TYPE_CHECKING:
+    from bagofholding.h5.bag import H5Bag
+
 PackingMemoAlias: TypeAlias = bidict.bidict[int, str]
 ReferencesAlias: TypeAlias = list[object]
 UnpackingMemoAlias: TypeAlias = dict[str, Any]
@@ -41,7 +53,7 @@ PATH_DELIMITER = "/"
 
 @dataclasses.dataclass
 class Location:
-    file: h5py.File
+    bag: H5Bag
     path: str
 
     def relative_path(self, subpath: str) -> str:
@@ -49,13 +61,13 @@ class Location:
 
     @property
     def entry(self) -> h5py.Group | h5py.Dataset:
-        return self.file[self.path]
+        return self.bag.file[self.path]
 
     def create_dataset(self, **kwargs: Any) -> h5py.Dataset:
-        return self.file.create_dataset(self.path, **kwargs)
+        return self.bag.file.create_dataset(self.path, **kwargs)
 
     def create_group(self) -> h5py.Group:
-        return self.file.create_group(self.path)
+        return self.bag.file.create_group(self.path)
 
 
 @dataclasses.dataclass
@@ -130,7 +142,7 @@ class Reference(Item[str, Any]):
             return from_memo
         else:
             return unpack(
-                location.file,
+                location.bag,
                 reference,
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -386,7 +398,7 @@ class Reducible(Group[object, object]):
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
-                location.file,
+                location.bag,
                 location.relative_path(subpath),
                 packing.memo,
                 packing.references,
@@ -401,7 +413,7 @@ class Reducible(Group[object, object]):
         constructor = cast(
             ConstructorType,
             unpack(
-                location.file,
+                location.bag,
                 location.relative_path("constructor"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -411,7 +423,7 @@ class Reducible(Group[object, object]):
         constructor_args = cast(
             ConstructorArgsType,
             unpack(
-                location.file,
+                location.bag,
                 location.relative_path("args"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -422,7 +434,7 @@ class Reducible(Group[object, object]):
         unpacking.memo[location.path] = obj
         rv = (constructor, constructor_args) + tuple(
             unpack(
-                location.file,
+                location.bag,
                 location.relative_path(k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -492,7 +504,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
     ) -> None:
         pack(
             tuple(obj.keys()),
-            location.file,
+            location.bag,
             location.relative_path("keys"),
             packing.memo,
             packing.references,
@@ -503,7 +515,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         )
         pack(
             tuple(obj.values()),
-            location.file,
+            location.bag,
             location.relative_path("values"),
             packing.memo,
             packing.references,
@@ -520,7 +532,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
                 cast(
                     tuple[Any],
                     unpack(
-                        location.file,
+                        location.bag,
                         location.relative_path("keys"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
@@ -530,7 +542,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
                 cast(
                     tuple[Any],
                     unpack(
-                        location.file,
+                        location.bag,
                         location.relative_path("values"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
@@ -553,7 +565,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         for k, v in obj.items():
             pack(
                 v,
-                location.file,
+                location.bag,
                 location.relative_path(k),
                 packing.memo,
                 packing.references,
@@ -567,7 +579,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
     def read(cls, location: Location, unpacking: UnpackingArguments) -> dict[str, Any]:
         return {
             k: unpack(
-                location.file,
+                location.bag,
                 location.relative_path(k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -593,7 +605,7 @@ class Union(SimpleGroup[types.UnionType]):
         for i, v in enumerate(obj.__args__):
             pack(
                 v,
-                location.file,
+                location.bag,
                 location.relative_path(f"i{i}"),
                 packing.memo,
                 packing.references,
@@ -623,7 +635,7 @@ class Union(SimpleGroup[types.UnionType]):
     def read(cls, location: Location, unpacking: UnpackingArguments) -> types.UnionType:
         return cls._recursive_or(
             unpack(
-                location.file,
+                location.bag,
                 location.relative_path(f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -651,7 +663,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
         for i, v in enumerate(obj):
             pack(
                 v,
-                location.file,
+                location.bag,
                 location.relative_path(f"i{i}"),
                 packing.memo,
                 packing.references,
@@ -665,7 +677,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
     def read(cls, location: Location, unpacking: UnpackingArguments) -> IndexableType:
         return cls.recast(
             unpack(
-                location.file,
+                location.bag,
                 location.relative_path(f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -697,7 +709,7 @@ class PickleProtocolError(BagOfHoldingError, ValueError):
 
 def pack(
     obj: object,
-    file: h5py.File,
+    bag: H5Bag,
     path: str,
     memo: PackingMemoAlias,
     references: ReferencesAlias,
@@ -711,7 +723,7 @@ def pack(
             f"pickle protocol must be <= 4, got {_pickle_protocol}"
         )
 
-    location = Location(file=file, path=path)
+    location = Location(bag=bag, path=path)
     packing_args = PackingArguments(
         memo=memo,
         references=references,
@@ -799,7 +811,7 @@ def get_group_content_class(obj: object) -> type[Group[Any, Any]] | None:
 
 
 def unpack(
-    file: h5py.File,
+    bag: H5Bag,
     path: str,
     memo: UnpackingMemoAlias,
     version_validator: VersionValidatorType,
@@ -807,7 +819,7 @@ def unpack(
 ) -> object:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
-        entry = file[path]
+        entry = bag.file[path]
         content_class_string = maybe_decode(entry.attrs["content_type"])
         content_class = import_from_string(content_class_string)
         metadata = read_metadata(entry)
@@ -816,7 +828,7 @@ def unpack(
                 metadata, validator=version_validator, version_scraping=version_scraping
             )
         value = content_class.read(
-            Location(file=file, path=path),
+            Location(bag=bag, path=path),
             UnpackingArguments(
                 memo=memo,
                 version_validator=version_validator,

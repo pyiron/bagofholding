@@ -110,7 +110,7 @@ class H5Bag(Bag[H5Info]):
     ) -> Any:
         with self:
             unpacked = unpack(
-                self.file,
+                self,
                 path,
                 {},
                 version_validator=version_validator,
