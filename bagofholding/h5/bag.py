@@ -83,7 +83,7 @@ class H5Bag(Bag[H5Info]):
             self.open("a")
             pack(
                 obj,
-                self.file,
+                self,
                 self.storage_root,
                 bidict.bidict(),
                 [],
