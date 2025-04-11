@@ -4,7 +4,7 @@ import dataclasses
 import pathlib
 from collections.abc import Iterator
 from types import TracebackType
-from typing import Any, ClassVar, Literal, Self, SupportsIndex
+from typing import Any, ClassVar, Literal, Self, SupportsIndex, TYPE_CHECKING
 
 import bidict
 import h5py
@@ -14,6 +14,10 @@ from bagofholding.exception import BagOfHoldingError
 from bagofholding.h5.content import maybe_decode, pack, read_metadata, unpack
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
+
+
+if TYPE_CHECKING:
+    from bagofholding.h5.content import Content
 
 
 class FileAlreadyOpenError(BagOfHoldingError):
@@ -196,3 +200,10 @@ class H5Bag(Bag[H5Info]):
 
     def __del__(self) -> None:
         self.close()
+
+
+    def _pack_metadata_piece(self, path, key, value) -> None:
+        self.file[path].attrs[key] = value
+
+    def pack_type(self, path, content_type: type[Content]):
+        self._pack_metadata_piece(path, "content_type", content_type.__module__ + "." + content_type.__name__)
