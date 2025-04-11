@@ -11,7 +11,7 @@ import h5py
 
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.h5.content import pack, unpack
+from bagofholding.h5.content import Content, pack, unpack
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
@@ -140,7 +140,7 @@ class H5Bag(Bag[H5Info]):
         with self:
             entry = self.file[path]
             return (
-                self.unpack_meta(path, "content_type"),
+                self.unpack_content_type(path),
                 self.unpack_metadata(path),
                 tuple(entry.keys()) if isinstance(entry, h5py.Group) else None,
             )
@@ -202,6 +202,12 @@ class H5Bag(Bag[H5Info]):
 
     def unpack_meta(self, path: str, key: str) -> str:
         return self.maybe_decode(self.file[path].attrs[key])
+
+    def pack_content_type(self, path: str, content_type: type[Content[Any, Any]]) -> None:
+        self.pack_meta(path, content_type.key, content_type.full_name())
+
+    def unpack_content_type(self, path: str) -> str:
+        return self.unpack_meta(path, Content.key)
 
     def pack_metadata(self, path: str, metadata: Metadata | None) -> None:
         if metadata is not None:
