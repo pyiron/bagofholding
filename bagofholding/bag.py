@@ -16,6 +16,8 @@ from bagofholding.metadata import (
     get_version,
 )
 
+PATH_DELIMITER = "/"
+
 
 class BagMismatchError(BagOfHoldingError, ValueError):
     pass
@@ -181,6 +183,9 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.list_paths())
+
+    def join(self, *paths: str) -> str:
+        return PATH_DELIMITER.join(paths)
 
     @staticmethod
     def pickle_check(

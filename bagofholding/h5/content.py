@@ -48,8 +48,6 @@ UnpackingMemoAlias: TypeAlias = dict[str, Any]
 PackingType = TypeVar("PackingType", bound=Any)
 UnpackingType = TypeVar("UnpackingType", bound=Any)
 
-PATH_DELIMITER = "/"
-
 
 @dataclasses.dataclass
 class Location:
@@ -57,7 +55,7 @@ class Location:
     path: str
 
     def relative_path(self, subpath: str) -> str:
-        return self.path + PATH_DELIMITER + subpath
+        return self.bag.join(self.path, subpath)
 
     @property
     def entry(self) -> h5py.Group | h5py.Dataset:
