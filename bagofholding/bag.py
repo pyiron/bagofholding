@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import os.path
 import pathlib
 import pickle
 from collections.abc import ItemsView, Iterator, Mapping
@@ -17,6 +18,10 @@ from bagofholding.metadata import (
 
 
 class BagMismatchError(BagOfHoldingError, ValueError):
+    pass
+
+
+class FilepathError(BagOfHoldingError, FileExistsError):
     pass
 
 
@@ -56,6 +61,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         forbidden_modules: list[str] | tuple[str, ...] = (),
         version_scraping: VersionScrapingMap | None = None,
         _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
+        overwrite_existing: bool = True
     ) -> None:
         """
         Save a python object to file.
@@ -76,6 +82,11 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
         """
+        if os.path.exists(filepath):
+            if overwrite_existing and os.path.isfile(filepath):
+                os.remove(filepath)
+            else:
+                raise FileExistsError(f"{filepath} already exists or is not a file.")
         bag = cls(filepath)
         bag._write_bag_info(cls.get_bag_info())
         bag._save(
@@ -95,7 +106,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
-        try:
+        if os.path.isfile(self.filepath):
             self.bag_info = self.read_bag_info(self.filepath)
             if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
                 raise BagMismatchError(
@@ -103,8 +114,6 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                     f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
                     f"is {self.bag_info}"
                 )
-        except FileNotFoundError:
-            pass
 
     @abc.abstractmethod
     def _write_bag_info(
