@@ -21,6 +21,8 @@ class H5Info(BagInfo):
 
 class H5Bag(Bag[H5Info]):
     libver_str: ClassVar[str] = "latest"
+    file: h5py.File | None
+    _context_depth: int
 
     @classmethod
     def _write_bag_info(
@@ -65,9 +67,16 @@ class H5Bag(Bag[H5Info]):
                 _pickle_protocol=_pickle_protocol,
             )
 
+    def __init__(
+        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
+    ) -> None:
+        self.file = None
+        self._context_depth = 0
+        super().__init__(filepath)
+
     def read_bag_info(self, filepath: pathlib.Path) -> H5Info:
-        with h5py.File(filepath, "r", libver=self.libver_str) as f:
-            info = H5Info(**{k: f.attrs[k] for k in H5Info.__dataclass_fields__})
+        with self:
+            info = H5Info(**{k: self.file.attrs[k] for k in H5Info.__dataclass_fields__})
         return info
 
     def load(
@@ -76,9 +85,9 @@ class H5Bag(Bag[H5Info]):
         version_validator: VersionValidatorType = "exact",
         version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
-        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
+        with self:
             unpacked = unpack(
-                f,
+                self.file,
                 path,
                 {},
                 version_validator=version_validator,
@@ -87,8 +96,8 @@ class H5Bag(Bag[H5Info]):
         return unpacked
 
     def __getitem__(self, path: str) -> Metadata | None:
-        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
-            return read_metadata(f[path])
+        with self:
+            return read_metadata(self.file[path])
 
     def get_enriched_metadata(
         self, path: str
@@ -105,8 +114,8 @@ class H5Bag(Bag[H5Info]):
             (Metadata | None): The metadata, if any.
             (tuple[str, ...] | None): The sub-entry name(s), if any.
         """
-        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
-            entry = f[path]
+        with self:
+            entry = self.file[path]
             return (
                 maybe_decode(entry.attrs["content_type"]),
                 read_metadata(entry),
@@ -116,8 +125,8 @@ class H5Bag(Bag[H5Info]):
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
         paths: list[str] = []
-        with h5py.File(self.filepath, "r", libver=self.libver_str) as f:
-            f.visit(paths.append)
+        with self:
+            self.file.visit(paths.append)
         return paths
 
     def __len__(self) -> int:
@@ -133,3 +142,22 @@ class H5Bag(Bag[H5Info]):
             # and this is not correctly passing on the hint
         except ImportError:
             return self.list_paths()
+
+    def __enter__(self):
+        self._context_depth += 1
+        if self.file is None:
+            self.file = h5py.File(self.filepath, "r", libver=self.libver_str)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._context_depth -= 1
+        if self._context_depth == 0:
+            self.close()
+
+    def close(self):
+        if self.file is not None:
+            self.file.close()
+            self.file = None
+
+    def __del__(self):
+        self.close()
