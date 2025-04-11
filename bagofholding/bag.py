@@ -61,7 +61,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         forbidden_modules: list[str] | tuple[str, ...] = (),
         version_scraping: VersionScrapingMap | None = None,
         _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
-        overwrite_existing: bool = True
+        overwrite_existing: bool = True,
     ) -> None:
         """
         Save a python object to file.
@@ -117,19 +117,19 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
 
     @abc.abstractmethod
     def _write_bag_info(
-            self,
-            bag_info: InfoType,
+        self,
+        bag_info: InfoType,
     ) -> None:
         pass
 
     @abc.abstractmethod
     def _save(
-            self,
-            obj: Any,
-            require_versions: bool,
-            forbidden_modules: list[str] | tuple[str, ...],
-            version_scraping: VersionScrapingMap | None,
-            _pickle_protocol: SupportsIndex,
+        self,
+        obj: Any,
+        require_versions: bool,
+        forbidden_modules: list[str] | tuple[str, ...],
+        version_scraping: VersionScrapingMap | None,
+        _pickle_protocol: SupportsIndex,
     ) -> None:
         # pass _pickle_protocol to invocations of __reduce_ex__
         pass
