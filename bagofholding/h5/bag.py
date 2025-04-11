@@ -46,7 +46,7 @@ class H5Bag(Bag[H5Info]):
     def __init__(
         self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
     ) -> None:
-        self.file = None
+        self._file = None
         self._context_depth = 0
         super().__init__(filepath)
 
