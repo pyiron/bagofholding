@@ -103,12 +103,12 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
     @staticmethod
     def _write_metadata(
-        entry: h5py.Group | h5py.Dataset, metadata: Metadata | None
+        bag: H5Bag, path: str, metadata: Metadata | None
     ) -> None:
         if metadata is not None:
             for k, v in metadata.field_items():
                 if v is not None:
-                    entry.attrs[k] = v
+                    bag._pack_metadata_piece(path, k, v)
 
 
 class Item(
@@ -154,12 +154,13 @@ class Global(Item[GlobalType, Any]):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
-        entry = location.create_dataset(
+        location.create_dataset(
             data=value, dtype=h5py.string_dtype(encoding="utf-8")
         )
         location.bag.pack_type(location.path, cls)
         cls._write_metadata(
-            entry,
+            location.bag,
+            location.path,
             get_metadata(
                 obj,
                 packing.require_versions,
@@ -273,10 +274,11 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
         location: Location,
         packing: PackingArguments,
     ) -> None:
-        entry = cls._make_dataset(obj, location)
+        cls._make_dataset(obj, location)
         location.bag.pack_type(location.path, cls)
         cls._write_metadata(
-            entry,
+            location.bag,
+            location.path,
             get_metadata(
                 obj,
                 packing.require_versions,
@@ -298,7 +300,7 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
         obj: np.ndarray[tuple[int, ...], H5DtypeAlias],
         location: Location,
     ) -> h5py.Dataset:
-        return location.create_dataset(data=obj)
+        return location.bag.file.create_dataset(location.path, data=obj)
 
     @classmethod
     def read(
@@ -373,10 +375,11 @@ class Reducible(Group[object, object]):
         reduced_value = (
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
-        entry = location.create_group()
+        location.create_group()
         location.bag.pack_type(location.path, cls)
         cls._write_metadata(
-            entry,
+            location.bag,
+            location.path,
             get_metadata(
                 obj,
                 packing.require_versions,
