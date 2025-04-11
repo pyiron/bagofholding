@@ -105,13 +105,6 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     def _pack_type(cls, bag: H5Bag, path: str) -> None:
         bag.pack_meta(path, "content_type", cls.__module__ + "." + cls.__name__)
 
-    @staticmethod
-    def _write_metadata(bag: H5Bag, path: str, metadata: Metadata | None) -> None:
-        if metadata is not None:
-            for k, v in metadata.field_items():
-                if v is not None:
-                    bag.pack_meta(path, k, v)
-
 
 class Item(
     Content[PackingType, UnpackingType], Generic[PackingType, UnpackingType], abc.ABC
@@ -156,8 +149,7 @@ class Global(Item[GlobalType, Any]):
             value = obj.__module__ + "." + obj.__qualname__
         location.create_dataset(data=value, dtype=h5py.string_dtype(encoding="utf-8"))
         cls._pack_type(location.bag, location.path)
-        cls._write_metadata(
-            location.bag,
+        location.bag.pack_metadata(
             location.path,
             get_metadata(
                 obj,
@@ -274,8 +266,7 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     ) -> None:
         cls._make_dataset(obj, location)
         cls._pack_type(location.bag, location.path)
-        cls._write_metadata(
-            location.bag,
+        location.bag.pack_metadata(
             location.path,
             get_metadata(
                 obj,
@@ -375,16 +366,13 @@ class Reducible(Group[object, object]):
         )
         location.create_group()
         cls._pack_type(location.bag, location.path)
-        cls._write_metadata(
-            location.bag,
+        location.bag.pack_metadata(
             location.path,
             get_metadata(
                 obj,
                 packing.require_versions,
                 packing.forbidden_modules,
-                get_metadata(
-                    {} if packing.version_scraping is None else packing.version_scraping
-                ),
+                {} if packing.version_scraping is None else packing.version_scraping,
             ),
         )
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):

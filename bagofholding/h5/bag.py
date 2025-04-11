@@ -203,6 +203,12 @@ class H5Bag(Bag[H5Info]):
     def unpack_meta(self, path: str, key: str) -> str:
         return self.maybe_decode(self.file[path].attrs[key])
 
+    def pack_metadata(self, path: str, metadata: Metadata | None) -> None:
+        if metadata is not None:
+            for k, v in metadata.field_items():
+                if v is not None:
+                    self.pack_meta(path, k, v)
+
     def unpack_metadata(self, path: str) -> Metadata | None:
         metadata = {}
         has_metadata = False
