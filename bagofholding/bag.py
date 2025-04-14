@@ -6,7 +6,7 @@ import os.path
 import pathlib
 import pickle
 from collections.abc import ItemsView, Iterator, Mapping
-from typing import Any, ClassVar, Generic, SupportsIndex, TypeVar
+from typing import Any, ClassVar, Generic, Protocol, SupportsIndex, TypeVar
 
 from bagofholding.exception import BagOfHoldingError
 from bagofholding.metadata import (
@@ -38,6 +38,16 @@ class BagInfo:
 
 
 InfoType = TypeVar("InfoType", bound=BagInfo)
+
+
+class GroupLike(Protocol):
+    @abc.abstractmethod
+    def __iter__(self) -> Iterator[str]:
+        pass
+
+    @abc.abstractmethod
+    def __len__(self) -> int:
+        pass
 
 
 class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
@@ -214,3 +224,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 raise e
             return str(e)
         return None
+
+    @abc.abstractmethod
+    def open_group(self, path: str) -> GroupLike:
+        pass
