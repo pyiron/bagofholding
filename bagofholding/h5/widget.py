@@ -50,15 +50,20 @@ class BagTree(ipytree.Tree):  # type: ignore
         self.root.add_node(self.object)
 
     def _create_node(self, path: str) -> ipytree.Node:
-        content_type, metadata, subentries = self.bag.get_enriched_metadata(path)
+        with self.bag:
+            metadata = self.bag[path]
+            try:
+                subentries = tuple(k for k in self.bag.open_group(path))
+            except TypeError:
+                subentries = None
 
         label_base = path.split("/")[-1]
-        truncated_content = content_type.lstrip(Reducible.__module__)
+        truncated_content = metadata.content_type.lstrip(Reducible.__module__)
         label = f"{label_base} ({truncated_content})"
 
         icon = "file"
         style = "default"
-        if content_type == f"{Reducible.__module__}.{Reducible.__qualname__}":
+        if metadata.content_type == f"{Reducible.__module__}.{Reducible.__qualname__}":
             icon = "code"
             style = "success"
         elif subentries is not None:

@@ -128,30 +128,6 @@ class H5Bag(Bag[H5Info]):
         with self:
             return self.unpack_metadata(path)
 
-    def get_enriched_metadata(
-        self, path: str
-    ) -> tuple[str, Metadata, tuple[str, ...] | None]:
-        """
-        Enriched browsing information, e.g. to support a browsing widget.
-        Still doesn't actually load the object, but exploits more available information.
-
-        Args:
-            path (str): Where in the h5 file to look
-
-        Returns:
-            (str): The content type class string.
-            (Metadata | None): The metadata, if any.
-            (tuple[str, ...] | None): The sub-entry name(s), if any.
-        """
-        with self:
-            entry = self.file[path]
-            metadata = self.unpack_metadata(path)
-            return (
-                metadata.content_type,
-                metadata,
-                tuple(entry.keys()) if isinstance(entry, h5py.Group) else None,
-            )
-
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
         paths: list[str] = []
@@ -224,7 +200,9 @@ class H5Bag(Bag[H5Info]):
                 metadata[meta_key] = None
         content_type = metadata.pop("content_type", None)
         if content_type is None:
-            raise InvalidMetadataError(f"Metadata at {path} is missing a content type")
+            raise InvalidMetadataError(
+                f"Metadata at {path} is missing a content type"
+            )
         return Metadata(content_type, **metadata)
 
     @staticmethod
