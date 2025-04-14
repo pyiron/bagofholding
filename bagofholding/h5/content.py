@@ -29,7 +29,9 @@ from bagofholding.metadata import (
     Metadata,
     VersionScrapingMap,
     VersionValidatorType,
-    get_metadata,
+    get_module,
+    get_qualname,
+    get_version,
     validate_version,
 )
 from bagofholding.retrieve import (
@@ -70,6 +72,14 @@ class NotData:
     pass
 
 
+class NoVersionError(BagOfHoldingError, ValueError):
+    pass
+
+
+class ModuleForbiddenError(BagOfHoldingError, ValueError):
+    pass
+
+
 class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
     _rich_metadata: ClassVar[bool] = False
@@ -96,13 +106,34 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     @classmethod
     def _get_metadata(cls, obj: PackingType, packing: PackingArguments) -> Metadata:
         if cls._rich_metadata:
-            return get_metadata(
-                obj,
-                require_versions=packing.require_versions,
-                forbidden_modules=packing.forbidden_modules,
-                version_scraping=packing.version_scraping,
-                content_type=cls.full_name(),
-            )
+            module = get_module(obj)
+            if module == "builtins":
+                return Metadata(content_type=cls.full_name())
+            else:
+                if module.split(".")[0] in packing.forbidden_modules:
+                    raise ModuleForbiddenError(
+                        f"Module '{module}' is forbidden as a source of stored objects. Change "
+                        f"the `forbidden_modules` or move this object to an allowed module."
+                    )
+
+                version = get_version(module, packing.version_scraping)
+                if packing.require_versions and version is None:
+                    raise NoVersionError(
+                        f"Could not find a version for {module}. Either disable "
+                        f"`require_versions`, use `version_scraping` to find an existing "
+                        f"version for this package, or add versioning to the unversioned "
+                        f"package."
+                    )
+
+                return Metadata(
+                    content_type=cls.full_name(),
+                    qualname=get_qualname(obj),
+                    module=module,
+                    version=version,
+                    meta=(
+                        str(obj.__metadata__) if hasattr(obj, "__metadata__") else None
+                    ),
+                )
         else:
             return Metadata(content_type=cls.full_name())
 

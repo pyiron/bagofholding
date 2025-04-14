@@ -18,11 +18,13 @@ from pyiron_snippets.dotdict import DotDict
 import bagofholding.h5.content as c
 from bagofholding.bag import BagMismatchError
 from bagofholding.h5.bag import H5Bag, H5Info
-from bagofholding.h5.content import PickleProtocolError
-from bagofholding.metadata import (
-    EnvironmentMismatchError,
+from bagofholding.h5.content import (
     ModuleForbiddenError,
     NoVersionError,
+    PickleProtocolError,
+)
+from bagofholding.metadata import (
+    EnvironmentMismatchError,
 )
 
 

@@ -12,14 +12,6 @@ from jedi.inference.gradual.typing import TypeAlias
 from bagofholding.exception import BagOfHoldingError
 
 
-class NoVersionError(BagOfHoldingError, ValueError):
-    pass
-
-
-class ModuleForbiddenError(BagOfHoldingError, ValueError):
-    pass
-
-
 @dataclass
 class Metadata:
     content_type: str | None = None
@@ -32,64 +24,11 @@ class Metadata:
         return asdict(self).items()
 
 
-def get_metadata(
-    obj: Any,
-    require_versions: bool = False,
-    forbidden_modules: list[str] | tuple[str, ...] = (),
-    version_scraping: VersionScrapingMap | None = None,
-    content_type: str | None = None,
-) -> Metadata:
-    """
-
-    Args:
-        obj (Any): The object who's module to extract metadata from.
-        require_versions (bool): Whether to require a metadata for reduced and complex
-            objects to contain a non-None version. (Default is False, objects can be
-             stored from non-versioned packages/modules.)
-        version_scraping (dict[str, Callable[[str], str]] | None): An optional
-            dictionary mapping module names to a callable that takes this name and
-            returns a version (or None). The default callable imports the module
-            string and looks for a `__version__` attribute.
-
-    Returns:
-        (Metadata|None): The metadata extracted from the object, or `None` if the
-            object is builtin.
-    """
-    module = _get_module(obj)
-    if module == "builtins":
-        return Metadata()
-    else:
-        if module.split(".")[0] in forbidden_modules:
-            raise ModuleForbiddenError(
-                f"Module '{module}' is forbidden as a source of stored objects. Change "
-                f"the `forbidden_modules` or move this object to an allowed module."
-            )
-
-        version = get_version(
-            module, {} if version_scraping is None else version_scraping
-        )
-        if require_versions and version is None:
-            raise NoVersionError(
-                f"Could not find a version for {module}. Either disable "
-                f"`require_versions`, use `version_scraping` to find an existing "
-                f"version for this package, or add versioning to the unversioned "
-                f"package."
-            )
-
-        return Metadata(
-            content_type=content_type,
-            qualname=_get_qualname(obj),
-            module=module,
-            version=version,
-            meta=str(obj.__metadata__) if hasattr(obj, "__metadata__") else None,
-        )
-
-
-def _get_module(obj: Any) -> str:
+def get_module(obj: Any) -> str:
     return obj.__module__ if isinstance(obj, type) else type(obj).__module__
 
 
-def _get_qualname(obj: Any) -> str:
+def get_qualname(obj: Any) -> str:
     return obj.__qualname__ if isinstance(obj, type) else type(obj).__qualname__
 
 
