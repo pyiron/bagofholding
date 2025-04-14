@@ -192,14 +192,14 @@ class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def _make_dataset(cls, obj: ItemType, location: Location) -> h5py.Dataset:
+    def _make_dataset(cls, obj: ItemType, location: Location) -> None:
         pass
 
 
 class Complex(SimpleItem[complex]):
     @classmethod
-    def _make_dataset(cls, obj: complex, location: Location) -> h5py.Dataset:
-        return location.create_dataset(data=np.array([obj.real, obj.imag]))
+    def _make_dataset(cls, obj: complex, location: Location) -> None:
+        location.create_dataset(data=np.array([obj.real, obj.imag]))
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> complex:
@@ -209,8 +209,8 @@ class Complex(SimpleItem[complex]):
 
 class Str(SimpleItem[str]):
     @classmethod
-    def _make_dataset(cls, obj: str, location: Location) -> h5py.Dataset:
-        return location.create_dataset(
+    def _make_dataset(cls, obj: str, location: Location) -> None:
+        location.create_dataset(
             data=obj, dtype=h5py.string_dtype(encoding="utf-8")
         )
 
@@ -221,8 +221,8 @@ class Str(SimpleItem[str]):
 
 class Bytes(SimpleItem[bytes]):
     @classmethod
-    def _make_dataset(cls, obj: bytes, location: Location) -> h5py.Dataset:
-        return location.create_dataset(data=np.void(obj))
+    def _make_dataset(cls, obj: bytes, location: Location) -> None:
+        location.create_dataset(data=np.void(obj))
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> bytes:
@@ -233,8 +233,8 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     recast: type[ItemType]
 
     @classmethod
-    def _make_dataset(cls, obj: ItemType, location: Location) -> h5py.Dataset:
-        return location.create_dataset(data=obj)
+    def _make_dataset(cls, obj: ItemType, location: Location) -> None:
+        location.create_dataset(data=obj)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> ItemType:
