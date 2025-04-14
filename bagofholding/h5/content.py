@@ -58,9 +58,6 @@ class Location:
     def entry(self) -> h5py.Group | h5py.Dataset:
         return self.bag.file[self.path]
 
-    def create_group(self) -> h5py.Group:
-        return self.bag.file.create_group(self.path)
-
 
 @dataclasses.dataclass
 class PackingArguments:
@@ -342,7 +339,7 @@ class Reducible(Group[object, object]):
         reduced_value = (
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
-        location.create_group()
+        location.bag.pack_group(location.path)
         location.bag.pack_content_type(cls, location.path)
         location.bag.pack_metadata(metadata, location.path)
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
@@ -430,7 +427,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         packing: PackingArguments,
         metadata: Metadata | None = None,
     ) -> None:
-        location.create_group()
+        location.bag.pack_group(location.path)
         location.bag.pack_content_type(cls, location.path)
         cls._write_subcontent(obj, location, packing)
 

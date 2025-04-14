@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from types import TracebackType
 from typing import Any, ClassVar, Literal, Self, SupportsIndex, cast
 
@@ -280,3 +280,6 @@ class H5Bag(Bag[H5Info]):
 
     def unpack_bytearray(self, path: str) -> bytearray:
         return bytearray(self.file[path][()])
+
+    def pack_group(self, path: str) -> None:
+        self.file.create_group(path)
