@@ -154,7 +154,6 @@ class Item(
         packing: PackingArguments,
     ) -> None:
         cls._write_item(obj, bag, path)
-        bag.pack_content_type(cls, path)
         bag.pack_metadata(cls._get_metadata(obj, packing), path)
 
     @classmethod
@@ -379,7 +378,6 @@ class Reducible(Group[object, object]):
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
         bag.create_group(path)
-        bag.pack_content_type(cls, path)
         bag.pack_metadata(cls._get_metadata(obj, packing), path)
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
@@ -467,7 +465,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         packing: PackingArguments,
     ) -> None:
         bag.create_group(path)
-        bag.pack_content_type(cls, path)
+        bag.pack_metadata(cls._get_metadata(obj, packing), path)
         cls._write_subcontent(obj, bag, path, packing)
 
     @classmethod
@@ -826,9 +824,8 @@ def unpack(
 ) -> object:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
-        content_class_string = bag.unpack_content_type(path)
-        content_class = import_from_string(content_class_string)
         metadata = bag.unpack_metadata(path)
+        content_class = import_from_string(metadata.content_type)
         if metadata is not None:
             validate_version(
                 metadata, validator=version_validator, version_scraping=version_scraping

@@ -145,9 +145,10 @@ class H5Bag(Bag[H5Info]):
         """
         with self:
             entry = self.file[path]
+            metadata = self.unpack_metadata(path)
             return (
-                self.unpack_content_type(path),
-                self.unpack_metadata(path),
+                metadata.content_type,
+                metadata,
                 tuple(entry.keys()) if isinstance(entry, h5py.Group) else None,
             )
 
@@ -208,14 +209,6 @@ class H5Bag(Bag[H5Info]):
 
     def _unpack_meta(self, path: str, key: str) -> str:
         return self.maybe_decode(self.file[path].attrs[key])
-
-    def pack_content_type(
-        self, content_type: type[Content[Any, Any]], path: str
-    ) -> None:
-        self._pack_meta(path, self._content_key, content_type.full_name())
-
-    def unpack_content_type(self, path: str) -> str:
-        return self._unpack_meta(path, self._content_key)
 
     def pack_metadata(self, metadata: Metadata, path: str) -> None:
         for k, v in metadata.field_items():
