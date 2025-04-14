@@ -32,6 +32,7 @@ class H5Info(BagInfo):
 
 class H5Bag(Bag[H5Info]):
     libver_str: ClassVar[str] = "latest"
+    _content_key: ClassVar[str] = "content_type"
     _file: h5py.File | None
     _context_depth: int
 
@@ -207,10 +208,10 @@ class H5Bag(Bag[H5Info]):
     def pack_content_type(
         self, content_type: type[Content[Any, Any]], path: str
     ) -> None:
-        self._pack_meta(path, content_type.key, content_type.full_name())
+        self._pack_meta(path, self._content_key, content_type.full_name())
 
     def unpack_content_type(self, path: str) -> str:
-        return self._unpack_meta(path, Content.key)
+        return self._unpack_meta(path, self._content_key)
 
     def pack_metadata(self, metadata: Metadata | None, path: str) -> None:
         if metadata is not None:

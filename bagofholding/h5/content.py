@@ -78,8 +78,6 @@ class NotData:
 
 class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
-    key: ClassVar[str] = "content_type"
-
     @classmethod
     @abc.abstractmethod
     def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> UnpackingType:
