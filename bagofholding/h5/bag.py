@@ -4,7 +4,7 @@ import dataclasses
 import pathlib
 from collections.abc import Iterator
 from types import TracebackType
-from typing import Any, ClassVar, Literal, Self, SupportsIndex
+from typing import Any, ClassVar, Literal, Self, SupportsIndex, cast
 
 import bidict
 import h5py
@@ -231,3 +231,9 @@ class H5Bag(Bag[H5Info]):
     @staticmethod
     def maybe_decode(attr: str | bytes) -> str:
         return attr if isinstance(attr, str) else attr.decode("utf-8")
+
+    def write_string(self, obj: str, path: str) -> None:
+        self.file.create_dataset(path, data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
+
+    def read_string(self, path: str) -> str:
+        return cast(str, self.file[path][()].decode("utf-8"))

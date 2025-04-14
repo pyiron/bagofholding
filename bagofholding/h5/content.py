@@ -116,12 +116,12 @@ class Item(
 class Reference(Item[str, Any]):
     @classmethod
     def write(cls, obj: str, location: Location, packing: PackingArguments) -> None:
-        location.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
+        location.bag.write_string(obj, location.path)
         location.bag.pack_content_type(location.path, cls)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
-        reference = location.entry[()].decode("utf-8")
+        reference = location.bag.read_string(location.path)
         from_memo = unpacking.memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
@@ -148,7 +148,7 @@ class Global(Item[GlobalType, Any]):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
-        location.create_dataset(data=value, dtype=h5py.string_dtype(encoding="utf-8"))
+        location.bag.write_string(value, location.path)
         location.bag.pack_content_type(location.path, cls)
         location.bag.pack_metadata(
             location.path,
@@ -162,7 +162,7 @@ class Global(Item[GlobalType, Any]):
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
-        import_string = location.entry[()].decode("utf-8")
+        import_string = location.bag.read_string(location.path)
         return import_from_string(import_string)
 
 
@@ -216,7 +216,7 @@ class Str(SimpleItem[str]):
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> str:
-        return cast(str, location.entry[()].decode("utf-8"))
+        return location.bag.read_string(location.path)
 
 
 class Bytes(SimpleItem[bytes]):
