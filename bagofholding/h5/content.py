@@ -124,8 +124,8 @@ class Item(
         metadata: Metadata | None = None,
     ) -> None:
         cls._write_item(obj, location)
-        location.bag.pack_content_type(location.path, cls)
-        location.bag.pack_metadata(location.path, metadata)
+        location.bag.pack_content_type(cls, location.path)
+        location.bag.pack_metadata(metadata, location.path)
 
     @classmethod
     @abc.abstractmethod
@@ -333,8 +333,8 @@ class Reducible(Group[object, object]):
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
         location.create_group()
-        location.bag.pack_content_type(location.path, cls)
-        location.bag.pack_metadata(location.path, metadata)
+        location.bag.pack_content_type(cls, location.path)
+        location.bag.pack_metadata(metadata, location.path)
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
@@ -421,7 +421,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         metadata: Metadata | None = None,
     ) -> None:
         location.create_group()
-        location.bag.pack_content_type(location.path, cls)
+        location.bag.pack_content_type(cls, location.path)
         cls._write_subcontent(obj, location, packing)
 
     @classmethod
