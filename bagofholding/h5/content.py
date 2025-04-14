@@ -78,9 +78,13 @@ class NotData:
 
 class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
+    _rich_metadata: ClassVar[bool] = False
+
     @classmethod
     @abc.abstractmethod
-    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> UnpackingType:
+    def read(
+        cls, bag: H5Bag, path: str, unpacking: UnpackingArguments
+    ) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
 
@@ -89,11 +93,24 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     def write(
         cls,
         obj: PackingType,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
-        metadata: Metadata | None = None,
     ) -> None:
         pass
+
+    @classmethod
+    def _get_metadata(cls, obj: PackingType, packing: PackingArguments) -> Metadata:
+        if cls._rich_metadata:
+            return get_metadata(
+                obj,
+                require_versions=packing.require_versions,
+                forbidden_modules=packing.forbidden_modules,
+                version_scraping=packing.version_scraping,
+                content_type=cls.full_name(),
+            )
+        else:
+            return Metadata(content_type=cls.full_name())
 
     @classmethod
     def full_name(cls) -> str:
@@ -107,13 +124,13 @@ class Item(
     def write(
         cls,
         obj: PackingType,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
-        metadata: Metadata | None = None,
     ) -> None:
         cls._write_item(obj, bag, path)
         bag.pack_content_type(cls, path)
-        bag.pack_metadata(metadata, path)
+        bag.pack_metadata(cls._get_metadata(obj, packing), path)
 
     @classmethod
     @abc.abstractmethod
@@ -146,6 +163,8 @@ GlobalType: TypeAlias = type[type] | FunctionType | str
 
 
 class Global(Item[GlobalType, Any]):
+    _rich_metadata = True
+
     @classmethod
     def _write_item(cls, obj: GlobalType, bag: H5Bag, path: str) -> None:
         value: str
@@ -249,7 +268,7 @@ class Bytearray(SimpleItem[bytearray]):
 
 
 class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
-    pass
+    _rich_metadata = True
 
 
 class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
@@ -262,7 +281,8 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
     def read(
         cls,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         unpacking: UnpackingArguments,
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(
@@ -311,7 +331,7 @@ PickleHint: TypeAlias = str | tuple[Any, ...]
 
 
 class Reducible(Group[object, object]):
-
+    _rich_metadata = True
     reduction_fields: ClassVar[tuple[str, str, str, str, str, str]] = (
         "constructor",
         "args",
@@ -325,9 +345,9 @@ class Reducible(Group[object, object]):
     def write(
         cls,
         obj: object,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
-        metadata: Metadata | None = None,
         rv: ReduceReturnType | None = None,
     ) -> None:
         reduced_value = (
@@ -335,7 +355,7 @@ class Reducible(Group[object, object]):
         )
         bag.create_group(path)
         bag.pack_content_type(cls, path)
-        bag.pack_metadata(metadata, path)
+        bag.pack_metadata(cls._get_metadata(obj, packing), path)
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
@@ -381,9 +401,7 @@ class Reducible(Group[object, object]):
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in cls.reduction_fields[
-                2 : len(bag.open_group(path))
-            ]
+            for k in cls.reduction_fields[2 : len(bag.open_group(path))]
         )
         n_items = len(rv)
         if n_items >= 3 and rv[2] is not None:
@@ -419,9 +437,9 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
     def write(
         cls,
         obj: PackingType,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
-        metadata: Metadata | None = None,
     ) -> None:
         bag.create_group(path)
         bag.pack_content_type(cls, path)
@@ -432,7 +450,8 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
     def _write_subcontent(
         cls,
         obj: PackingType,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
     ) -> h5py.Group:
         pass
@@ -443,7 +462,8 @@ class Dict(SimpleGroup[dict[Any, Any]]):
     def _write_subcontent(
         cls,
         obj: dict[Any, Any],
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
     ) -> None:
         pack(
@@ -470,7 +490,9 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         )
 
     @classmethod
-    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> dict[Any, Any]:
+    def read(
+        cls, bag: H5Bag, path: str, unpacking: UnpackingArguments
+    ) -> dict[Any, Any]:
         return dict(
             zip(
                 cast(
@@ -503,7 +525,8 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
     def _write_subcontent(
         cls,
         obj: dict[str, Any],
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
     ) -> None:
         for k, v in obj.items():
@@ -520,7 +543,9 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
             )
 
     @classmethod
-    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> dict[str, Any]:
+    def read(
+        cls, bag: H5Bag, path: str, unpacking: UnpackingArguments
+    ) -> dict[str, Any]:
         return {
             k: unpack(
                 bag,
@@ -543,7 +568,8 @@ class Union(SimpleGroup[types.UnionType]):
     def _write_subcontent(
         cls,
         obj: types.UnionType,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
     ) -> None:
         for i, v in enumerate(obj.__args__):
@@ -576,7 +602,9 @@ class Union(SimpleGroup[types.UnionType]):
         return union
 
     @classmethod
-    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> types.UnionType:
+    def read(
+        cls, bag: H5Bag, path: str, unpacking: UnpackingArguments
+    ) -> types.UnionType:
         return cls._recursive_or(
             unpack(
                 bag,
@@ -601,7 +629,8 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
     def _write_subcontent(
         cls,
         obj: IndexableType,
-        bag: H5Bag, path: str,
+        bag: H5Bag,
+        path: str,
         packing: PackingArguments,
     ) -> None:
         for i, v in enumerate(obj):
@@ -618,7 +647,9 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
             )
 
     @classmethod
-    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> IndexableType:
+    def read(
+        cls, bag: H5Bag, path: str, unpacking: UnpackingArguments
+    ) -> IndexableType:
         return cls.recast(
             unpack(
                 bag,
@@ -681,13 +712,9 @@ def pack(
     if simple_class is not None:
         simple_class.write(
             obj,
-            bag, path,
+            bag,
+            path,
             packing_args,
-            metadata=(
-                get_metadata(obj, require_versions, forbidden_modules, version_scraping)
-                if simple_class is Global
-                else None
-            ),
         )
         return
 
@@ -702,14 +729,7 @@ def pack(
 
     complex_class = get_complex_content_class(obj)
     if complex_class is not None:
-        complex_class.write(
-            obj,
-            bag, path,
-            packing_args,
-            metadata=get_metadata(
-                obj, require_versions, forbidden_modules, version_scraping
-            ),
-        )
+        complex_class.write(obj, bag, path, packing_args)
         return
 
     group_class = get_group_content_class(obj)
@@ -721,23 +741,13 @@ def pack(
     if isinstance(rv, str):
         Global.write(
             get_importable_string_from_string_reduction(rv, obj),
-            bag, path,
+            bag,
+            path,
             packing_args,
-            metadata=get_metadata(
-                obj, require_versions, forbidden_modules, version_scraping
-            ),
         )
         return
     else:
-        Reducible.write(
-            obj,
-            bag, path,
-            packing_args,
-            metadata=get_metadata(
-                obj, require_versions, forbidden_modules, version_scraping
-            ),
-            rv=rv,
-        )
+        Reducible.write(obj, bag, path, packing_args, rv=rv)
         return
 
 

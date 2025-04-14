@@ -22,6 +22,7 @@ class ModuleForbiddenError(BagOfHoldingError, ValueError):
 
 @dataclass
 class Metadata:
+    content_type: str | None = None
     qualname: str | None = None
     module: str | None = None
     version: str | None = None
@@ -36,7 +37,8 @@ def get_metadata(
     require_versions: bool = False,
     forbidden_modules: list[str] | tuple[str, ...] = (),
     version_scraping: VersionScrapingMap | None = None,
-) -> Metadata | None:
+    content_type: str | None = None,
+) -> Metadata:
     """
 
     Args:
@@ -55,7 +57,7 @@ def get_metadata(
     """
     module = _get_module(obj)
     if module == "builtins":
-        return None
+        return Metadata()
     else:
         if module.split(".")[0] in forbidden_modules:
             raise ModuleForbiddenError(
@@ -75,6 +77,7 @@ def get_metadata(
             )
 
         return Metadata(
+            content_type=content_type,
             qualname=_get_qualname(obj),
             module=module,
             version=version,
