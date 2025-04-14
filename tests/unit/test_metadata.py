@@ -106,11 +106,12 @@ class TestMetadata(unittest.TestCase):
     def test_validate_version(self):
 
         self.assertIsNone(
-            validate_version(Metadata()),
+            validate_version(Metadata("SomeContentType")),
             msg="Empty metadata can't be invalid",
         )
 
         numpy_metadata = Metadata(
+            "DummyContentType",
             module=np.__name__,
             version=str(np.__version__),
         )
@@ -175,6 +176,7 @@ class TestMetadata(unittest.TestCase):
             )
 
         non_semantic_metadata = Metadata(
+            "DummyContentType",
             module=np.__name__,
             version=some_version_scraper(""),  # Force-override the version
         )

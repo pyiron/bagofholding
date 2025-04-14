@@ -164,13 +164,13 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         pass
 
     @abc.abstractmethod
-    def __getitem__(self, path: str) -> Metadata | None:
+    def __getitem__(self, path: str) -> Metadata:
         pass
 
     @abc.abstractmethod
     def get_enriched_metadata(
         self, path: str
-    ) -> tuple[str, Metadata | None, tuple[str, ...] | None]:
+    ) -> tuple[str, Metadata, tuple[str, ...] | None]:
         """
         Enriched browsing information, e.g. to support a browsing widget.
         Still doesn't actually load the object, but exploits more available information.

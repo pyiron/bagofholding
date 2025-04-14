@@ -25,6 +25,10 @@ class FileNotOpenError(BagOfHoldingError):
     pass
 
 
+class InvalidMetadataError(BagOfHoldingError, ValueError):
+    pass
+
+
 @dataclasses.dataclass(frozen=True)
 class H5Info(BagInfo):
     libver_str: str
@@ -120,13 +124,13 @@ class H5Bag(Bag[H5Info]):
             )
         return unpacked
 
-    def __getitem__(self, path: str) -> Metadata | None:
+    def __getitem__(self, path: str) -> Metadata:
         with self:
             return self.unpack_metadata(path)
 
     def get_enriched_metadata(
         self, path: str
-    ) -> tuple[str, Metadata | None, tuple[str, ...] | None]:
+    ) -> tuple[str, Metadata, tuple[str, ...] | None]:
         """
         Enriched browsing information, e.g. to support a browsing widget.
         Still doesn't actually load the object, but exploits more available information.
@@ -213,22 +217,22 @@ class H5Bag(Bag[H5Info]):
     def unpack_content_type(self, path: str) -> str:
         return self._unpack_meta(path, self._content_key)
 
-    def pack_metadata(self, metadata: Metadata | None, path: str) -> None:
-        if metadata is not None:
-            for k, v in metadata.field_items():
-                if v is not None:
-                    self._pack_meta(path, k, v)
+    def pack_metadata(self, metadata: Metadata, path: str) -> None:
+        for k, v in metadata.field_items():
+            if v is not None:
+                self._pack_meta(path, k, v)
 
-    def unpack_metadata(self, path: str) -> Metadata | None:
+    def unpack_metadata(self, path: str) -> Metadata:
         metadata: dict[str, str | None] = {}
-        has_metadata = False
         for meta_key in Metadata.__dataclass_fields__:
             try:
                 metadata[meta_key] = self._unpack_meta(path, meta_key)
-                has_metadata = True
             except KeyError:
                 metadata[meta_key] = None
-        return Metadata(**metadata) if has_metadata else None
+        content_type = metadata.pop("content_type", None)
+        if content_type is None:
+            raise InvalidMetadataError(f"Metadata at {path} is missing a content type")
+        return Metadata(content_type, **metadata)
 
     @staticmethod
     def maybe_decode(attr: str | bytes) -> str:

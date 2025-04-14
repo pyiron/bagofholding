@@ -108,7 +108,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
         if cls._rich_metadata:
             module = get_module(obj)
             if module == "builtins":
-                return Metadata(content_type=cls.full_name())
+                return Metadata(cls.full_name())
             else:
                 if module.split(".")[0] in packing.forbidden_modules:
                     raise ModuleForbiddenError(
@@ -126,7 +126,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
                     )
 
                 return Metadata(
-                    content_type=cls.full_name(),
+                    cls.full_name(),
                     qualname=get_qualname(obj),
                     module=module,
                     version=version,
@@ -135,7 +135,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
                     ),
                 )
         else:
-            return Metadata(content_type=cls.full_name())
+            return Metadata(cls.full_name())
 
     @classmethod
     def full_name(cls) -> str:

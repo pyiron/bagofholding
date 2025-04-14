@@ -14,7 +14,7 @@ from bagofholding.exception import BagOfHoldingError
 
 @dataclass
 class Metadata:
-    content_type: str | None = None
+    content_type: str
     qualname: str | None = None
     module: str | None = None
     version: str | None = None
