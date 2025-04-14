@@ -187,18 +187,18 @@ class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     def write(
         cls, obj: ItemType, location: Location, packing: PackingArguments
     ) -> None:
-        cls._make_dataset(obj, location)
+        cls._write_item(obj, location)
         location.bag.pack_content_type(location.path, cls)
 
     @classmethod
     @abc.abstractmethod
-    def _make_dataset(cls, obj: ItemType, location: Location) -> None:
+    def _write_item(cls, obj: ItemType, location: Location) -> None:
         pass
 
 
 class Complex(SimpleItem[complex]):
     @classmethod
-    def _make_dataset(cls, obj: complex, location: Location) -> None:
+    def _write_item(cls, obj: complex, location: Location) -> None:
         location.create_dataset(data=np.array([obj.real, obj.imag]))
 
     @classmethod
@@ -209,7 +209,7 @@ class Complex(SimpleItem[complex]):
 
 class Str(SimpleItem[str]):
     @classmethod
-    def _make_dataset(cls, obj: str, location: Location) -> None:
+    def _write_item(cls, obj: str, location: Location) -> None:
         location.create_dataset(
             data=obj, dtype=h5py.string_dtype(encoding="utf-8")
         )
@@ -221,7 +221,7 @@ class Str(SimpleItem[str]):
 
 class Bytes(SimpleItem[bytes]):
     @classmethod
-    def _make_dataset(cls, obj: bytes, location: Location) -> None:
+    def _write_item(cls, obj: bytes, location: Location) -> None:
         location.create_dataset(data=np.void(obj))
 
     @classmethod
@@ -233,7 +233,7 @@ class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
     recast: type[ItemType]
 
     @classmethod
-    def _make_dataset(cls, obj: ItemType, location: Location) -> None:
+    def _write_item(cls, obj: ItemType, location: Location) -> None:
         location.create_dataset(data=obj)
 
     @classmethod
