@@ -54,10 +54,6 @@ class Location:
     bag: H5Bag
     path: str
 
-    @property
-    def entry(self) -> h5py.Group | h5py.Dataset:
-        return self.bag.file[self.path]
-
 
 @dataclasses.dataclass
 class PackingArguments:
@@ -387,7 +383,9 @@ class Reducible(Group[object, object]):
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in cls.reduction_fields[2 : len(location.entry)]
+            for k in cls.reduction_fields[
+                2 : len(location.bag.open_group(location.path))
+            ]
         )
         n_items = len(rv)
         if n_items >= 3 and rv[2] is not None:
@@ -533,7 +531,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in location.entry
+            for k in location.bag.open_group(location.path)
         }
 
 
@@ -589,7 +587,7 @@ class Union(SimpleGroup[types.UnionType]):
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(location.entry))
+            for i in range(len(location.bag.open_group(location.path)))
         )
 
 
@@ -631,7 +629,7 @@ class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(location.entry))
+            for i in range(len(location.bag.open_group(location.path)))
         )
 
 

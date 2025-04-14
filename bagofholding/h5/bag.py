@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from types import TracebackType
 from typing import Any, ClassVar, Literal, Self, SupportsIndex, cast
 
@@ -283,3 +283,9 @@ class H5Bag(Bag[H5Info]):
 
     def pack_group(self, path: str) -> None:
         self.file.create_group(path)
+
+    def open_group(self, path: str) -> h5py.Group:
+        group = self.file[path]
+        if not isinstance(group, h5py.Group):
+            raise TypeError(f"Asked a group at {path}, got {type(group)}")
+        return group
