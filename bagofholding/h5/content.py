@@ -210,9 +210,7 @@ class Complex(SimpleItem[complex]):
 class Str(SimpleItem[str]):
     @classmethod
     def _write_item(cls, obj: str, location: Location) -> None:
-        location.create_dataset(
-            data=obj, dtype=h5py.string_dtype(encoding="utf-8")
-        )
+        location.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> str:
