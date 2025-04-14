@@ -58,9 +58,6 @@ class Location:
     def entry(self) -> h5py.Group | h5py.Dataset:
         return self.bag.file[self.path]
 
-    def create_dataset(self, **kwargs: Any) -> h5py.Dataset:
-        return self.bag.file.create_dataset(self.path, **kwargs)
-
     def create_group(self) -> h5py.Group:
         return self.bag.file.create_group(self.path)
 
@@ -176,7 +173,7 @@ class Global(Item[GlobalType, Any]):
 class NoneItem(Item[type[None], None]):
     @classmethod
     def _write_item(cls, obj: type[None], location: Location) -> None:
-        location.create_dataset(data=h5py.Empty(dtype="f"))
+        location.bag.pack_empty(location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> None:
@@ -193,18 +190,17 @@ class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
 class Complex(SimpleItem[complex]):
     @classmethod
     def _write_item(cls, obj: complex, location: Location) -> None:
-        location.create_dataset(data=np.array([obj.real, obj.imag]))
+        location.bag.pack_complex(obj, location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> complex:
-        entry = location.entry
-        return complex(entry[0], entry[1])
+        return location.bag.unpack_complex(location.path)
 
 
 class Str(SimpleItem[str]):
     @classmethod
     def _write_item(cls, obj: str, location: Location) -> None:
-        location.create_dataset(data=obj, dtype=h5py.string_dtype(encoding="utf-8"))
+        location.bag.pack_string(obj, location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> str:
@@ -214,39 +210,51 @@ class Str(SimpleItem[str]):
 class Bytes(SimpleItem[bytes]):
     @classmethod
     def _write_item(cls, obj: bytes, location: Location) -> None:
-        location.create_dataset(data=np.void(obj))
+        location.bag.pack_bytes(obj, location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> bytes:
-        return bytes(location.entry[()])
+        return location.bag.unpack_bytes(location.path)
 
 
-class NativeItem(SimpleItem[ItemType], Generic[ItemType], abc.ABC):
-    recast: type[ItemType]
+class Bool(SimpleItem[bool]):
+    @classmethod
+    def _write_item(cls, obj: bool, location: Location) -> None:
+        location.bag.pack_bool(obj, location.path)
 
     @classmethod
-    def _write_item(cls, obj: ItemType, location: Location) -> None:
-        location.create_dataset(data=obj)
+    def read(cls, location: Location, unpacking: UnpackingArguments) -> bool:
+        return location.bag.unpack_bool(location.path)
+
+
+class Long(SimpleItem[int]):
+    @classmethod
+    def _write_item(cls, obj: int, location: Location) -> None:
+        location.bag.pack_long(obj, location.path)
 
     @classmethod
-    def read(cls, location: Location, unpacking: UnpackingArguments) -> ItemType:
-        return cast(ItemType, cls.recast(location.entry[()]))
+    def read(cls, location: Location, unpacking: UnpackingArguments) -> int:
+        return location.bag.unpack_long(location.path)
 
 
-class Bool(NativeItem[bool]):
-    recast = bool
+class Float(SimpleItem[float]):
+    @classmethod
+    def _write_item(cls, obj: float, location: Location) -> None:
+        location.bag.pack_float(obj, location.path)
+
+    @classmethod
+    def read(cls, location: Location, unpacking: UnpackingArguments) -> float:
+        return location.bag.unpack_float(location.path)
 
 
-class Long(NativeItem[int]):
-    recast = int
+class Bytearray(SimpleItem[bytearray]):
+    @classmethod
+    def _write_item(cls, obj: bytearray, location: Location) -> None:
+        location.bag.pack_bytearray(obj, location.path)
 
-
-class Float(NativeItem[float]):
-    recast = float
-
-
-class Bytearray(NativeItem[bytearray]):
-    recast = bytearray
+    @classmethod
+    def read(cls, location: Location, unpacking: UnpackingArguments) -> bytearray:
+        return location.bag.unpack_bytearray(location.path)
 
 
 class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
@@ -255,8 +263,10 @@ class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
 
 class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
-    def _write_item(cls, obj: np.ndarray, location: Location) -> None:
-        return location.bag.file.create_dataset(location.path, data=obj)
+    def _write_item(
+        cls, obj: np.ndarray[tuple[int, ...], H5DtypeAlias], location: Location
+    ) -> None:
+        location.bag.file.create_dataset(location.path, data=obj)
 
     @classmethod
     def read(

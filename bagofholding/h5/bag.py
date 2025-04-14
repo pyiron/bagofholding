@@ -8,6 +8,7 @@ from typing import Any, ClassVar, Literal, Self, SupportsIndex, cast
 
 import bidict
 import h5py
+import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.exception import BagOfHoldingError
@@ -203,7 +204,9 @@ class H5Bag(Bag[H5Info]):
     def _unpack_meta(self, path: str, key: str) -> str:
         return self.maybe_decode(self.file[path].attrs[key])
 
-    def pack_content_type(self, content_type: type[Content[Any, Any]], path: str) -> None:
+    def pack_content_type(
+        self, content_type: type[Content[Any, Any]], path: str
+    ) -> None:
         self._pack_meta(path, content_type.key, content_type.full_name())
 
     def unpack_content_type(self, path: str) -> str:
@@ -230,6 +233,9 @@ class H5Bag(Bag[H5Info]):
     def maybe_decode(attr: str | bytes) -> str:
         return attr if isinstance(attr, str) else attr.decode("utf-8")
 
+    def pack_empty(self, path: str) -> None:
+        self.file.create_dataset(path, data=h5py.Empty(dtype="f"))
+
     def pack_string(self, obj: str, path: str) -> None:
         self.file.create_dataset(
             path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
@@ -237,3 +243,40 @@ class H5Bag(Bag[H5Info]):
 
     def unpack_string(self, path: str) -> str:
         return cast(str, self.file[path][()].decode("utf-8"))
+
+    def pack_bytes(self, obj: bytes, path: str) -> None:
+        self.file.create_dataset(path, data=np.void(obj))
+
+    def unpack_bytes(self, path: str) -> bytes:
+        return bytes(self.file[path][()])
+
+    def pack_bool(self, obj: bool, path: str) -> None:
+        self.file.create_dataset(path, data=obj)
+
+    def unpack_bool(self, path: str) -> bool:
+        return bool(self.file[path][()])
+
+    def pack_long(self, obj: int, path: str) -> None:
+        self.file.create_dataset(path, data=obj)
+
+    def unpack_long(self, path: str) -> int:
+        return int(self.file[path][()])
+
+    def pack_float(self, obj: float, path: str) -> None:
+        self.file.create_dataset(path, data=obj)
+
+    def unpack_float(self, path: str) -> float:
+        return float(self.file[path][()])
+
+    def pack_complex(self, obj: complex, path: str) -> None:
+        self.file.create_dataset(path, data=np.array([obj.real, obj.imag]))
+
+    def unpack_complex(self, path: str) -> complex:
+        entry = self.file[path][()]
+        return complex(entry[0], entry[1])
+
+    def pack_bytearray(self, obj: bytearray, path: str) -> None:
+        self.file.create_dataset(path, data=obj)
+
+    def unpack_bytearray(self, path: str) -> bytearray:
+        return bytearray(self.file[path][()])
