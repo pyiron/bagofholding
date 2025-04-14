@@ -26,6 +26,7 @@ import numpy as np
 from bagofholding.exception import BagOfHoldingError
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
 from bagofholding.metadata import (
+    Metadata,
     VersionScrapingMap,
     VersionValidatorType,
     get_metadata,
@@ -98,7 +99,11 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def write(
-        cls, obj: PackingType, location: Location, packing: PackingArguments
+        cls,
+        obj: PackingType,
+        location: Location,
+        packing: PackingArguments,
+        metadata: Metadata | None = None,
     ) -> None:
         pass
 
@@ -110,14 +115,28 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 class Item(
     Content[PackingType, UnpackingType], Generic[PackingType, UnpackingType], abc.ABC
 ):
-    pass
+    @classmethod
+    def write(
+        cls,
+        obj: PackingType,
+        location: Location,
+        packing: PackingArguments,
+        metadata: Metadata | None = None,
+    ) -> None:
+        cls._write_item(obj, location)
+        location.bag.pack_content_type(location.path, cls)
+        location.bag.pack_metadata(location.path, metadata)
+
+    @classmethod
+    @abc.abstractmethod
+    def _write_item(cls, obj: PackingType, location: Location) -> None:
+        pass
 
 
 class Reference(Item[str, Any]):
     @classmethod
-    def write(cls, obj: str, location: Location, packing: PackingArguments) -> None:
+    def _write_item(cls, obj: str, location: Location) -> None:
         location.bag.write_string(obj, location.path)
-        location.bag.pack_content_type(location.path, cls)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
@@ -140,25 +159,13 @@ GlobalType: TypeAlias = type[type] | FunctionType | str
 
 class Global(Item[GlobalType, Any]):
     @classmethod
-    def write(
-        cls, obj: GlobalType, location: Location, packing: PackingArguments
-    ) -> None:
+    def _write_item(cls, obj: GlobalType, location: Location) -> None:
         value: str
         if isinstance(obj, str):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
         location.bag.write_string(value, location.path)
-        location.bag.pack_content_type(location.path, cls)
-        location.bag.pack_metadata(
-            location.path,
-            get_metadata(
-                obj,
-                packing.require_versions,
-                packing.forbidden_modules,
-                {} if packing.version_scraping is None else packing.version_scraping,
-            ),
-        )
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
@@ -168,11 +175,8 @@ class Global(Item[GlobalType, Any]):
 
 class NoneItem(Item[type[None], None]):
     @classmethod
-    def write(
-        cls, obj: type[None], location: Location, packing: PackingArguments
-    ) -> None:
+    def _write_item(cls, obj: type[None], location: Location) -> None:
         location.create_dataset(data=h5py.Empty(dtype="f"))
-        location.bag.pack_content_type(location.path, cls)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> None:
@@ -183,17 +187,7 @@ ItemType = TypeVar("ItemType", bound=Any)
 
 
 class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
-    @classmethod
-    def write(
-        cls, obj: ItemType, location: Location, packing: PackingArguments
-    ) -> None:
-        cls._write_item(obj, location)
-        location.bag.pack_content_type(location.path, cls)
-
-    @classmethod
-    @abc.abstractmethod
-    def _write_item(cls, obj: ItemType, location: Location) -> None:
-        pass
+    pass
 
 
 class Complex(SimpleItem[complex]):
@@ -256,38 +250,12 @@ class Bytearray(NativeItem[bytearray]):
 
 
 class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
-    @classmethod
-    def write(
-        cls,
-        obj: ItemType,
-        location: Location,
-        packing: PackingArguments,
-    ) -> None:
-        cls._make_dataset(obj, location)
-        location.bag.pack_content_type(location.path, cls)
-        location.bag.pack_metadata(
-            location.path,
-            get_metadata(
-                obj,
-                packing.require_versions,
-                packing.forbidden_modules,
-                {} if packing.version_scraping is None else packing.version_scraping,
-            ),
-        )
-
-    @classmethod
-    @abc.abstractmethod
-    def _make_dataset(cls, obj: ItemType, location: Location) -> h5py.Dataset:
-        pass
+    pass
 
 
 class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
-    def _make_dataset(
-        cls,
-        obj: np.ndarray[tuple[int, ...], H5DtypeAlias],
-        location: Location,
-    ) -> h5py.Dataset:
+    def _write_item(cls, obj: np.ndarray, location: Location) -> None:
         return location.bag.file.create_dataset(location.path, data=obj)
 
     @classmethod
@@ -358,6 +326,7 @@ class Reducible(Group[object, object]):
         obj: object,
         location: Location,
         packing: PackingArguments,
+        metadata: Metadata | None = None,
         rv: ReduceReturnType | None = None,
     ) -> None:
         reduced_value = (
@@ -365,15 +334,7 @@ class Reducible(Group[object, object]):
         )
         location.create_group()
         location.bag.pack_content_type(location.path, cls)
-        location.bag.pack_metadata(
-            location.path,
-            get_metadata(
-                obj,
-                packing.require_versions,
-                packing.forbidden_modules,
-                {} if packing.version_scraping is None else packing.version_scraping,
-            ),
-        )
+        location.bag.pack_metadata(location.path, metadata)
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
@@ -457,6 +418,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         obj: PackingType,
         location: Location,
         packing: PackingArguments,
+        metadata: Metadata | None = None,
     ) -> None:
         location.create_group()
         location.bag.pack_content_type(location.path, cls)
@@ -715,7 +677,16 @@ def pack(
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
     if simple_class is not None:
-        simple_class.write(obj, location, packing_args)
+        simple_class.write(
+            obj,
+            location,
+            packing_args,
+            metadata=(
+                get_metadata(obj, require_versions, forbidden_modules, version_scraping)
+                if simple_class is Global
+                else None
+            ),
+        )
         return
 
     obj_id = id(obj)
@@ -729,7 +700,14 @@ def pack(
 
     complex_class = get_complex_content_class(obj)
     if complex_class is not None:
-        complex_class.write(obj, location, packing_args)
+        complex_class.write(
+            obj,
+            location,
+            packing_args,
+            metadata=get_metadata(
+                obj, require_versions, forbidden_modules, version_scraping
+            ),
+        )
         return
 
     group_class = get_group_content_class(obj)
@@ -740,11 +718,24 @@ def pack(
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
         Global.write(
-            get_importable_string_from_string_reduction(rv, obj), location, packing_args
+            get_importable_string_from_string_reduction(rv, obj),
+            location,
+            packing_args,
+            metadata=get_metadata(
+                obj, require_versions, forbidden_modules, version_scraping
+            ),
         )
         return
     else:
-        Reducible.write(obj, location, packing_args, rv=rv)
+        Reducible.write(
+            obj,
+            location,
+            packing_args,
+            metadata=get_metadata(
+                obj, require_versions, forbidden_modules, version_scraping
+            ),
+            rv=rv,
+        )
         return
 
 
