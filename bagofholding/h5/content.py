@@ -273,7 +273,7 @@ class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     ) -> np.ndarray[tuple[int, ...], H5DtypeAlias]:
         return cast(
             np.ndarray[tuple[int, ...], H5DtypeAlias],
-            location.entry[()],
+            location.bag.file[location.path][()],
         )
 
 
