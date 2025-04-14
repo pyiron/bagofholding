@@ -281,7 +281,7 @@ class H5Bag(Bag[H5Info]):
     def unpack_bytearray(self, path: str) -> bytearray:
         return bytearray(self.file[path][()])
 
-    def pack_group(self, path: str) -> None:
+    def create_group(self, path: str) -> None:
         self.file.create_group(path)
 
     def open_group(self, path: str) -> h5py.Group:

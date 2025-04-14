@@ -335,7 +335,7 @@ class Reducible(Group[object, object]):
         reduced_value = (
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
-        location.bag.pack_group(location.path)
+        location.bag.create_group(location.path)
         location.bag.pack_content_type(cls, location.path)
         location.bag.pack_metadata(metadata, location.path)
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
@@ -425,7 +425,7 @@ class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
         packing: PackingArguments,
         metadata: Metadata | None = None,
     ) -> None:
-        location.bag.pack_group(location.path)
+        location.bag.create_group(location.path)
         location.bag.pack_content_type(cls, location.path)
         cls._write_subcontent(obj, location, packing)
 
