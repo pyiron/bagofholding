@@ -50,12 +50,6 @@ UnpackingType = TypeVar("UnpackingType", bound=Any)
 
 
 @dataclasses.dataclass
-class Location:
-    bag: H5Bag
-    path: str
-
-
-@dataclasses.dataclass
 class PackingArguments:
     memo: PackingMemoAlias
     references: ReferencesAlias
