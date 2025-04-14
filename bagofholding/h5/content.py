@@ -136,11 +136,11 @@ class Item(
 class Reference(Item[str, Any]):
     @classmethod
     def _write_item(cls, obj: str, location: Location) -> None:
-        location.bag.write_string(obj, location.path)
+        location.bag.pack_string(obj, location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
-        reference = location.bag.read_string(location.path)
+        reference = location.bag.unpack_string(location.path)
         from_memo = unpacking.memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
@@ -165,11 +165,11 @@ class Global(Item[GlobalType, Any]):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
-        location.bag.write_string(value, location.path)
+        location.bag.pack_string(value, location.path)
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> Any:
-        import_string = location.bag.read_string(location.path)
+        import_string = location.bag.unpack_string(location.path)
         return import_from_string(import_string)
 
 
@@ -208,7 +208,7 @@ class Str(SimpleItem[str]):
 
     @classmethod
     def read(cls, location: Location, unpacking: UnpackingArguments) -> str:
-        return location.bag.read_string(location.path)
+        return location.bag.unpack_string(location.path)
 
 
 class Bytes(SimpleItem[bytes]):

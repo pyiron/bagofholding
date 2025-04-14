@@ -230,10 +230,10 @@ class H5Bag(Bag[H5Info]):
     def maybe_decode(attr: str | bytes) -> str:
         return attr if isinstance(attr, str) else attr.decode("utf-8")
 
-    def write_string(self, obj: str, path: str) -> None:
+    def pack_string(self, obj: str, path: str) -> None:
         self.file.create_dataset(
             path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
         )
 
-    def read_string(self, path: str) -> str:
+    def unpack_string(self, path: str) -> str:
         return cast(str, self.file[path][()].decode("utf-8"))
