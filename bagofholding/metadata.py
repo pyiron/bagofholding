@@ -75,7 +75,7 @@ def get_metadata(
             )
 
         return Metadata(
-            qualname=obj.__class__.__qualname__,
+            qualname=_get_qualname(obj),
             module=module,
             version=version,
             meta=str(obj.__metadata__) if hasattr(obj, "__metadata__") else None,
@@ -84,6 +84,10 @@ def get_metadata(
 
 def _get_module(obj: Any) -> str:
     return obj.__module__ if isinstance(obj, type) else type(obj).__module__
+
+
+def _get_qualname(obj: Any) -> str:
+    return obj.__qualname__ if isinstance(obj, type) else type(obj).__qualname__
 
 
 VersionScraperType: TypeAlias = Callable[[str], str | None]

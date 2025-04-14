@@ -9,6 +9,7 @@ from bagofholding.metadata import (
     Metadata,
     _decompose_semver,
     _get_module,
+    _get_qualname,
     get_version,
     validate_version,
 )
@@ -47,6 +48,10 @@ class TestMetadata(unittest.TestCase):
     def test_get_module(self):
         self.assertEqual("builtins", _get_module(int), msg="Should work with types")
         self.assertEqual("builtins", _get_module(5), msg="Should work with instances")
+
+    def test_get_qualname(self):
+        self.assertEqual("int", _get_qualname(int), msg="Should work with types")
+        self.assertEqual("int", _get_qualname(5), msg="Should work with instances")
 
     def test_version_scraping(self):
 
