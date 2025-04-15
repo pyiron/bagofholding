@@ -216,8 +216,21 @@ class NoneItem(Item[type[None], None]):
 
 ItemType = TypeVar("ItemType", bound=Any)
 
+BuiltinItemType = TypeVar(
+    "BuiltinItemType",
+    str,
+    bytes,
+    bytearray,
+    bool,
+    int,
+    float,
+    complex,
+)
 
-class SimpleItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
+
+class SimpleItem(
+    Item[BuiltinItemType, BuiltinItemType], Generic[BuiltinItemType], abc.ABC
+):
     pass
 
 
