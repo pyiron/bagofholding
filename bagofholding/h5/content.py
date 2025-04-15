@@ -307,7 +307,7 @@ class Bytearray(BuiltinItem[bytearray]):
         return bag.unpack_bytearray(path)
 
 
-class ComplexItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
+class ComplexItem(ReflexiveItem[ItemType], Generic[ItemType], abc.ABC):
     _rich_metadata = True
 
 
