@@ -3,7 +3,7 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
-from bagofholding.exception import StringReductionNotImportableError
+from bagofholding.exceptions import StringReductionNotImportableError
 
 
 def import_from_string(library_path: str) -> Any:

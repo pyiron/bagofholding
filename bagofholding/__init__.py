@@ -2,18 +2,18 @@ from . import _version
 
 __version__ = _version.get_versions()["version"]
 
-from bagofholding.exception import BagMismatchError as BagMismatchError
-from bagofholding.exception import BagOfHoldingError as BagOfHoldingError
-from bagofholding.exception import EnvironmentMismatchError as EnvironmentMismatchError
-from bagofholding.exception import FileAlreadyOpenError as FileAlreadyOpenError
-from bagofholding.exception import FileNotOpenError as FileNotOpenError
-from bagofholding.exception import FilepathError as FilepathError
-from bagofholding.exception import InvalidMetadataError as InvalidMetadataError
-from bagofholding.exception import ModuleForbiddenError as ModuleForbiddenError
-from bagofholding.exception import NotAGroupError as NotAGroupError
-from bagofholding.exception import NoVersionError as NoVersionError
-from bagofholding.exception import PickleProtocolError as PickleProtocolError
-from bagofholding.exception import (
+from bagofholding.exceptions import BagMismatchError as BagMismatchError
+from bagofholding.exceptions import BagOfHoldingError as BagOfHoldingError
+from bagofholding.exceptions import EnvironmentMismatchError as EnvironmentMismatchError
+from bagofholding.exceptions import FileAlreadyOpenError as FileAlreadyOpenError
+from bagofholding.exceptions import FileNotOpenError as FileNotOpenError
+from bagofholding.exceptions import FilepathError as FilepathError
+from bagofholding.exceptions import InvalidMetadataError as InvalidMetadataError
+from bagofholding.exceptions import ModuleForbiddenError as ModuleForbiddenError
+from bagofholding.exceptions import NotAGroupError as NotAGroupError
+from bagofholding.exceptions import NoVersionError as NoVersionError
+from bagofholding.exceptions import PickleProtocolError as PickleProtocolError
+from bagofholding.exceptions import (
     StringReductionNotImportableError as StringReductionNotImportableError,
 )
 from bagofholding.h5.bag import H5Bag as H5Bag

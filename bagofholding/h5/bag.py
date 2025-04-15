@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
-from bagofholding.exception import (
+from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
     InvalidMetadataError,
