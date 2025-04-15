@@ -16,7 +16,7 @@ from typing import (
     TypeVar,
 )
 
-from bagofholding.exception import BagOfHoldingError
+from bagofholding import BagMismatchError
 from bagofholding.metadata import (
     Metadata,
     VersionScrapingMap,
@@ -29,14 +29,6 @@ if TYPE_CHECKING:
 
 
 PATH_DELIMITER = "/"
-
-
-class BagMismatchError(BagOfHoldingError, ValueError):
-    pass
-
-
-class FilepathError(BagOfHoldingError, FileExistsError):
-    pass
 
 
 @dataclasses.dataclass(frozen=True)

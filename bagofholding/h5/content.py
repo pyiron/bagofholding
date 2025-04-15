@@ -23,7 +23,7 @@ import bidict
 import h5py
 import numpy as np
 
-from bagofholding.exception import BagOfHoldingError
+from bagofholding import ModuleForbiddenError, NoVersionError, PickleProtocolError
 from bagofholding.h5.dtypes import H5DtypeAlias
 from bagofholding.metadata import (
     Metadata,
@@ -69,14 +69,6 @@ class UnpackingArguments:
 
 
 class NotData:
-    pass
-
-
-class NoVersionError(BagOfHoldingError, ValueError):
-    pass
-
-
-class ModuleForbiddenError(BagOfHoldingError, ValueError):
     pass
 
 
@@ -733,10 +725,6 @@ class Set(Indexable[set[Any]]):
 
 class FrozenSet(Indexable[frozenset[Any]]):
     recast = frozenset
-
-
-class PickleProtocolError(BagOfHoldingError, ValueError):
-    pass
 
 
 def pack(

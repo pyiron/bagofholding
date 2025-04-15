@@ -4,8 +4,8 @@ import unittest
 import bidict
 import numpy as np
 
+from bagofholding import EnvironmentMismatchError
 from bagofholding.metadata import (
-    EnvironmentMismatchError,
     Metadata,
     _decompose_semver,
     get_module,

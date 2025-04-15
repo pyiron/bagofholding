@@ -11,27 +11,16 @@ import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
-from bagofholding.exception import BagOfHoldingError
+from bagofholding.exception import (
+    FileAlreadyOpenError,
+    FileNotOpenError,
+    InvalidMetadataError,
+    NotAGroupError,
+)
 from bagofholding.h5.content import Array, BespokeItem, pack, unpack
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
-
-
-class FileAlreadyOpenError(BagOfHoldingError):
-    pass
-
-
-class FileNotOpenError(BagOfHoldingError):
-    pass
-
-
-class InvalidMetadataError(BagOfHoldingError, ValueError):
-    pass
-
-
-class NotAGroupError(BagOfHoldingError, TypeError):
-    pass
 
 
 @dataclasses.dataclass(frozen=True)

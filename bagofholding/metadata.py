@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from jedi.inference.gradual.typing import TypeAlias
 
-from bagofholding.exception import BagOfHoldingError
+from bagofholding import EnvironmentMismatchError
 
 
 @dataclass
@@ -64,10 +64,6 @@ def _scrape_version_attribute(module_name: str) -> str | None:
         return str(module.__version__)
     except AttributeError:
         return None
-
-
-class EnvironmentMismatchError(BagOfHoldingError, ModuleNotFoundError):
-    pass
 
 
 VersionValidatorType: TypeAlias = (
