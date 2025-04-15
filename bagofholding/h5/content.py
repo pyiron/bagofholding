@@ -38,6 +38,7 @@ from bagofholding.retrieve import (
     get_importable_string_from_string_reduction,
     import_from_string,
 )
+from bagofholding.types import BuiltinGroupType, BuiltinItemType
 
 if TYPE_CHECKING:
     from bagofholding.h5.bag import H5Bag
@@ -211,18 +212,6 @@ ItemType = TypeVar("ItemType", bound=Any)
 
 class ReflexiveItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
     pass
-
-
-BuiltinItemType = TypeVar(
-    "BuiltinItemType",
-    str,
-    bytes,
-    bytearray,
-    bool,
-    int,
-    float,
-    complex,
-)
 
 
 class BuiltinItem(ReflexiveItem[BuiltinItemType], Generic[BuiltinItemType], abc.ABC):
@@ -465,18 +454,6 @@ class Reducible(ReflexiveGroup[object]):
                 obj[k] = v
 
         return obj
-
-
-BuiltinGroupType = TypeVar(
-    "BuiltinGroupType",
-    dict[Any, Any],
-    dict[str, Any],
-    types.UnionType,
-    tuple[Any, ...],
-    list[Any],
-    set[Any],
-    frozenset[Any],
-)
 
 
 class BuiltinGroup(
