@@ -454,8 +454,21 @@ class Reducible(Group[object, object]):
 
 GroupType = TypeVar("GroupType", bound=Any)  # Bind to container?
 
+BuiltinGroupType = TypeVar(
+    "BuiltinGroupType",
+    dict[Any, Any],
+    dict[str, Any],
+    types.UnionType,
+    tuple[Any, ...],
+    list[Any],
+    set[Any],
+    frozenset[Any],
+)
 
-class SimpleGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
+
+class SimpleGroup(
+    Group[BuiltinGroupType, BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC
+):
     @classmethod
     def write(
         cls,
