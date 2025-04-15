@@ -307,11 +307,11 @@ class Bytearray(BuiltinItem[bytearray]):
         return bag.unpack_bytearray(path)
 
 
-class ComplexItem(ReflexiveItem[ItemType], Generic[ItemType], abc.ABC):
+class BespokeItem(ReflexiveItem[ItemType], Generic[ItemType], abc.ABC):
     _rich_metadata = True
 
 
-class Array(ComplexItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
+class Array(BespokeItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
     def _write_item(
         cls, obj: np.ndarray[tuple[int, ...], H5DtypeAlias], bag: H5Bag, path: str

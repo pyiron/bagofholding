@@ -12,7 +12,7 @@ import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.h5.content import Array, ComplexItem, pack, unpack
+from bagofholding.h5.content import Array, BespokeItem, pack, unpack
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
@@ -270,7 +270,7 @@ class H5Bag(Bag[H5Info]):
         return group
 
     @staticmethod
-    def get_bespoke_content_class(obj: object) -> type[ComplexItem[Any]] | None:
+    def get_bespoke_content_class(obj: object) -> type[BespokeItem[Any]] | None:
         if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
             return Array
         return None
