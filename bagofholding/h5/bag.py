@@ -12,7 +12,8 @@ import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.h5.content import Content, pack, unpack
+from bagofholding.h5.content import Array, ComplexItem, pack, unpack
+from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
@@ -204,9 +205,7 @@ class H5Bag(Bag[H5Info]):
                 metadata[meta_key] = None
         content_type = metadata.pop("content_type", None)
         if content_type is None:
-            raise InvalidMetadataError(
-                f"Metadata at {path} is missing a content type"
-            )
+            raise InvalidMetadataError(f"Metadata at {path} is missing a content type")
         return Metadata(content_type, **metadata)
 
     @staticmethod
@@ -269,3 +268,9 @@ class H5Bag(Bag[H5Info]):
         if not isinstance(group, h5py.Group):
             raise NotAGroupError(f"Asked a group at {path}, got {type(group)}")
         return group
+
+    @staticmethod
+    def get_complex_content_class(obj: object) -> type[ComplexItem[Any]] | None:
+        if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
+            return Array
+        return None

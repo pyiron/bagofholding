@@ -24,7 +24,7 @@ import h5py
 import numpy as np
 
 from bagofholding.exception import BagOfHoldingError
-from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5DtypeAlias
+from bagofholding.h5.dtypes import H5DtypeAlias
 from bagofholding.metadata import (
     Metadata,
     VersionScrapingMap,
@@ -750,7 +750,7 @@ def pack(
         memo[obj_id] = path
         references.append(obj)
 
-    complex_class = get_complex_content_class(obj)
+    complex_class = bag.get_complex_content_class(obj)
     if complex_class is not None:
         complex_class.write(obj, bag, path, packing_args)
         return
@@ -789,12 +789,6 @@ KNOWN_ITEM_MAP: dict[
     bytearray: Bytearray,
     str: Str,
 }
-
-
-def get_complex_content_class(obj: object) -> type[ComplexItem[Any]] | None:
-    if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
-        return Array
-    return None
 
 
 KNOWN_GROUP_MAP: dict[type, type[Group[Any, Any]]] = {

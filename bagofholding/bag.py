@@ -6,7 +6,15 @@ import os.path
 import pathlib
 import pickle
 from collections.abc import ItemsView, Iterator, Mapping
-from typing import Any, ClassVar, Generic, Protocol, SupportsIndex, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Generic,
+    Protocol,
+    SupportsIndex,
+    TypeVar,
+)
 
 from bagofholding.exception import BagOfHoldingError
 from bagofholding.metadata import (
@@ -15,6 +23,10 @@ from bagofholding.metadata import (
     VersionValidatorType,
     get_version,
 )
+
+if TYPE_CHECKING:
+    from bagofholding.h5.content import ComplexItem
+
 
 PATH_DELIMITER = "/"
 
@@ -211,3 +223,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     @abc.abstractmethod
     def open_group(self, path: str) -> GroupLike:
         pass
+
+    @staticmethod
+    def get_complex_content_class(obj: object) -> type[ComplexItem[Any]] | None:
+        return None
