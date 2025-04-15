@@ -216,6 +216,11 @@ class NoneItem(Item[type[None], None]):
 
 ItemType = TypeVar("ItemType", bound=Any)
 
+
+class ReflexiveItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
+    pass
+
+
 BuiltinItemType = TypeVar(
     "BuiltinItemType",
     str,
@@ -228,9 +233,7 @@ BuiltinItemType = TypeVar(
 )
 
 
-class SimpleItem(
-    Item[BuiltinItemType, BuiltinItemType], Generic[BuiltinItemType], abc.ABC
-):
+class SimpleItem(ReflexiveItem[BuiltinItemType], Generic[BuiltinItemType], abc.ABC):
     pass
 
 
@@ -334,6 +337,13 @@ class Group(
     pass
 
 
+GroupType = TypeVar("GroupType", bound=Any)  # Bind to container?
+
+
+class ReflexiveGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
+    pass
+
+
 # __reduce__ return values
 # per https://docs.python.org/3/library/pickle.html#object.__reduce__
 ConstructorType: TypeAlias = Callable[..., object]
@@ -367,7 +377,7 @@ ReduceReturnType: TypeAlias = (
 PickleHint: TypeAlias = str | tuple[Any, ...]
 
 
-class Reducible(Group[object, object]):
+class Reducible(ReflexiveGroup[object]):
     _rich_metadata = True
     reduction_fields: ClassVar[tuple[str, str, str, str, str, str]] = (
         "constructor",
@@ -465,8 +475,6 @@ class Reducible(Group[object, object]):
         return obj
 
 
-GroupType = TypeVar("GroupType", bound=Any)  # Bind to container?
-
 BuiltinGroupType = TypeVar(
     "BuiltinGroupType",
     dict[Any, Any],
@@ -479,9 +487,7 @@ BuiltinGroupType = TypeVar(
 )
 
 
-class SimpleGroup(
-    Group[BuiltinGroupType, BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC
-):
+class SimpleGroup(ReflexiveGroup[BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC):
     @classmethod
     def write(
         cls,
