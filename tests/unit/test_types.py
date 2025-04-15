@@ -1,5 +1,5 @@
-from typing import get_args
 import unittest
+from typing import get_args
 
 import bagofholding.types as t
 
