@@ -233,11 +233,11 @@ BuiltinItemType = TypeVar(
 )
 
 
-class SimpleItem(ReflexiveItem[BuiltinItemType], Generic[BuiltinItemType], abc.ABC):
+class BuiltinItem(ReflexiveItem[BuiltinItemType], Generic[BuiltinItemType], abc.ABC):
     pass
 
 
-class Complex(SimpleItem[complex]):
+class Complex(BuiltinItem[complex]):
     @classmethod
     def _write_item(cls, obj: complex, bag: H5Bag, path: str) -> None:
         bag.pack_complex(obj, path)
@@ -247,7 +247,7 @@ class Complex(SimpleItem[complex]):
         return bag.unpack_complex(path)
 
 
-class Str(SimpleItem[str]):
+class Str(BuiltinItem[str]):
     @classmethod
     def _write_item(cls, obj: str, bag: H5Bag, path: str) -> None:
         bag.pack_string(obj, path)
@@ -257,7 +257,7 @@ class Str(SimpleItem[str]):
         return bag.unpack_string(path)
 
 
-class Bytes(SimpleItem[bytes]):
+class Bytes(BuiltinItem[bytes]):
     @classmethod
     def _write_item(cls, obj: bytes, bag: H5Bag, path: str) -> None:
         bag.pack_bytes(obj, path)
@@ -267,7 +267,7 @@ class Bytes(SimpleItem[bytes]):
         return bag.unpack_bytes(path)
 
 
-class Bool(SimpleItem[bool]):
+class Bool(BuiltinItem[bool]):
     @classmethod
     def _write_item(cls, obj: bool, bag: H5Bag, path: str) -> None:
         bag.pack_bool(obj, path)
@@ -277,7 +277,7 @@ class Bool(SimpleItem[bool]):
         return bag.unpack_bool(path)
 
 
-class Long(SimpleItem[int]):
+class Long(BuiltinItem[int]):
     @classmethod
     def _write_item(cls, obj: int, bag: H5Bag, path: str) -> None:
         bag.pack_long(obj, path)
@@ -287,7 +287,7 @@ class Long(SimpleItem[int]):
         return bag.unpack_long(path)
 
 
-class Float(SimpleItem[float]):
+class Float(BuiltinItem[float]):
     @classmethod
     def _write_item(cls, obj: float, bag: H5Bag, path: str) -> None:
         bag.pack_float(obj, path)
@@ -297,7 +297,7 @@ class Float(SimpleItem[float]):
         return bag.unpack_float(path)
 
 
-class Bytearray(SimpleItem[bytearray]):
+class Bytearray(BuiltinItem[bytearray]):
     @classmethod
     def _write_item(cls, obj: bytearray, bag: H5Bag, path: str) -> None:
         bag.pack_bytearray(obj, path)
@@ -487,7 +487,7 @@ BuiltinGroupType = TypeVar(
 )
 
 
-class SimpleGroup(ReflexiveGroup[BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC):
+class BuiltinGroup(ReflexiveGroup[BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC):
     @classmethod
     def write(
         cls,
@@ -512,7 +512,7 @@ class SimpleGroup(ReflexiveGroup[BuiltinGroupType], Generic[BuiltinGroupType], a
         pass
 
 
-class Dict(SimpleGroup[dict[Any, Any]]):
+class Dict(BuiltinGroup[dict[Any, Any]]):
     @classmethod
     def _write_subcontent(
         cls,
@@ -575,7 +575,7 @@ class Dict(SimpleGroup[dict[Any, Any]]):
         )
 
 
-class StrKeyDict(SimpleGroup[dict[str, Any]]):
+class StrKeyDict(BuiltinGroup[dict[str, Any]]):
     @classmethod
     def _write_subcontent(
         cls,
@@ -613,7 +613,7 @@ class StrKeyDict(SimpleGroup[dict[str, Any]]):
         }
 
 
-class Union(SimpleGroup[types.UnionType]):
+class Union(BuiltinGroup[types.UnionType]):
     """
     :class:`types.UnionType` has no :meth:`__reduce__` method. Pickle actually gets
     around this with bespoke logic, and so we need to too.
@@ -677,7 +677,7 @@ IndexableType = TypeVar(
 )
 
 
-class Indexable(SimpleGroup[IndexableType], Generic[IndexableType], abc.ABC):
+class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
     recast: type[IndexableType]
 
     @classmethod
