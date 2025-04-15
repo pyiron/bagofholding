@@ -487,7 +487,9 @@ BuiltinGroupType = TypeVar(
 )
 
 
-class BuiltinGroup(ReflexiveGroup[BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC):
+class BuiltinGroup(
+    ReflexiveGroup[BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC
+):
     @classmethod
     def write(
         cls,
@@ -782,7 +784,7 @@ def pack(
         memo[obj_id] = path
         references.append(obj)
 
-    complex_class = bag.get_complex_content_class(obj)
+    complex_class = bag.get_bespoke_content_class(obj)
     if complex_class is not None:
         complex_class.write(obj, bag, path, packing_args)
         return

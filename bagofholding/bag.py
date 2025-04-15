@@ -225,5 +225,5 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         pass
 
     @staticmethod
-    def get_complex_content_class(obj: object) -> type[ComplexItem[Any]] | None:
+    def get_bespoke_content_class(obj: object) -> type[ComplexItem[Any]] | None:
         return None

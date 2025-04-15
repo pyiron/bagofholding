@@ -270,7 +270,7 @@ class H5Bag(Bag[H5Info]):
         return group
 
     @staticmethod
-    def get_complex_content_class(obj: object) -> type[ComplexItem[Any]] | None:
+    def get_bespoke_content_class(obj: object) -> type[ComplexItem[Any]] | None:
         if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
             return Array
         return None
