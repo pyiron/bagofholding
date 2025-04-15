@@ -29,6 +29,10 @@ class InvalidMetadataError(BagOfHoldingError, ValueError):
     pass
 
 
+class NotAGroupError(BagOfHoldingError, TypeError):
+    pass
+
+
 @dataclasses.dataclass(frozen=True)
 class H5Info(BagInfo):
     libver_str: str
@@ -263,5 +267,5 @@ class H5Bag(Bag[H5Info]):
     def open_group(self, path: str) -> h5py.Group:
         group = self.file[path]
         if not isinstance(group, h5py.Group):
-            raise TypeError(f"Asked a group at {path}, got {type(group)}")
+            raise NotAGroupError(f"Asked a group at {path}, got {type(group)}")
         return group
