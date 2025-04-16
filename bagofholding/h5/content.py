@@ -218,16 +218,6 @@ class BuiltinItem(ReflexiveItem[BuiltinItemType], Generic[BuiltinItemType], abc.
     pass
 
 
-class Complex(BuiltinItem[complex]):
-    @classmethod
-    def _write_item(cls, obj: complex, bag: H5Bag, path: str) -> None:
-        bag.pack_complex(obj, path)
-
-    @classmethod
-    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> complex:
-        return bag.unpack_complex(path)
-
-
 class Str(BuiltinItem[str]):
     @classmethod
     def _write_item(cls, obj: str, bag: H5Bag, path: str) -> None:
@@ -236,16 +226,6 @@ class Str(BuiltinItem[str]):
     @classmethod
     def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> str:
         return bag.unpack_string(path)
-
-
-class Bytes(BuiltinItem[bytes]):
-    @classmethod
-    def _write_item(cls, obj: bytes, bag: H5Bag, path: str) -> None:
-        bag.pack_bytes(obj, path)
-
-    @classmethod
-    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> bytes:
-        return bag.unpack_bytes(path)
 
 
 class Bool(BuiltinItem[bool]):
@@ -276,6 +256,26 @@ class Float(BuiltinItem[float]):
     @classmethod
     def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> float:
         return bag.unpack_float(path)
+
+
+class Complex(BuiltinItem[complex]):
+    @classmethod
+    def _write_item(cls, obj: complex, bag: H5Bag, path: str) -> None:
+        bag.pack_complex(obj, path)
+
+    @classmethod
+    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> complex:
+        return bag.unpack_complex(path)
+
+
+class Bytes(BuiltinItem[bytes]):
+    @classmethod
+    def _write_item(cls, obj: bytes, bag: H5Bag, path: str) -> None:
+        bag.pack_bytes(obj, path)
+
+    @classmethod
+    def read(cls, bag: H5Bag, path: str, unpacking: UnpackingArguments) -> bytes:
+        return bag.unpack_bytes(path)
 
 
 class Bytearray(BuiltinItem[bytearray]):
