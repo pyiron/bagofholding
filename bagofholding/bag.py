@@ -23,10 +23,10 @@ from bagofholding.metadata import (
     VersionValidatorType,
     get_version,
 )
+from bagofholding.widget import BagTree
 
 if TYPE_CHECKING:
     from bagofholding.content import BespokeItem
-    from bagofholding.widget import BagTree
 
 
 PATH_DELIMITER = "/"
@@ -177,8 +177,6 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         """A list of all available content paths."""
 
     def browse(self) -> BagTree | list[str]:
-        from bagofholding.widget import BagTree
-
         try:
             return BagTree(self)  # type: ignore
             # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
