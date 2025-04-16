@@ -3,7 +3,6 @@ from __future__ import annotations
 import types
 from typing import Any, TypeVar, Union
 
-
 BuiltinItemType = TypeVar(
     "BuiltinItemType",
     str,
