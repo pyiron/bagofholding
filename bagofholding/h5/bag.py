@@ -28,7 +28,7 @@ class H5Info(BagInfo):
     libver_str: str
 
 
-class H5Bag(Bag[H5Info]):
+class H5Bag(Bag):
     libver_str: ClassVar[str] = "latest"
     _content_key: ClassVar[str] = "content_type"
     _file: h5py.File | None
@@ -60,13 +60,10 @@ class H5Bag(Bag[H5Info]):
     def file(self, new_file: h5py.File | None) -> None:
         self._file = new_file
 
-    def _pack_bag_info(
-        self,
-        bag_info: H5Info,
-    ) -> None:
+    def _pack_bag_info(self) -> None:
         try:
             self.open("w")
-            for k, v in bag_info.field_items():
+            for k, v in self.get_bag_info().field_items():
                 self.file.attrs[k] = v
         finally:
             self.close()

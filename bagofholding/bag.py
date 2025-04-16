@@ -42,9 +42,6 @@ class BagInfo:
         return dataclasses.asdict(self).items()
 
 
-InfoType = TypeVar("InfoType", bound=BagInfo)
-
-
 class HasContents(Protocol):
     @abc.abstractmethod
     def __iter__(self) -> Iterator[str]:
@@ -55,18 +52,18 @@ class HasContents(Protocol):
         pass
 
 
-class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
+class Bag(Mapping[str, Metadata | None], abc.ABC):
     """
     Bags are the user-facing object.
     """
 
-    bag_info: InfoType
+    bag_info: BagInfo
     storage_root: ClassVar[str] = "object"
     filepath: pathlib.Path
 
     @classmethod
     @abc.abstractmethod
-    def get_bag_info(cls) -> InfoType:
+    def get_bag_info(cls) -> BagInfo:
         pass
 
     @classmethod
@@ -105,7 +102,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
             else:
                 raise FileExistsError(f"{filepath} already exists or is not a file.")
         bag = cls(filepath)
-        bag._pack_bag_info(cls.get_bag_info())
+        bag._pack_bag_info()
         bag._pack(
             obj,
             require_versions,
@@ -133,10 +130,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 )
 
     @abc.abstractmethod
-    def _pack_bag_info(
-        self,
-        bag_info: InfoType,
-    ) -> None:
+    def _pack_bag_info(self) -> None:
         pass
 
     @abc.abstractmethod
@@ -152,11 +146,11 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         pass
 
     @abc.abstractmethod
-    def unpack_bag_info(self, filepath: pathlib.Path) -> InfoType:
+    def unpack_bag_info(self, filepath: pathlib.Path) -> BagInfo:
         pass
 
     @staticmethod
-    def validate_bag_info(bag_info: InfoType, reference: InfoType) -> bool:
+    def validate_bag_info(bag_info: BagInfo, reference: BagInfo) -> bool:
         return bag_info == reference
 
     @abc.abstractmethod
