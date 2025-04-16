@@ -7,7 +7,6 @@ import operator
 import pickle
 import types
 from collections.abc import Callable, Iterator
-from types import BuiltinFunctionType, FunctionType
 from typing import (
     Any,
     ClassVar,
@@ -174,7 +173,7 @@ class Reference(Item[str, Any]):
             )
 
 
-GlobalType: TypeAlias = type[type] | FunctionType | str
+GlobalType: TypeAlias = type[type] | types.FunctionType | str
 
 
 class Global(Item[GlobalType, Any]):
@@ -786,10 +785,10 @@ def pack(
 
 
 KNOWN_ITEM_MAP: dict[
-    type | FunctionType | BuiltinFunctionType, type[Item[Any, Any]]
+    type | types.FunctionType | types.BuiltinFunctionType, type[Item[Any, Any]]
 ] = {
     type: Global,
-    FunctionType: Global,
+    types.FunctionType: Global,
     type(all): Global,
     type(None): NoneItem,
     bool: Bool,
