@@ -80,21 +80,21 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def read(
-        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
-    ) -> UnpackingType:
-        # TODO: Optionally first read the metadata and verify that your env is viable
-        pass
-
-    @classmethod
-    @abc.abstractmethod
-    def write(
+    def pack(
         cls,
         obj: PackingType,
         bag: Bag[InfoType],
         path: str,
         packing: PackingArguments,
     ) -> None:
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def unpack(
+        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
+    ) -> UnpackingType:
+        # TODO: Optionally first read the metadata and verify that your env is viable
         pass
 
     @classmethod
@@ -140,29 +140,31 @@ class Item(
     Content[PackingType, UnpackingType], Generic[PackingType, UnpackingType], abc.ABC
 ):
     @classmethod
-    def write(
+    def pack(
         cls,
         obj: PackingType,
         bag: Bag[InfoType],
         path: str,
         packing: PackingArguments,
     ) -> None:
-        cls._write_item(obj, bag, path)
+        cls._pack_item(obj, bag, path)
         bag.pack_metadata(cls._get_metadata(obj, packing), path)
 
     @classmethod
     @abc.abstractmethod
-    def _write_item(cls, obj: PackingType, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: PackingType, bag: Bag[InfoType], path: str) -> None:
         pass
 
 
 class Reference(Item[str, Any]):
     @classmethod
-    def _write_item(cls, obj: str, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: str, bag: Bag[InfoType], path: str) -> None:
         bag.pack_string(obj, path)
 
     @classmethod
-    def read(cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments) -> Any:
+    def unpack(
+        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
+    ) -> Any:
         reference = bag.unpack_string(path)
         from_memo = unpacking.memo.get(reference, NotData)
         if from_memo is not NotData:
@@ -184,7 +186,7 @@ class Global(Item[GlobalType, Any]):
     _rich_metadata = True
 
     @classmethod
-    def _write_item(cls, obj: GlobalType, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: GlobalType, bag: Bag[InfoType], path: str) -> None:
         value: str
         if isinstance(obj, str):
             value = "builtins." + obj if "." not in obj else obj
@@ -193,18 +195,22 @@ class Global(Item[GlobalType, Any]):
         bag.pack_string(value, path)
 
     @classmethod
-    def read(cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments) -> Any:
+    def unpack(
+        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
+    ) -> Any:
         import_string = bag.unpack_string(path)
         return import_from_string(import_string)
 
 
 class NoneItem(Item[type[None], None]):
     @classmethod
-    def _write_item(cls, obj: type[None], bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: type[None], bag: Bag[InfoType], path: str) -> None:
         bag.pack_empty(path)
 
     @classmethod
-    def read(cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments) -> None:
+    def unpack(
+        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
+    ) -> None:
         return None
 
 
@@ -233,41 +239,47 @@ class BuiltinItem(ReflexiveItem[BuiltinItemType], Generic[BuiltinItemType], abc.
 
 class Str(BuiltinItem[str]):
     @classmethod
-    def _write_item(cls, obj: str, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: str, bag: Bag[InfoType], path: str) -> None:
         bag.pack_string(obj, path)
 
     @classmethod
-    def read(cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments) -> str:
+    def unpack(
+        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
+    ) -> str:
         return bag.unpack_string(path)
 
 
 class Bool(BuiltinItem[bool]):
     @classmethod
-    def _write_item(cls, obj: bool, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: bool, bag: Bag[InfoType], path: str) -> None:
         bag.pack_bool(obj, path)
 
     @classmethod
-    def read(cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments) -> bool:
+    def unpack(
+        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
+    ) -> bool:
         return bag.unpack_bool(path)
 
 
 class Long(BuiltinItem[int]):
     @classmethod
-    def _write_item(cls, obj: int, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: int, bag: Bag[InfoType], path: str) -> None:
         bag.pack_long(obj, path)
 
     @classmethod
-    def read(cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments) -> int:
+    def unpack(
+        cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
+    ) -> int:
         return bag.unpack_long(path)
 
 
 class Float(BuiltinItem[float]):
     @classmethod
-    def _write_item(cls, obj: float, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: float, bag: Bag[InfoType], path: str) -> None:
         bag.pack_float(obj, path)
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> float:
         return bag.unpack_float(path)
@@ -275,11 +287,11 @@ class Float(BuiltinItem[float]):
 
 class Complex(BuiltinItem[complex]):
     @classmethod
-    def _write_item(cls, obj: complex, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: complex, bag: Bag[InfoType], path: str) -> None:
         bag.pack_complex(obj, path)
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> complex:
         return bag.unpack_complex(path)
@@ -287,11 +299,11 @@ class Complex(BuiltinItem[complex]):
 
 class Bytes(BuiltinItem[bytes]):
     @classmethod
-    def _write_item(cls, obj: bytes, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: bytes, bag: Bag[InfoType], path: str) -> None:
         bag.pack_bytes(obj, path)
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> bytes:
         return bag.unpack_bytes(path)
@@ -299,11 +311,11 @@ class Bytes(BuiltinItem[bytes]):
 
 class Bytearray(BuiltinItem[bytearray]):
     @classmethod
-    def _write_item(cls, obj: bytearray, bag: Bag[InfoType], path: str) -> None:
+    def _pack_item(cls, obj: bytearray, bag: Bag[InfoType], path: str) -> None:
         bag.pack_bytearray(obj, path)
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> bytearray:
         return bag.unpack_bytearray(path)
@@ -371,7 +383,7 @@ class Reducible(ReflexiveGroup[object]):
     )
 
     @classmethod
-    def write(
+    def pack(
         cls,
         obj: object,
         bag: Bag[InfoType],
@@ -398,7 +410,7 @@ class Reducible(ReflexiveGroup[object]):
             )
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> object:
         constructor = cast(
@@ -475,7 +487,7 @@ class BuiltinGroup(
     ReflexiveGroup[BuiltinGroupType], Generic[BuiltinGroupType], abc.ABC
 ):
     @classmethod
-    def write(
+    def pack(
         cls,
         obj: PackingType,
         bag: Bag[InfoType],
@@ -484,11 +496,11 @@ class BuiltinGroup(
     ) -> None:
         bag.create_group(path)
         bag.pack_metadata(cls._get_metadata(obj, packing), path)
-        cls._write_subcontent(obj, bag, path, packing)
+        cls._pack_subcontent(obj, bag, path, packing)
 
     @classmethod
     @abc.abstractmethod
-    def _write_subcontent(
+    def _pack_subcontent(
         cls,
         obj: PackingType,
         bag: Bag[InfoType],
@@ -500,7 +512,7 @@ class BuiltinGroup(
 
 class Dict(BuiltinGroup[dict[Any, Any]]):
     @classmethod
-    def _write_subcontent(
+    def _pack_subcontent(
         cls,
         obj: dict[Any, Any],
         bag: Bag[InfoType],
@@ -531,7 +543,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
         )
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> dict[Any, Any]:
         return dict(
@@ -563,7 +575,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
 
 class StrKeyDict(BuiltinGroup[dict[str, Any]]):
     @classmethod
-    def _write_subcontent(
+    def _pack_subcontent(
         cls,
         obj: dict[str, Any],
         bag: Bag[InfoType],
@@ -584,7 +596,7 @@ class StrKeyDict(BuiltinGroup[dict[str, Any]]):
             )
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> dict[str, Any]:
         return {
@@ -606,7 +618,7 @@ class Union(BuiltinGroup[types.UnionType]):
     """
 
     @classmethod
-    def _write_subcontent(
+    def _pack_subcontent(
         cls,
         obj: types.UnionType,
         bag: Bag[InfoType],
@@ -643,7 +655,7 @@ class Union(BuiltinGroup[types.UnionType]):
         return union
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> types.UnionType:
         return cls._recursive_or(
@@ -667,7 +679,7 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
     recast: type[IndexableType]
 
     @classmethod
-    def _write_subcontent(
+    def _pack_subcontent(
         cls,
         obj: IndexableType,
         bag: Bag[InfoType],
@@ -688,7 +700,7 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
             )
 
     @classmethod
-    def read(
+    def unpack(
         cls, bag: Bag[InfoType], path: str, unpacking: UnpackingArguments
     ) -> IndexableType:
         return cls.recast(
@@ -747,7 +759,7 @@ def pack(
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
     if simple_class is not None:
-        simple_class.write(
+        simple_class.pack(
             obj,
             bag,
             path,
@@ -758,7 +770,7 @@ def pack(
     obj_id = id(obj)
     reference = memo.get(obj_id)
     if reference is not None:
-        Reference.write(reference, bag, path, packing_args)
+        Reference.pack(reference, bag, path, packing_args)
         return
     else:
         memo[obj_id] = path
@@ -766,17 +778,17 @@ def pack(
 
     complex_class = bag.get_bespoke_content_class(obj)
     if complex_class is not None:
-        complex_class.write(obj, bag, path, packing_args)
+        complex_class.pack(obj, bag, path, packing_args)
         return
 
     group_class = get_group_content_class(obj)
     if group_class is not None:
-        group_class.write(obj, bag, path, packing_args)
+        group_class.pack(obj, bag, path, packing_args)
         return
 
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
-        Global.write(
+        Global.pack(
             get_importable_string_from_string_reduction(rv, obj),
             bag,
             path,
@@ -784,7 +796,7 @@ def pack(
         )
         return
     else:
-        Reducible.write(obj, bag, path, packing_args, rv=rv)
+        Reducible.pack(obj, bag, path, packing_args, rv=rv)
         return
 
 
@@ -838,7 +850,7 @@ def unpack(
             validate_version(
                 metadata, validator=version_validator, version_scraping=version_scraping
             )
-        value = content_class.read(
+        value = content_class.unpack(
             bag,
             path,
             UnpackingArguments(

@@ -13,13 +13,13 @@ if TYPE_CHECKING:
 
 class Array(BespokeItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
     @classmethod
-    def _write_item(
+    def _pack_item(
         cls, obj: np.ndarray[tuple[int, ...], H5DtypeAlias], bag: H5Bag, path: str
     ) -> None:
         bag.file.create_dataset(path, data=obj)
 
     @classmethod
-    def read(
+    def unpack(
         cls,
         bag: H5Bag,
         path: str,
