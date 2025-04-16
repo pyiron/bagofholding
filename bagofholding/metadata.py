@@ -5,9 +5,7 @@ from collections.abc import Callable, ItemsView
 from dataclasses import asdict, dataclass
 from importlib import import_module
 from sys import version_info
-from typing import Any, Literal
-
-from jedi.inference.gradual.typing import TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from bagofholding.exceptions import EnvironmentMismatchError
 
