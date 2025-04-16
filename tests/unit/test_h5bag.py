@@ -117,7 +117,7 @@ class TestBag(unittest.TestCase):
                 np.array,  # built-in function array -- types.BuiltinFunctionType
                 c.pack,  # function -- types.FunctionType
                 np.all,  # function -- types.FunctionType
-                H5Bag.read_bag_info,  # function -- types.FunctionType
+                H5Bag.unpack_bag_info,  # function -- types.FunctionType
                 DRAGON,  # Singleton
             ]
         ]

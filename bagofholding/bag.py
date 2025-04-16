@@ -105,8 +105,8 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
             else:
                 raise FileExistsError(f"{filepath} already exists or is not a file.")
         bag = cls(filepath)
-        bag._write_bag_info(cls.get_bag_info())
-        bag._save(
+        bag._pack_bag_info(cls.get_bag_info())
+        bag._pack(
             obj,
             require_versions,
             forbidden_modules,
@@ -124,7 +124,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
         if os.path.isfile(self.filepath):
-            self.bag_info = self.read_bag_info(self.filepath)
+            self.bag_info = self.unpack_bag_info(self.filepath)
             if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
                 raise BagMismatchError(
                     f"The bag class {self.__class__} does not match the bag saved at "
@@ -133,14 +133,14 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 )
 
     @abc.abstractmethod
-    def _write_bag_info(
+    def _pack_bag_info(
         self,
         bag_info: InfoType,
     ) -> None:
         pass
 
     @abc.abstractmethod
-    def _save(
+    def _pack(
         self,
         obj: Any,
         require_versions: bool,
@@ -152,7 +152,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         pass
 
     @abc.abstractmethod
-    def read_bag_info(self, filepath: pathlib.Path) -> InfoType:
+    def unpack_bag_info(self, filepath: pathlib.Path) -> InfoType:
         pass
 
     @staticmethod

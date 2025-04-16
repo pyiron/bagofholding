@@ -60,7 +60,7 @@ class H5Bag(Bag[H5Info]):
     def file(self, new_file: h5py.File | None) -> None:
         self._file = new_file
 
-    def _write_bag_info(
+    def _pack_bag_info(
         self,
         bag_info: H5Info,
     ) -> None:
@@ -71,7 +71,7 @@ class H5Bag(Bag[H5Info]):
         finally:
             self.close()
 
-    def _save(
+    def _pack(
         self,
         obj: Any,
         require_versions: bool,
@@ -95,7 +95,7 @@ class H5Bag(Bag[H5Info]):
         finally:
             self.close()
 
-    def read_bag_info(self, filepath: pathlib.Path) -> H5Info:
+    def unpack_bag_info(self, filepath: pathlib.Path) -> H5Info:
         with self:
             info = H5Info(
                 **{k: self.file.attrs[k] for k in H5Info.__dataclass_fields__}
