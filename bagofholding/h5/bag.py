@@ -259,11 +259,13 @@ class H5Bag(Bag[H5Info]):
     def create_group(self, path: str) -> None:
         self.file.create_group(path)
 
-    def open_group(self, path: str) -> h5py.Group:
-        group = self.file[path]
-        if not isinstance(group, h5py.Group):
-            raise NotAGroupError(f"Asked a group at {path}, got {type(group)}")
-        return group
+    def open_group(self, path: str) -> list[str]:
+        with self:
+            group = self.file[path]
+            if not isinstance(group, h5py.Group):
+                raise NotAGroupError(f"Asked a group at {path}, got {type(group)}")
+            subcontent_names = list(group)
+        return subcontent_names
 
     @staticmethod
     def get_bespoke_content_class(obj: object) -> type[BespokeItem[Any]] | None:
