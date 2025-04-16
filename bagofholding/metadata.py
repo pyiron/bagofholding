@@ -111,6 +111,7 @@ def validate_version(
                 f"in the metadata that could not be found in the current environment."
             ) from e
 
+        version_validator: VersionValidatorType
         if validator == "exact":
             version_validator = _versions_are_equal
         elif validator == "semantic-minor":
