@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from bagofholding.h5.bag import H5Bag
 
 
-class Array(BespokeItem[np.ndarray[tuple[int, ...], H5DtypeAlias]]):
+class Array(BespokeItem[np.ndarray[tuple[int, ...], H5DtypeAlias], H5Bag]):
     @classmethod
     def _pack_item(
         cls, obj: np.ndarray[tuple[int, ...], H5DtypeAlias], bag: H5Bag, path: str

@@ -51,6 +51,7 @@ UnpackingMemoAlias: TypeAlias = dict[str, Any]
 
 PackingType = TypeVar("PackingType", bound=Any)
 UnpackingType = TypeVar("UnpackingType", bound=Any)
+BagType = TypeVar("BagType", bound=Bag)
 
 
 @dataclasses.dataclass
@@ -74,7 +75,7 @@ class NotData:
     pass
 
 
-class Content(Generic[PackingType, UnpackingType], abc.ABC):
+class Content(Generic[PackingType, UnpackingType, BagType], abc.ABC):
 
     _rich_metadata: ClassVar[bool] = False
 
@@ -83,7 +84,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     def pack(
         cls,
         obj: PackingType,
-        bag: Bag,
+        bag: BagType,
         path: str,
         packing: PackingArguments,
     ) -> None:
@@ -92,7 +93,7 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
+        cls, bag: BagType, path: str, unpacking: UnpackingArguments
     ) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
@@ -137,13 +138,15 @@ class Content(Generic[PackingType, UnpackingType], abc.ABC):
 
 
 class Item(
-    Content[PackingType, UnpackingType], Generic[PackingType, UnpackingType], abc.ABC
+    Content[PackingType, UnpackingType, BagType],
+    Generic[PackingType, UnpackingType, BagType],
+    abc.ABC,
 ):
     @classmethod
     def pack(
         cls,
         obj: PackingType,
-        bag: Bag,
+        bag: BagType,
         path: str,
         packing: PackingArguments,
     ) -> None:
@@ -152,19 +155,17 @@ class Item(
 
     @classmethod
     @abc.abstractmethod
-    def _pack_item(cls, obj: PackingType, bag: Bag, path: str) -> None:
+    def _pack_item(cls, obj: PackingType, bag: BagType, path: str) -> None:
         pass
 
 
-class Reference(Item[str, Any]):
+class Reference(Item[str, Any, Bag]):
     @classmethod
-    def _pack_item(cls, obj: str, bag: Bag, path: str) -> None:
+    def _pack_item(cls, obj: str, bag: BagType, path: str) -> None:
         bag.pack_string(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> Any:
+    def unpack(cls, bag: BagType, path: str, unpacking: UnpackingArguments) -> Any:
         reference = bag.unpack_string(path)
         from_memo = unpacking.memo.get(reference, NotData)
         if from_memo is not NotData:
@@ -182,7 +183,7 @@ class Reference(Item[str, Any]):
 GlobalType: TypeAlias = type[type] | types.FunctionType | str
 
 
-class Global(Item[GlobalType, Any]):
+class Global(Item[GlobalType, Any, Bag]):
     _rich_metadata = True
 
     @classmethod
@@ -195,29 +196,27 @@ class Global(Item[GlobalType, Any]):
         bag.pack_string(value, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> Any:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> Any:
         import_string = bag.unpack_string(path)
         return import_from_string(import_string)
 
 
-class NoneItem(Item[type[None], None]):
+class NoneItem(Item[type[None], None, Bag]):
     @classmethod
     def _pack_item(cls, obj: type[None], bag: Bag, path: str) -> None:
         bag.pack_empty(path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> None:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> None:
         return None
 
 
 ItemType = TypeVar("ItemType", bound=Any)
 
 
-class ReflexiveItem(Item[ItemType, ItemType], Generic[ItemType], abc.ABC):
+class ReflexiveItem(
+    Item[ItemType, ItemType, BagType], Generic[ItemType, BagType], abc.ABC
+):
     pass
 
 
@@ -233,7 +232,9 @@ BuiltinItemType = TypeVar(
 )
 
 
-class BuiltinItem(ReflexiveItem[BuiltinItemType], Generic[BuiltinItemType], abc.ABC):
+class BuiltinItem(
+    ReflexiveItem[BuiltinItemType, Bag], Generic[BuiltinItemType], abc.ABC
+):
     pass
 
 
@@ -243,9 +244,7 @@ class Str(BuiltinItem[str]):
         bag.pack_string(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> str:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> str:
         return bag.unpack_string(path)
 
 
@@ -255,9 +254,7 @@ class Bool(BuiltinItem[bool]):
         bag.pack_bool(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> bool:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> bool:
         return bag.unpack_bool(path)
 
 
@@ -267,9 +264,7 @@ class Long(BuiltinItem[int]):
         bag.pack_long(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> int:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> int:
         return bag.unpack_long(path)
 
 
@@ -279,9 +274,7 @@ class Float(BuiltinItem[float]):
         bag.pack_float(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> float:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> float:
         return bag.unpack_float(path)
 
 
@@ -291,9 +284,7 @@ class Complex(BuiltinItem[complex]):
         bag.pack_complex(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> complex:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> complex:
         return bag.unpack_complex(path)
 
 
@@ -303,9 +294,7 @@ class Bytes(BuiltinItem[bytes]):
         bag.pack_bytes(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> bytes:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> bytes:
         return bag.unpack_bytes(path)
 
 
@@ -315,18 +304,20 @@ class Bytearray(BuiltinItem[bytearray]):
         bag.pack_bytearray(obj, path)
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> bytearray:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> bytearray:
         return bag.unpack_bytearray(path)
 
 
-class BespokeItem(ReflexiveItem[ItemType], Generic[ItemType], abc.ABC):
+class BespokeItem(
+    ReflexiveItem[ItemType, BagType], Generic[ItemType, BagType], abc.ABC
+):
     _rich_metadata = True
 
 
 class Group(
-    Content[PackingType, UnpackingType], Generic[PackingType, UnpackingType], abc.ABC
+    Content[PackingType, UnpackingType, Bag],
+    Generic[PackingType, UnpackingType],
+    abc.ABC,
 ):
     pass
 
@@ -410,9 +401,7 @@ class Reducible(ReflexiveGroup[object]):
             )
 
     @classmethod
-    def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
-    ) -> object:
+    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> object:
         constructor = cast(
             ConstructorType,
             unpack(
@@ -801,7 +790,7 @@ def pack(
 
 
 KNOWN_ITEM_MAP: dict[
-    type | types.FunctionType | types.BuiltinFunctionType, type[Item[Any, Any]]
+    type | types.FunctionType | types.BuiltinFunctionType, type[Item[Any, Any, Any]]
 ] = {
     type: Global,
     types.FunctionType: Global,

@@ -10,10 +10,9 @@ from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Generic,
     Protocol,
+    Self,
     SupportsIndex,
-    TypeVar,
 )
 
 from bagofholding.exceptions import BagMismatchError
@@ -291,6 +290,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
     def open_group(self, path: str) -> HasContents:
         pass
 
-    @staticmethod
-    def get_bespoke_content_class(obj: object) -> type[BespokeItem[Any]] | None:
+    def get_bespoke_content_class(
+        self, obj: object
+    ) -> type[BespokeItem[Any, Self]] | None:
         return None

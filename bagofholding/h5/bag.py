@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
-from bagofholding.content import BespokeItem, pack, unpack
+from bagofholding.content import pack, unpack
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
@@ -255,8 +255,7 @@ class H5Bag(Bag):
             subcontent_names = list(group)
         return subcontent_names
 
-    @staticmethod
-    def get_bespoke_content_class(obj: object) -> type[BespokeItem[Any]] | None:
+    def get_bespoke_content_class(self, obj: object) -> type[Array] | None:
         if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
             return Array
         return None
