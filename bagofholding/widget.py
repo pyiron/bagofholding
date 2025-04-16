@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from pyiron_snippets.import_alarm import ImportAlarm
 
 try:
@@ -15,8 +14,8 @@ except (ImportError, ModuleNotFoundError):
         _fail_on_warning=True,
     )
 
-from bagofholding.content import Reducible
 from bagofholding.bag import Bag, InfoType
+from bagofholding.content import Reducible
 
 
 class BagTree(ipytree.Tree):  # type: ignore

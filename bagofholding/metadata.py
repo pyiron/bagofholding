@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from jedi.inference.gradual.typing import TypeAlias
 
-from bagofholding import EnvironmentMismatchError
+from bagofholding.exceptions import EnvironmentMismatchError
 
 
 @dataclass

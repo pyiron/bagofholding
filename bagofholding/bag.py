@@ -16,7 +16,7 @@ from typing import (
     TypeVar,
 )
 
-from bagofholding import BagMismatchError
+from bagofholding.exceptions import BagMismatchError
 from bagofholding.metadata import (
     Metadata,
     VersionScrapingMap,
@@ -178,6 +178,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
 
     def browse(self) -> BagTree | list[str]:
         from bagofholding.widget import BagTree
+
         try:
             return BagTree(self)  # type: ignore
             # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
