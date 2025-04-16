@@ -45,7 +45,7 @@ class BagInfo:
 InfoType = TypeVar("InfoType", bound=BagInfo)
 
 
-class GroupLike(Protocol):
+class HasContents(Protocol):
     @abc.abstractmethod
     def __iter__(self) -> Iterator[str]:
         pass
@@ -294,7 +294,7 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         pass
 
     @abc.abstractmethod
-    def open_group(self, path: str) -> GroupLike:
+    def open_group(self, path: str) -> HasContents:
         pass
 
     @staticmethod
