@@ -22,10 +22,10 @@ from bagofholding.metadata import (
     VersionValidatorType,
     get_version,
 )
-from bagofholding.widget import BagTree
 
 if TYPE_CHECKING:
     from bagofholding.content import BespokeItem
+    from bagofholding.widget import BagTree
 
 
 PATH_DELIMITER = "/"
@@ -171,6 +171,8 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
 
     def browse(self) -> BagTree | list[str]:
         try:
+            from bagofholding.widget import BagTree
+
             return BagTree(self)  # type: ignore
             # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
             # and this is not correctly passing on the hint

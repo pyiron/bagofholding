@@ -8,7 +8,6 @@ import pickle
 import types
 from collections.abc import Callable, Iterator
 from typing import (
-    TYPE_CHECKING,
     Any,
     ClassVar,
     Generic,
@@ -21,6 +20,7 @@ from typing import (
 import bidict
 import h5py
 
+from bagofholding.bag import Bag
 from bagofholding.exceptions import (
     ModuleForbiddenError,
     NoVersionError,
@@ -39,10 +39,6 @@ from bagofholding.retrieve import (
     get_importable_string_from_string_reduction,
     import_from_string,
 )
-
-if TYPE_CHECKING:
-    from bagofholding.bag import Bag
-
 
 PackingMemoAlias: TypeAlias = bidict.bidict[int, str]
 ReferencesAlias: TypeAlias = list[object]

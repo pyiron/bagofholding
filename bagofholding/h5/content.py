@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import numpy as np
 
 from bagofholding.content import BespokeItem, UnpackingArguments
+from bagofholding.h5.bag import H5Bag
 from bagofholding.h5.dtypes import H5DtypeAlias
-
-if TYPE_CHECKING:
-    from bagofholding.h5.bag import H5Bag
 
 
 class Array(BespokeItem[np.ndarray[tuple[int, ...], H5DtypeAlias], H5Bag]):
