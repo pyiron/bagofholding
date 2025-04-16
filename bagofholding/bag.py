@@ -213,6 +213,70 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
         return None
 
     @abc.abstractmethod
+    def pack_empty(self, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def pack_string(self, obj: str, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_string(self, path: str) -> str:
+        pass
+
+    @abc.abstractmethod
+    def pack_bool(self, obj: bool, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_bool(self, path: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def pack_long(self, obj: int, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_long(self, path: str) -> int:
+        pass
+
+    @abc.abstractmethod
+    def pack_float(self, obj: float, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_float(self, path: str) -> float:
+        pass
+
+    @abc.abstractmethod
+    def pack_complex(self, obj: complex, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_complex(self, path: str) -> complex:
+        pass
+
+    @abc.abstractmethod
+    def pack_bytes(self, obj: bytes, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_bytes(self, path: str) -> bytes:
+        pass
+
+    @abc.abstractmethod
+    def pack_bytearray(self, obj: bytearray, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_bytearray(self, path: str) -> bytearray:
+        pass
+
+    @abc.abstractmethod
+    def create_group(self, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
     def open_group(self, path: str) -> GroupLike:
         pass
 
