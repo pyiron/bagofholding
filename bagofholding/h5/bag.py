@@ -20,7 +20,6 @@ from bagofholding.exceptions import (
 )
 from bagofholding.h5.content import Array
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
-from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
 
@@ -135,14 +134,6 @@ class H5Bag(Bag[H5Info]):
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.list_paths())
-
-    def browse(self) -> BagTree | list[str]:
-        try:
-            return BagTree(self)  # type: ignore
-            # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
-            # and this is not correctly passing on the hint
-        except ImportError:
-            return self.list_paths()
 
     def __enter__(self) -> Self:
         self._context_depth += 1

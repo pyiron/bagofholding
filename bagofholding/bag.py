@@ -26,6 +26,7 @@ from bagofholding.metadata import (
 
 if TYPE_CHECKING:
     from bagofholding.content import BespokeItem
+    from bagofholding.h5.widget import BagTree
 
 
 PATH_DELIMITER = "/"
@@ -174,6 +175,15 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
     @abc.abstractmethod
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
+
+    def browse(self) -> BagTree | list[str]:
+        from bagofholding.h5.widget import BagTree
+        try:
+            return BagTree(self)  # type: ignore
+            # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
+            # and this is not correctly passing on the hint
+        except ImportError:
+            return self.list_paths()
 
     def __len__(self) -> int:
         return len(self.list_paths())

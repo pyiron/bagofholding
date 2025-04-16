@@ -1,26 +1,22 @@
 from __future__ import annotations
 
-import typing
 
 from pyiron_snippets.import_alarm import ImportAlarm
 
 try:
     import ipytree
+    import traitlets
 
     import_alarm = ImportAlarm()
 except (ImportError, ModuleNotFoundError):
     import_alarm = ImportAlarm(
         "The browsing widget relies on ipytree, but this was unavailable. "
-        "You can browse all available paths with :meth:`bagofholding.h5.bag.ClassH5Bag.list_paths`.",
+        "You can browse all available paths with :meth:`bagofholding.bag.Bag.list_paths`.",
         _fail_on_warning=True,
     )
 
 from bagofholding.content import Reducible
-
-if typing.TYPE_CHECKING:
-    import traitlets
-
-    from bagofholding.h5.bag import H5Bag
+from bagofholding.bag import Bag, InfoType
 
 
 class BagTree(ipytree.Tree):  # type: ignore
@@ -32,7 +28,7 @@ class BagTree(ipytree.Tree):  # type: ignore
     @import_alarm  # type: ignore
     # pyiron_snippets.import_alarm.ImportAlarm.__call__  is not correctly passing on
     # the hint
-    def __init__(self, bag: H5Bag) -> None:
+    def __init__(self, bag: Bag[InfoType]) -> None:
         super().__init__(multiple_selection=False)
         self.bag = bag
         self.root_path = bag.storage_root
@@ -50,12 +46,11 @@ class BagTree(ipytree.Tree):  # type: ignore
         self.root.add_node(self.object)
 
     def _create_node(self, path: str) -> ipytree.Node:
-        with self.bag:
-            metadata = self.bag[path]
-            try:
-                subentries = tuple(k for k in self.bag.open_group(path))
-            except TypeError:
-                subentries = None
+        metadata = self.bag[path]
+        try:
+            subentries = tuple(k for k in self.bag.open_group(path))
+        except TypeError:
+            subentries = None
 
         label_base = path.split("/")[-1]
         truncated_content = metadata.content_type.lstrip(Reducible.__module__)
