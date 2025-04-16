@@ -68,7 +68,7 @@ class H5Bag(Bag):
         finally:
             self.close()
 
-    def _pack(
+    def _pack_object(
         self,
         obj: Any,
         require_versions: bool,

@@ -102,7 +102,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
                 raise FileExistsError(f"{filepath} already exists or is not a file.")
         bag = cls(filepath)
         bag._pack_bag_info()
-        bag._pack(
+        bag._pack_object(
             obj,
             require_versions,
             forbidden_modules,
@@ -133,7 +133,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _pack(
+    def _pack_object(
         self,
         obj: Any,
         require_versions: bool,
