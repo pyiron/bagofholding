@@ -11,13 +11,14 @@ import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
+from bagofholding.content import BespokeItem, pack, unpack
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
     InvalidMetadataError,
     NotAGroupError,
 )
-from bagofholding.h5.content import Array, BespokeItem, pack, unpack
+from bagofholding.h5.content import Array
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.h5.widget import BagTree
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType

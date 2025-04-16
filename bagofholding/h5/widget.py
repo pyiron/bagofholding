@@ -15,7 +15,7 @@ except (ImportError, ModuleNotFoundError):
         _fail_on_warning=True,
     )
 
-from bagofholding.h5.content import Reducible
+from bagofholding.content import Reducible
 
 if typing.TYPE_CHECKING:
     import traitlets

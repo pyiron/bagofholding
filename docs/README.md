@@ -44,7 +44,7 @@ Item-access on the bag object gives access to metadata stored alongside the actu
 
 ```python
 >>> bag["object"]
-Metadata(content_type='bagofholding.h5.content.Reducible', qualname='MyThing', module='__main__', version=None, meta=None)
+Metadata(content_type='bagofholding.content.Reducible', qualname='MyThing', module='__main__', version=None, meta=None)
 
 ```
 

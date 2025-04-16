@@ -15,7 +15,8 @@ from objects import (
 )
 from pyiron_snippets.dotdict import DotDict
 
-import bagofholding.h5.content as c
+import bagofholding.content as c
+import bagofholding.h5.content
 from bagofholding import (
     BagMismatchError,
     EnvironmentMismatchError,
@@ -96,7 +97,7 @@ class TestBag(unittest.TestCase):
             (bytearray([42]), c.Bytearray),
         ]
         complex_items = [
-            (np.linspace(0, 1, 3), c.Array),
+            (np.linspace(0, 1, 3), bagofholding.h5.content.Array),
         ]
         simple_groups_ex_reducible = [
             ({42: 42.0}, c.Dict),

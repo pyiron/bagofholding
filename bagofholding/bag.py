@@ -25,7 +25,7 @@ from bagofholding.metadata import (
 )
 
 if TYPE_CHECKING:
-    from bagofholding.h5.content import BespokeItem
+    from bagofholding.content import BespokeItem
 
 
 PATH_DELIMITER = "/"
@@ -211,6 +211,14 @@ class Bag(Mapping[str, Metadata | None], Generic[InfoType], abc.ABC):
                 raise e
             return str(e)
         return None
+
+    @abc.abstractmethod
+    def pack_metadata(self, metadata: Metadata, path: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unpack_metadata(self, path: str) -> Metadata:
+        pass
 
     @abc.abstractmethod
     def pack_empty(self, path: str) -> None:
