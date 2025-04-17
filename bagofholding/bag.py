@@ -14,7 +14,9 @@ from typing import (
     SupportsIndex,
 )
 
-from bagofholding.content import BespokeItem, Packer
+import bidict
+
+from bagofholding.content import BespokeItem, Packer, pack
 from bagofholding.exceptions import BagMismatchError, InvalidMetadataError
 from bagofholding.metadata import (
     HasFieldIterator,
@@ -96,13 +98,18 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 raise FileExistsError(f"{filepath} already exists or is not a file.")
         bag = cls(filepath)
         bag._pack_bag_info()
-        bag._pack_object(
+        pack(
             obj,
+            bag,
+            bag.storage_root,
+            bidict.bidict(),
+            [],
             require_versions,
             forbidden_modules,
             version_scraping,
-            _pickle_protocol,
+            _pickle_protocol=_pickle_protocol,
         )
+        bag._write()
 
     @classmethod
     def get_version(cls) -> str:
@@ -128,18 +135,6 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
 
     @abc.abstractmethod
     def _unpack_field(self, path: str, key: str) -> str | None:
-        pass
-
-    @abc.abstractmethod
-    def _pack_object(
-        self,
-        obj: Any,
-        require_versions: bool,
-        forbidden_modules: list[str] | tuple[str, ...],
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
-    ) -> None:
-        # pass _pickle_protocol to invocations of __reduce_ex__
         pass
 
     @staticmethod
@@ -226,6 +221,9 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
 
     def _unpack_bag_info(self) -> BagInfo:
         return self._info_class(**self._unpack_fields(self._info_class, PATH_DELIMITER))
+
+    def _write(self) -> None:
+        return
 
     def pack_metadata(self, metadata: Metadata, path: str) -> None:
         self._pack_fields(metadata, path)

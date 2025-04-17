@@ -4,14 +4,13 @@ import dataclasses
 import pathlib
 from collections.abc import Iterator
 from types import TracebackType
-from typing import Any, ClassVar, Literal, Self, SupportsIndex, cast
+from typing import Any, ClassVar, Literal, Self, cast
 
-import bidict
 import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
-from bagofholding.content import pack, unpack
+from bagofholding.content import unpack
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
@@ -61,35 +60,11 @@ class H5Bag(Bag, ArrayPacker):
         self._file = new_file
 
     def _pack_bag_info(self) -> None:
-        try:
-            self.open("w")
-            super()._pack_bag_info()
-        finally:
-            self.close()
+        self.open("w")
+        super()._pack_bag_info()
 
-    def _pack_object(
-        self,
-        obj: Any,
-        require_versions: bool,
-        forbidden_modules: list[str] | tuple[str, ...],
-        version_scraping: VersionScrapingMap | None,
-        _pickle_protocol: SupportsIndex,
-    ) -> None:
-        try:
-            self.open("a")
-            pack(
-                obj,
-                self,
-                self.storage_root,
-                bidict.bidict(),
-                [],
-                require_versions,
-                forbidden_modules,
-                version_scraping,
-                _pickle_protocol=_pickle_protocol,
-            )
-        finally:
-            self.close()
+    def _write(self) -> None:
+        self.close()
 
     def _unpack_bag_info(self) -> BagInfo:
         with self:
