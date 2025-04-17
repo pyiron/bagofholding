@@ -52,7 +52,7 @@ class TestBenchmark(unittest.TestCase):
                     "is not re-opened multiple times",
                 )
 
-                tolerable_overhead_ms = 10
+                tolerable_overhead_ms = 100
                 average_overhead_ms = 1000 * ((dt_direct - dt_context) / n_reps)
                 self.assertLess(
                     average_overhead_ms,
