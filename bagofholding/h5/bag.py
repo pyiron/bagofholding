@@ -10,7 +10,6 @@ import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
-from bagofholding.content import unpack
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
@@ -78,10 +77,8 @@ class H5Bag(Bag, ArrayPacker):
         version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
         with self:
-            unpacked = unpack(
-                self,
-                path,
-                {},
+            unpacked = super().load(
+                path=path,
                 version_validator=version_validator,
                 version_scraping=version_scraping,
             )

@@ -16,7 +16,7 @@ from typing import (
 
 import bidict
 
-from bagofholding.content import BespokeItem, Packer, pack
+from bagofholding.content import BespokeItem, Packer, pack, unpack
 from bagofholding.exceptions import BagMismatchError, InvalidMetadataError
 from bagofholding.metadata import (
     HasFieldIterator,
@@ -141,14 +141,19 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     def validate_bag_info(bag_info: BagInfo, reference: BagInfo) -> bool:
         return bag_info == reference
 
-    @abc.abstractmethod
     def load(
         self,
         path: str = storage_root,
         version_validator: VersionValidatorType = "exact",
         version_scraping: VersionScrapingMap | None = None,
     ) -> Any:
-        pass
+        return unpack(
+            self,
+            path,
+            {},
+            version_validator=version_validator,
+            version_scraping=version_scraping,
+        )
 
     @abc.abstractmethod
     def __getitem__(self, path: str) -> Metadata:
