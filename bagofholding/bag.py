@@ -9,8 +9,10 @@ from collections.abc import Iterator, Mapping
 from typing import (
     Any,
     ClassVar,
+    Generic,
     Self,
     SupportsIndex,
+    TypeVar,
 )
 
 import bidict
@@ -35,20 +37,26 @@ class BagInfo(HasVersionInfo, HasFieldIterator):
     pass
 
 
-class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
+BagInfoType = TypeVar("BagInfoType", bound=BagInfo)
+
+
+class Bag(Packer, Mapping[str, Metadata | None], Generic[BagInfoType], abc.ABC):
     """
     Bags are the user-facing object.
     """
 
-    _info_class: ClassVar[type[BagInfo]] = BagInfo
-    bag_info: BagInfo
+    bag_info: BagInfoType
     storage_root: ClassVar[str] = "object"
     filepath: pathlib.Path
 
     @classmethod
     @abc.abstractmethod
-    def get_bag_info(cls) -> BagInfo:
+    def get_bag_info(cls) -> BagInfoType:
         pass
+
+    @classmethod
+    @abc.abstractmethod
+    def _bag_info_class(cls) -> type[BagInfoType]: ...
 
     @classmethod
     def save(
@@ -127,7 +135,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         pass
 
     @staticmethod
-    def validate_bag_info(bag_info: BagInfo, reference: BagInfo) -> bool:
+    def validate_bag_info(bag_info: BagInfoType, reference: BagInfoType) -> bool:
         return bag_info == reference
 
     def load(
@@ -212,8 +220,10 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     def _pack_bag_info(self) -> None:
         self._pack_fields(self.get_bag_info(), PATH_DELIMITER)
 
-    def _unpack_bag_info(self) -> BagInfo:
-        return self._info_class(**self._unpack_fields(self._info_class, PATH_DELIMITER))
+    def _unpack_bag_info(self) -> BagInfoType:
+        return self._bag_info_class()(
+            **self._unpack_fields(self._bag_info_class(), PATH_DELIMITER)
+        )
 
     def _write(self) -> None:
         return
