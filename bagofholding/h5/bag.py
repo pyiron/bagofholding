@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
-from collections.abc import Iterator
 from types import TracebackType
 from typing import Any, ClassVar, Literal, Self, cast
 
@@ -10,6 +9,7 @@ import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
+from bagofholding.content import BespokeItem
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
@@ -205,9 +205,9 @@ class H5Bag(Bag, ArrayPacker):
         return subcontent_names
 
     # def get_bespoke_content_class(self, obj: object) -> type[BespokeItem[Any, Self]] | None:
-    def get_bespoke_content_class(self, obj: object) -> type[Array] | None:
+    def get_bespoke_content_class(self, obj: object) -> type[BespokeItem[Any, Self]] | None:
         if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
-            return Array
+            return cast(type[BespokeItem[Any, Self]], Array)
         return None
 
     def pack_array(self, obj: ArrayType, path: str) -> None:
