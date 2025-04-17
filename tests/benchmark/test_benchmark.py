@@ -45,12 +45,14 @@ class TestBenchmark(unittest.TestCase):
                     bag.load()
                 dt_direct = time.time() - t0
 
+                print(f"H5 with-context benchmark: depth={depth}, reps={n_reps}")
                 self.assertLess(
                     dt_context,
                     dt_direct,
                     msg="Expected the with-context speed to be faster since the file "
                     "is not re-opened multiple times",
                 )
+                print("With context", dt_context, "<", dt_direct, "Direct acces")
 
                 tolerable_overhead_ms = 100
                 average_overhead_ms = 1000 * ((dt_direct - dt_context) / n_reps)
@@ -60,6 +62,7 @@ class TestBenchmark(unittest.TestCase):
                     msg="Average file-opening overhead exceeded the (somewhat "
                     "arbitrary) threshold",
                 )
+                print("Average overhead", average_overhead_ms, "(ms)")
 
     def test_timing(self):
         fname = "wf.pckl"
