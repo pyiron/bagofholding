@@ -10,7 +10,7 @@ from typing import Any, Literal, TypeAlias
 from bagofholding.exceptions import EnvironmentMismatchError
 
 
-@dataclass
+@dataclass(frozen=True)
 class Metadata:
     content_type: str
     qualname: str | None = None
