@@ -95,12 +95,6 @@ class H5Bag(Bag, ArrayPacker):
             self.file.visit(paths.append)
         return paths
 
-    def __len__(self) -> int:
-        return len(self.list_paths())
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.list_paths())
-
     def __enter__(self) -> Self:
         self._context_depth += 1
         if self._file is None:
