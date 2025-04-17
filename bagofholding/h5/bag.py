@@ -86,7 +86,7 @@ class H5Bag(Bag, ArrayPacker):
 
     def __getitem__(self, path: str) -> Metadata:
         with self:
-            return self.unpack_metadata(path)
+            return super().__getitem__(path)
 
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""

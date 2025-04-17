@@ -155,9 +155,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
             version_scraping=version_scraping,
         )
 
-    @abc.abstractmethod
     def __getitem__(self, path: str) -> Metadata:
-        pass
+        return self.unpack_metadata(path)
 
     @abc.abstractmethod
     def list_paths(self) -> list[str]:
