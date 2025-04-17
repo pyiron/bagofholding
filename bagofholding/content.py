@@ -11,6 +11,8 @@ from typing import (
     Any,
     ClassVar,
     Generic,
+    Protocol,
+    Self,
     SupportsIndex,
     TypeAlias,
     TypeVar,
@@ -20,7 +22,6 @@ from typing import (
 import bidict
 import h5py
 
-from bagofholding.bag import Bag
 from bagofholding.exceptions import (
     ModuleForbiddenError,
     NoVersionError,
@@ -47,7 +48,49 @@ UnpackingMemoAlias: TypeAlias = dict[str, Any]
 
 PackingType = TypeVar("PackingType", bound=Any)
 UnpackingType = TypeVar("UnpackingType", bound=Any)
-BagType = TypeVar("BagType", bound=Bag)
+
+
+# class HasContents(Sized, Iterable[str], Protocol):
+class HasContents(Protocol):
+    def __iter__(self) -> Iterator[str]: ...
+    def __len__(self) -> int: ...
+
+
+class Packer(Protocol):
+    def join(self, *paths: str) -> str: ...
+
+    def pack_metadata(self, metadata: Metadata, path: str) -> None: ...
+    def unpack_metadata(self, path: str) -> Metadata: ...
+
+    def pack_empty(self, path: str) -> None: ...
+
+    def pack_string(self, obj: str, path: str) -> None: ...
+    def unpack_string(self, path: str) -> str: ...
+
+    def pack_bool(self, obj: bool, path: str) -> None: ...
+    def unpack_bool(self, path: str) -> bool: ...
+
+    def pack_long(self, obj: int, path: str) -> None: ...
+    def unpack_long(self, path: str) -> int: ...
+
+    def pack_float(self, obj: float, path: str) -> None: ...
+    def unpack_float(self, path: str) -> float: ...
+
+    def pack_complex(self, obj: complex, path: str) -> None: ...
+    def unpack_complex(self, path: str) -> complex: ...
+
+    def pack_bytes(self, obj: bytes, path: str) -> None: ...
+    def unpack_bytes(self, path: str) -> bytes: ...
+
+    def pack_bytearray(self, obj: bytearray, path: str) -> None: ...
+    def unpack_bytearray(self, path: str) -> bytearray: ...
+
+    def create_group(self, path: str) -> None: ...
+    def open_group(self, path: str) -> HasContents: ...
+
+    def get_bespoke_content_class(
+        self, obj: object
+    ) -> type[BespokeItem[Any, Self]] | None: ...
 
 
 @dataclasses.dataclass
@@ -71,7 +114,10 @@ class NotData:
     pass
 
 
-class Content(Generic[PackingType, UnpackingType, BagType], abc.ABC):
+PackerType = TypeVar("PackerType", bound=Packer)
+
+
+class Content(Generic[PackingType, UnpackingType, PackerType], abc.ABC):
 
     _rich_metadata: ClassVar[bool] = False
 
@@ -80,7 +126,7 @@ class Content(Generic[PackingType, UnpackingType, BagType], abc.ABC):
     def pack(
         cls,
         obj: PackingType,
-        bag: BagType,
+        packer: PackerType,
         path: str,
         packing: PackingArguments,
     ) -> None:
@@ -89,7 +135,7 @@ class Content(Generic[PackingType, UnpackingType, BagType], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def unpack(
-        cls, bag: BagType, path: str, unpacking: UnpackingArguments
+        cls, packer: PackerType, path: str, unpacking: UnpackingArguments
     ) -> UnpackingType:
         # TODO: Optionally first read the metadata and verify that your env is viable
         pass
@@ -134,41 +180,41 @@ class Content(Generic[PackingType, UnpackingType, BagType], abc.ABC):
 
 
 class Item(
-    Content[PackingType, UnpackingType, BagType],
-    Generic[PackingType, UnpackingType, BagType],
+    Content[PackingType, UnpackingType, PackerType],
+    Generic[PackingType, UnpackingType, PackerType],
     abc.ABC,
 ):
     @classmethod
     def pack(
         cls,
         obj: PackingType,
-        bag: BagType,
+        packer: PackerType,
         path: str,
         packing: PackingArguments,
     ) -> None:
-        cls._pack_item(obj, bag, path)
-        bag.pack_metadata(cls._get_metadata(obj, packing), path)
+        cls._pack_item(obj, packer, path)
+        packer.pack_metadata(cls._get_metadata(obj, packing), path)
 
     @classmethod
     @abc.abstractmethod
-    def _pack_item(cls, obj: PackingType, bag: BagType, path: str) -> None:
+    def _pack_item(cls, obj: PackingType, packer: PackerType, path: str) -> None:
         pass
 
 
-class Reference(Item[str, Any, Bag]):
+class Reference(Item[str, Any, Packer]):
     @classmethod
-    def _pack_item(cls, obj: str, bag: BagType, path: str) -> None:
-        bag.pack_string(obj, path)
+    def _pack_item(cls, obj: str, packer: Packer, path: str) -> None:
+        packer.pack_string(obj, path)
 
     @classmethod
-    def unpack(cls, bag: BagType, path: str, unpacking: UnpackingArguments) -> Any:
-        reference = bag.unpack_string(path)
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> Any:
+        reference = packer.unpack_string(path)
         from_memo = unpacking.memo.get(reference, NotData)
         if from_memo is not NotData:
             return from_memo
         else:
             return unpack(
-                bag,
+                packer,
                 reference,
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
@@ -179,31 +225,31 @@ class Reference(Item[str, Any, Bag]):
 GlobalType: TypeAlias = type[type] | types.FunctionType | str
 
 
-class Global(Item[GlobalType, Any, Bag]):
+class Global(Item[GlobalType, Any, Packer]):
     _rich_metadata = True
 
     @classmethod
-    def _pack_item(cls, obj: GlobalType, bag: Bag, path: str) -> None:
+    def _pack_item(cls, obj: GlobalType, packer: Packer, path: str) -> None:
         value: str
         if isinstance(obj, str):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
-        bag.pack_string(value, path)
+        packer.pack_string(value, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> Any:
-        import_string = bag.unpack_string(path)
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> Any:
+        import_string = packer.unpack_string(path)
         return import_from_string(import_string)
 
 
-class NoneItem(Item[type[None], None, Bag]):
+class NoneItem(Item[type[None], None, Packer]):
     @classmethod
-    def _pack_item(cls, obj: type[None], bag: Bag, path: str) -> None:
-        bag.pack_empty(path)
+    def _pack_item(cls, obj: type[None], packer: Packer, path: str) -> None:
+        packer.pack_empty(path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> None:
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> None:
         return None
 
 
@@ -211,7 +257,7 @@ ItemType = TypeVar("ItemType", bound=Any)
 
 
 class ReflexiveItem(
-    Item[ItemType, ItemType, BagType], Generic[ItemType, BagType], abc.ABC
+    Item[ItemType, ItemType, PackerType], Generic[ItemType, PackerType], abc.ABC
 ):
     pass
 
@@ -229,89 +275,93 @@ BuiltinItemType = TypeVar(
 
 
 class BuiltinItem(
-    ReflexiveItem[BuiltinItemType, Bag], Generic[BuiltinItemType], abc.ABC
+    ReflexiveItem[BuiltinItemType, Packer], Generic[BuiltinItemType], abc.ABC
 ):
     pass
 
 
 class Str(BuiltinItem[str]):
     @classmethod
-    def _pack_item(cls, obj: str, bag: Bag, path: str) -> None:
-        bag.pack_string(obj, path)
+    def _pack_item(cls, obj: str, packer: Packer, path: str) -> None:
+        packer.pack_string(obj, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> str:
-        return bag.unpack_string(path)
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> str:
+        return packer.unpack_string(path)
 
 
 class Bool(BuiltinItem[bool]):
     @classmethod
-    def _pack_item(cls, obj: bool, bag: Bag, path: str) -> None:
-        bag.pack_bool(obj, path)
+    def _pack_item(cls, obj: bool, packer: Packer, path: str) -> None:
+        packer.pack_bool(obj, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> bool:
-        return bag.unpack_bool(path)
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> bool:
+        return packer.unpack_bool(path)
 
 
 class Long(BuiltinItem[int]):
     @classmethod
-    def _pack_item(cls, obj: int, bag: Bag, path: str) -> None:
-        bag.pack_long(obj, path)
+    def _pack_item(cls, obj: int, packer: Packer, path: str) -> None:
+        packer.pack_long(obj, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> int:
-        return bag.unpack_long(path)
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> int:
+        return packer.unpack_long(path)
 
 
 class Float(BuiltinItem[float]):
     @classmethod
-    def _pack_item(cls, obj: float, bag: Bag, path: str) -> None:
-        bag.pack_float(obj, path)
+    def _pack_item(cls, obj: float, packer: Packer, path: str) -> None:
+        packer.pack_float(obj, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> float:
-        return bag.unpack_float(path)
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> float:
+        return packer.unpack_float(path)
 
 
 class Complex(BuiltinItem[complex]):
     @classmethod
-    def _pack_item(cls, obj: complex, bag: Bag, path: str) -> None:
-        bag.pack_complex(obj, path)
+    def _pack_item(cls, obj: complex, packer: Packer, path: str) -> None:
+        packer.pack_complex(obj, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> complex:
-        return bag.unpack_complex(path)
+    def unpack(
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> complex:
+        return packer.unpack_complex(path)
 
 
 class Bytes(BuiltinItem[bytes]):
     @classmethod
-    def _pack_item(cls, obj: bytes, bag: Bag, path: str) -> None:
-        bag.pack_bytes(obj, path)
+    def _pack_item(cls, obj: bytes, packer: Packer, path: str) -> None:
+        packer.pack_bytes(obj, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> bytes:
-        return bag.unpack_bytes(path)
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> bytes:
+        return packer.unpack_bytes(path)
 
 
 class Bytearray(BuiltinItem[bytearray]):
     @classmethod
-    def _pack_item(cls, obj: bytearray, bag: Bag, path: str) -> None:
-        bag.pack_bytearray(obj, path)
+    def _pack_item(cls, obj: bytearray, packer: Packer, path: str) -> None:
+        packer.pack_bytearray(obj, path)
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> bytearray:
-        return bag.unpack_bytearray(path)
+    def unpack(
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> bytearray:
+        return packer.unpack_bytearray(path)
 
 
 class BespokeItem(
-    ReflexiveItem[ItemType, BagType], Generic[ItemType, BagType], abc.ABC
+    ReflexiveItem[ItemType, PackerType], Generic[ItemType, PackerType], abc.ABC
 ):
     _rich_metadata = True
 
 
 class Group(
-    Content[PackingType, UnpackingType, Bag],
+    Content[PackingType, UnpackingType, Packer],
     Generic[PackingType, UnpackingType],
     abc.ABC,
 ):
@@ -373,7 +423,7 @@ class Reducible(ReflexiveGroup[object]):
     def pack(
         cls,
         obj: object,
-        bag: Bag,
+        packer: Packer,
         path: str,
         packing: PackingArguments,
         rv: ReduceReturnType | None = None,
@@ -381,13 +431,13 @@ class Reducible(ReflexiveGroup[object]):
         reduced_value = (
             obj.__reduce_ex__(packing._pickle_protocol) if rv is None else rv
         )
-        bag.create_group(path)
-        bag.pack_metadata(cls._get_metadata(obj, packing), path)
+        packer.create_group(path)
+        packer.pack_metadata(cls._get_metadata(obj, packing), path)
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
-                bag,
-                bag.join(path, subpath),
+                packer,
+                packer.join(path, subpath),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -397,12 +447,12 @@ class Reducible(ReflexiveGroup[object]):
             )
 
     @classmethod
-    def unpack(cls, bag: Bag, path: str, unpacking: UnpackingArguments) -> object:
+    def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> object:
         constructor = cast(
             ConstructorType,
             unpack(
-                bag,
-                bag.join(path, "constructor"),
+                packer,
+                packer.join(path, "constructor"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -411,8 +461,8 @@ class Reducible(ReflexiveGroup[object]):
         constructor_args = cast(
             ConstructorArgsType,
             unpack(
-                bag,
-                bag.join(path, "args"),
+                packer,
+                packer.join(path, "args"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
@@ -422,13 +472,13 @@ class Reducible(ReflexiveGroup[object]):
         unpacking.memo[path] = obj
         rv = (constructor, constructor_args) + tuple(
             unpack(
-                bag,
-                bag.join(path, k),
+                packer,
+                packer.join(path, k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in cls.reduction_fields[2 : len(bag.open_group(path))]
+            for k in cls.reduction_fields[2 : len(packer.open_group(path))]
         )
         n_items = len(rv)
         if n_items >= 3 and rv[2] is not None:
@@ -475,20 +525,20 @@ class BuiltinGroup(
     def pack(
         cls,
         obj: PackingType,
-        bag: Bag,
+        packer: Packer,
         path: str,
         packing: PackingArguments,
     ) -> None:
-        bag.create_group(path)
-        bag.pack_metadata(cls._get_metadata(obj, packing), path)
-        cls._pack_subcontent(obj, bag, path, packing)
+        packer.create_group(path)
+        packer.pack_metadata(cls._get_metadata(obj, packing), path)
+        cls._pack_subcontent(obj, packer, path, packing)
 
     @classmethod
     @abc.abstractmethod
     def _pack_subcontent(
         cls,
         obj: PackingType,
-        bag: Bag,
+        packer: Packer,
         path: str,
         packing: PackingArguments,
     ) -> h5py.Group:
@@ -500,14 +550,14 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
     def _pack_subcontent(
         cls,
         obj: dict[Any, Any],
-        bag: Bag,
+        packer: Packer,
         path: str,
         packing: PackingArguments,
     ) -> None:
         pack(
             tuple(obj.keys()),
-            bag,
-            bag.join(path, "keys"),
+            packer,
+            packer.join(path, "keys"),
             packing.memo,
             packing.references,
             packing.require_versions,
@@ -517,8 +567,8 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
         )
         pack(
             tuple(obj.values()),
-            bag,
-            bag.join(path, "values"),
+            packer,
+            packer.join(path, "values"),
             packing.memo,
             packing.references,
             packing.require_versions,
@@ -529,15 +579,15 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
 
     @classmethod
     def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> dict[Any, Any]:
         return dict(
             zip(
                 cast(
                     tuple[Any],
                     unpack(
-                        bag,
-                        bag.join(path, "keys"),
+                        packer,
+                        packer.join(path, "keys"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
                         version_scraping=unpacking.version_scraping,
@@ -546,8 +596,8 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
                 cast(
                     tuple[Any],
                     unpack(
-                        bag,
-                        bag.join(path, "values"),
+                        packer,
+                        packer.join(path, "values"),
                         unpacking.memo,
                         version_validator=unpacking.version_validator,
                         version_scraping=unpacking.version_scraping,
@@ -563,15 +613,15 @@ class StrKeyDict(BuiltinGroup[dict[str, Any]]):
     def _pack_subcontent(
         cls,
         obj: dict[str, Any],
-        bag: Bag,
+        packer: Packer,
         path: str,
         packing: PackingArguments,
     ) -> None:
         for k, v in obj.items():
             pack(
                 v,
-                bag,
-                bag.join(path, k),
+                packer,
+                packer.join(path, k),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -582,17 +632,17 @@ class StrKeyDict(BuiltinGroup[dict[str, Any]]):
 
     @classmethod
     def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> dict[str, Any]:
         return {
             k: unpack(
-                bag,
-                bag.join(path, k),
+                packer,
+                packer.join(path, k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in bag.open_group(path)
+            for k in packer.open_group(path)
         }
 
 
@@ -606,15 +656,15 @@ class Union(BuiltinGroup[types.UnionType]):
     def _pack_subcontent(
         cls,
         obj: types.UnionType,
-        bag: Bag,
+        packer: Packer,
         path: str,
         packing: PackingArguments,
     ) -> None:
         for i, v in enumerate(obj.__args__):
             pack(
                 v,
-                bag,
-                bag.join(path, f"i{i}"),
+                packer,
+                packer.join(path, f"i{i}"),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -641,17 +691,17 @@ class Union(BuiltinGroup[types.UnionType]):
 
     @classmethod
     def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> types.UnionType:
         return cls._recursive_or(
             unpack(
-                bag,
-                bag.join(path, f"i{i}"),
+                packer,
+                packer.join(path, f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(bag.open_group(path)))
+            for i in range(len(packer.open_group(path)))
         )
 
 
@@ -667,15 +717,15 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
     def _pack_subcontent(
         cls,
         obj: IndexableType,
-        bag: Bag,
+        packer: Packer,
         path: str,
         packing: PackingArguments,
     ) -> None:
         for i, v in enumerate(obj):
             pack(
                 v,
-                bag,
-                bag.join(path, f"i{i}"),
+                packer,
+                packer.join(path, f"i{i}"),
                 packing.memo,
                 packing.references,
                 packing.require_versions,
@@ -686,17 +736,17 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
 
     @classmethod
     def unpack(
-        cls, bag: Bag, path: str, unpacking: UnpackingArguments
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> IndexableType:
         return cls.recast(
             unpack(
-                bag,
-                bag.join(path, f"i{i}"),
+                packer,
+                packer.join(path, f"i{i}"),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for i in range(len(bag.open_group(path)))
+            for i in range(len(packer.open_group(path)))
         )
 
 
@@ -718,7 +768,7 @@ class FrozenSet(Indexable[frozenset[Any]]):
 
 def pack(
     obj: object,
-    bag: Bag,
+    packer: Packer,
     path: str,
     memo: PackingMemoAlias,
     references: ReferencesAlias,
@@ -746,7 +796,7 @@ def pack(
     if simple_class is not None:
         simple_class.pack(
             obj,
-            bag,
+            packer,
             path,
             packing_args,
         )
@@ -755,38 +805,38 @@ def pack(
     obj_id = id(obj)
     reference = memo.get(obj_id)
     if reference is not None:
-        Reference.pack(reference, bag, path, packing_args)
+        Reference.pack(reference, packer, path, packing_args)
         return
     else:
         memo[obj_id] = path
         references.append(obj)
 
-    complex_class = bag.get_bespoke_content_class(obj)
+    complex_class = packer.get_bespoke_content_class(obj)
     if complex_class is not None:
-        complex_class.pack(obj, bag, path, packing_args)
+        complex_class.pack(obj, packer, path, packing_args)
         return
 
     group_class = get_group_content_class(obj)
     if group_class is not None:
-        group_class.pack(obj, bag, path, packing_args)
+        group_class.pack(obj, packer, path, packing_args)
         return
 
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
         Global.pack(
             get_importable_string_from_string_reduction(rv, obj),
-            bag,
+            packer,
             path,
             packing_args,
         )
         return
     else:
-        Reducible.pack(obj, bag, path, packing_args, rv=rv)
+        Reducible.pack(obj, packer, path, packing_args, rv=rv)
         return
 
 
 KNOWN_ITEM_MAP: dict[
-    type | types.FunctionType | types.BuiltinFunctionType, type[Item[Any, Any, Any]]
+    type | types.FunctionType | types.BuiltinFunctionType, type[Item[Any, Any, Packer]]
 ] = {
     type: Global,
     types.FunctionType: Global,
@@ -821,7 +871,7 @@ def get_group_content_class(obj: object) -> type[Group[Any, Any]] | None:
 
 
 def unpack(
-    bag: Bag,
+    packer: Packer,
     path: str,
     memo: UnpackingMemoAlias,
     version_validator: VersionValidatorType,
@@ -829,14 +879,14 @@ def unpack(
 ) -> object:
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
-        metadata = bag.unpack_metadata(path)
+        metadata = packer.unpack_metadata(path)
         content_class = import_from_string(metadata.content_type)
         if metadata is not None:
             validate_version(
                 metadata, validator=version_validator, version_scraping=version_scraping
             )
         value = content_class.unpack(
-            bag,
+            packer,
             path,
             UnpackingArguments(
                 memo=memo,

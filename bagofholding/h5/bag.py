@@ -4,7 +4,7 @@ import dataclasses
 import pathlib
 from collections.abc import Iterator
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self, SupportsIndex, cast
+from typing import Any, ClassVar, Literal, Self, SupportsIndex, cast
 
 import bidict
 import h5py
@@ -17,11 +17,9 @@ from bagofholding.exceptions import (
     FileNotOpenError,
     NotAGroupError,
 )
+from bagofholding.h5.content import Array, ArrayPacker, ArrayType
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
-
-if TYPE_CHECKING:
-    from bagofholding.h5.content import Array
 
 
 @dataclasses.dataclass(frozen=True)
@@ -29,7 +27,7 @@ class H5Info(BagInfo):
     libver_str: str = "latest"
 
 
-class H5Bag(Bag):
+class H5Bag(Bag, ArrayPacker):
     _info_class: ClassVar[type[H5Info]] = H5Info
     libver_str: ClassVar[str] = "latest"
     _content_key: ClassVar[str] = "content_type"
@@ -240,9 +238,14 @@ class H5Bag(Bag):
             subcontent_names = list(group)
         return subcontent_names
 
+    # def get_bespoke_content_class(self, obj: object) -> type[BespokeItem[Any, Self]] | None:
     def get_bespoke_content_class(self, obj: object) -> type[Array] | None:
         if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
-            from bagofholding.h5.content import Array
-
             return Array
         return None
+
+    def pack_array(self, obj: ArrayType, path: str) -> None:
+        self.file.create_dataset(path, data=obj)
+
+    def unpack_array(self, path: str) -> ArrayType:
+        return cast(ArrayType, self.file[path][()])

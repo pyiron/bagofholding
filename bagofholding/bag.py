@@ -15,6 +15,7 @@ from typing import (
     SupportsIndex,
 )
 
+from bagofholding.content import BespokeItem, Packer
 from bagofholding.exceptions import BagMismatchError, InvalidMetadataError
 from bagofholding.metadata import (
     HasFieldIterator,
@@ -26,7 +27,7 @@ from bagofholding.metadata import (
 )
 
 if TYPE_CHECKING:
-    from bagofholding.content import BespokeItem
+
     from bagofholding.widget import BagTree
 
 
@@ -48,7 +49,7 @@ class HasContents(Protocol):
         pass
 
 
-class Bag(Mapping[str, Metadata | None], abc.ABC):
+class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     """
     Bags are the user-facing object.
     """
@@ -243,74 +244,6 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         if content_type is None:
             raise InvalidMetadataError(f"Metadata at {path} is missing a content type")
         return Metadata(content_type, **metadata)
-
-    @abc.abstractmethod
-    def pack_empty(self, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def pack_string(self, obj: str, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def unpack_string(self, path: str) -> str:
-        pass
-
-    @abc.abstractmethod
-    def pack_bool(self, obj: bool, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def unpack_bool(self, path: str) -> bool:
-        pass
-
-    @abc.abstractmethod
-    def pack_long(self, obj: int, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def unpack_long(self, path: str) -> int:
-        pass
-
-    @abc.abstractmethod
-    def pack_float(self, obj: float, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def unpack_float(self, path: str) -> float:
-        pass
-
-    @abc.abstractmethod
-    def pack_complex(self, obj: complex, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def unpack_complex(self, path: str) -> complex:
-        pass
-
-    @abc.abstractmethod
-    def pack_bytes(self, obj: bytes, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def unpack_bytes(self, path: str) -> bytes:
-        pass
-
-    @abc.abstractmethod
-    def pack_bytearray(self, obj: bytearray, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def unpack_bytearray(self, path: str) -> bytearray:
-        pass
-
-    @abc.abstractmethod
-    def create_group(self, path: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def open_group(self, path: str) -> HasContents:
-        pass
 
     def get_bespoke_content_class(
         self, obj: object
