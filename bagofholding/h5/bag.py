@@ -58,12 +58,12 @@ class H5Bag(Bag, ArrayPacker):
     def file(self, new_file: h5py.File | None) -> None:
         self._file = new_file
 
+    def _write(self) -> None:
+        self.close()
+
     def _pack_bag_info(self) -> None:
         self.open("w")
         super()._pack_bag_info()
-
-    def _write(self) -> None:
-        self.close()
 
     def _unpack_bag_info(self) -> BagInfo:
         with self:
