@@ -15,7 +15,6 @@ from bagofholding.content import pack, unpack
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
-    InvalidMetadataError,
     NotAGroupError,
 )
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
@@ -31,6 +30,7 @@ class H5Info(BagInfo):
 
 
 class H5Bag(Bag):
+    _info_class: ClassVar[type[H5Info]] = H5Info
     libver_str: ClassVar[str] = "latest"
     _content_key: ClassVar[str] = "content_type"
     _file: h5py.File | None
@@ -65,8 +65,7 @@ class H5Bag(Bag):
     def _pack_bag_info(self) -> None:
         try:
             self.open("w")
-            for k, v in self.get_bag_info().field_items():
-                self.file.attrs[k] = v
+            super()._pack_bag_info()
         finally:
             self.close()
 
@@ -94,11 +93,9 @@ class H5Bag(Bag):
         finally:
             self.close()
 
-    def unpack_bag_info(self, filepath: pathlib.Path) -> H5Info:
+    def _unpack_bag_info(self) -> BagInfo:
         with self:
-            info = H5Info(
-                **{k: self.file.attrs[k] for k in H5Info.__dataclass_fields__}
-            )
+            info = super()._unpack_bag_info()
         return info
 
     def load(
@@ -165,28 +162,14 @@ class H5Bag(Bag):
     def __del__(self) -> None:
         self.close()
 
-    def _pack_meta(self, path: str, key: str, value: str) -> None:
+    def _pack_field(self, path: str, key: str, value: str) -> None:
         self.file[path].attrs[key] = value
 
-    def _unpack_meta(self, path: str, key: str) -> str:
-        return self.maybe_decode(self.file[path].attrs[key])
-
-    def pack_metadata(self, metadata: Metadata, path: str) -> None:
-        for k, v in metadata.field_items():
-            if v is not None:
-                self._pack_meta(path, k, v)
-
-    def unpack_metadata(self, path: str) -> Metadata:
-        metadata: dict[str, str | None] = {}
-        for meta_key in Metadata.__dataclass_fields__:
-            try:
-                metadata[meta_key] = self._unpack_meta(path, meta_key)
-            except KeyError:
-                metadata[meta_key] = None
-        content_type = metadata.pop("content_type", None)
-        if content_type is None:
-            raise InvalidMetadataError(f"Metadata at {path} is missing a content type")
-        return Metadata(content_type, **metadata)
+    def _unpack_field(self, path: str, key: str) -> str | None:
+        try:
+            return self.maybe_decode(self.file[path].attrs[key])
+        except KeyError:
+            return None
 
     @staticmethod
     def maybe_decode(attr: str | bytes) -> str:

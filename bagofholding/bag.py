@@ -15,7 +15,7 @@ from typing import (
     SupportsIndex,
 )
 
-from bagofholding.exceptions import BagMismatchError
+from bagofholding.exceptions import BagMismatchError, InvalidMetadataError
 from bagofholding.metadata import (
     HasFieldIterator,
     HasVersionInfo,
@@ -53,6 +53,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
     Bags are the user-facing object.
     """
 
+    _info_class: ClassVar[type[BagInfo]] = BagInfo
     bag_info: BagInfo
     storage_root: ClassVar[str] = "object"
     filepath: pathlib.Path
@@ -117,7 +118,7 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
         if os.path.isfile(self.filepath):
-            self.bag_info = self.unpack_bag_info(self.filepath)
+            self.bag_info = self._unpack_bag_info()
             if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
                 raise BagMismatchError(
                     f"The bag class {self.__class__} does not match the bag saved at "
@@ -126,7 +127,11 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
                 )
 
     @abc.abstractmethod
-    def _pack_bag_info(self) -> None:
+    def _pack_field(self, path: str, key: str, value: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def _unpack_field(self, path: str, key: str) -> str | None:
         pass
 
     @abc.abstractmethod
@@ -139,10 +144,6 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
         _pickle_protocol: SupportsIndex,
     ) -> None:
         # pass _pickle_protocol to invocations of __reduce_ex__
-        pass
-
-    @abc.abstractmethod
-    def unpack_bag_info(self, filepath: pathlib.Path) -> BagInfo:
         pass
 
     @staticmethod
@@ -213,13 +214,35 @@ class Bag(Mapping[str, Metadata | None], abc.ABC):
             return str(e)
         return None
 
-    @abc.abstractmethod
-    def pack_metadata(self, metadata: Metadata, path: str) -> None:
-        pass
+    def _pack_fields(self, dataclass: HasFieldIterator, path: str) -> None:
+        for k, v in dataclass.field_items():
+            if v is not None:
+                self._pack_field(path, k, v)
 
-    @abc.abstractmethod
+    def _unpack_fields(
+        self, dataclass_type: type[HasFieldIterator], path: str
+    ) -> dict[str, str | None]:
+        field_values: dict[str, str | None] = {}
+        for k in dataclass_type.__dataclass_fields__:
+            field_values[k] = self._unpack_field(path, k)
+        return field_values
+
+    def _pack_bag_info(self) -> None:
+        self._pack_fields(self.get_bag_info(), PATH_DELIMITER)
+
+    def _unpack_bag_info(self) -> BagInfo:
+        return self._info_class(**self._unpack_fields(self._info_class, PATH_DELIMITER))
+
+    def pack_metadata(self, metadata: Metadata, path: str) -> None:
+        self._pack_fields(metadata, path)
+        return None
+
     def unpack_metadata(self, path: str) -> Metadata:
-        pass
+        metadata = self._unpack_fields(Metadata, path)
+        content_type = metadata.pop("content_type", None)
+        if content_type is None:
+            raise InvalidMetadataError(f"Metadata at {path} is missing a content type")
+        return Metadata(content_type, **metadata)
 
     @abc.abstractmethod
     def pack_empty(self, path: str) -> None:
