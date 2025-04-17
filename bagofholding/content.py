@@ -126,16 +126,13 @@ class Content(Generic[PackingType, UnpackingType, PackerType], abc.ABC):
         packer: PackerType,
         path: str,
         packing: PackingArguments,
-    ) -> None:
-        pass
+    ) -> None: ...
 
     @classmethod
     @abc.abstractmethod
     def unpack(
         cls, packer: PackerType, path: str, unpacking: UnpackingArguments
-    ) -> UnpackingType:
-        # TODO: Optionally first read the metadata and verify that your env is viable
-        pass
+    ) -> UnpackingType: ...
 
     @classmethod
     def _get_metadata(cls, obj: PackingType, packing: PackingArguments) -> Metadata:
@@ -194,8 +191,7 @@ class Item(
 
     @classmethod
     @abc.abstractmethod
-    def _pack_item(cls, obj: PackingType, packer: PackerType, path: str) -> None:
-        pass
+    def _pack_item(cls, obj: PackingType, packer: PackerType, path: str) -> None: ...
 
 
 class Reference(Item[str, Any, Packer]):
@@ -255,8 +251,7 @@ ItemType = TypeVar("ItemType", bound=Any)
 
 class ReflexiveItem(
     Item[ItemType, ItemType, PackerType], Generic[ItemType, PackerType], abc.ABC
-):
-    pass
+): ...
 
 
 BuiltinItemType = TypeVar(
@@ -273,8 +268,7 @@ BuiltinItemType = TypeVar(
 
 class BuiltinItem(
     ReflexiveItem[BuiltinItemType, Packer], Generic[BuiltinItemType], abc.ABC
-):
-    pass
+): ...
 
 
 class Str(BuiltinItem[str]):
@@ -361,15 +355,13 @@ class Group(
     Content[PackingType, UnpackingType, Packer],
     Generic[PackingType, UnpackingType],
     abc.ABC,
-):
-    pass
+): ...
 
 
 GroupType = TypeVar("GroupType", bound=Any)  # Bind to container?
 
 
-class ReflexiveGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC):
-    pass
+class ReflexiveGroup(Group[GroupType, GroupType], Generic[GroupType], abc.ABC): ...
 
 
 # __reduce__ return values
@@ -538,8 +530,7 @@ class BuiltinGroup(
         packer: Packer,
         path: str,
         packing: PackingArguments,
-    ) -> h5py.Group:
-        pass
+    ) -> h5py.Group: ...
 
 
 class Dict(BuiltinGroup[dict[Any, Any]]):

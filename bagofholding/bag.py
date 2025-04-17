@@ -51,8 +51,7 @@ class Bag(Packer, Mapping[str, Metadata | None], Generic[BagInfoType], abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def get_bag_info(cls) -> BagInfoType:
-        pass
+    def get_bag_info(cls) -> BagInfoType: ...
 
     @classmethod
     @abc.abstractmethod
@@ -127,12 +126,10 @@ class Bag(Packer, Mapping[str, Metadata | None], Generic[BagInfoType], abc.ABC):
                 )
 
     @abc.abstractmethod
-    def _pack_field(self, path: str, key: str, value: str) -> None:
-        pass
+    def _pack_field(self, path: str, key: str, value: str) -> None: ...
 
     @abc.abstractmethod
-    def _unpack_field(self, path: str, key: str) -> str | None:
-        pass
+    def _unpack_field(self, path: str, key: str) -> str | None: ...
 
     @staticmethod
     def validate_bag_info(bag_info: BagInfoType, reference: BagInfoType) -> bool:
