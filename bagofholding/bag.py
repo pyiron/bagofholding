@@ -7,7 +7,6 @@ import pathlib
 import pickle
 from collections.abc import Iterator, Mapping
 from typing import (
-    TYPE_CHECKING,
     Any,
     ClassVar,
     Protocol,
@@ -25,11 +24,7 @@ from bagofholding.metadata import (
     VersionValidatorType,
     get_version,
 )
-
-if TYPE_CHECKING:
-
-    from bagofholding.widget import BagTree
-
+from bagofholding.widget import BagTree
 
 PATH_DELIMITER = "/"
 
@@ -170,8 +165,6 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
 
     def browse(self) -> BagTree | list[str]:
         try:
-            from bagofholding.widget import BagTree
-
             return BagTree(self)  # type: ignore
             # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
             # and this is not correctly passing on the hint
