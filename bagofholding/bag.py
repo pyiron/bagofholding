@@ -5,7 +5,7 @@ import dataclasses
 import os.path
 import pathlib
 import pickle
-from collections.abc import ItemsView, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -17,6 +17,8 @@ from typing import (
 
 from bagofholding.exceptions import BagMismatchError
 from bagofholding.metadata import (
+    HasFieldIterator,
+    HasVersionInfo,
     Metadata,
     VersionScrapingMap,
     VersionValidatorType,
@@ -32,13 +34,8 @@ PATH_DELIMITER = "/"
 
 
 @dataclasses.dataclass(frozen=True)
-class BagInfo:
-    qualname: str
-    module: str
-    version: str
-
-    def field_items(self) -> ItemsView[str, str | None]:
-        return dataclasses.asdict(self).items()
+class BagInfo(HasVersionInfo, HasFieldIterator):
+    pass
 
 
 class HasContents(Protocol):

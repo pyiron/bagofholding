@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import dataclasses
 import re
 from collections.abc import Callable, ItemsView
-from dataclasses import asdict, dataclass
 from importlib import import_module
 from sys import version_info
 from typing import Any, Literal, TypeAlias
@@ -10,16 +10,27 @@ from typing import Any, Literal, TypeAlias
 from bagofholding.exceptions import EnvironmentMismatchError
 
 
-@dataclass(frozen=True)
-class Metadata:
+@dataclasses.dataclass(frozen=True)
+class HasFieldIterator:
+    def field_items(self) -> ItemsView[str, str | None]:
+        return dataclasses.asdict(self).items()
+
+
+@dataclasses.dataclass(frozen=True)
+class HasContentType:
     content_type: str
+
+
+@dataclasses.dataclass(frozen=True)
+class HasVersionInfo:
     qualname: str | None = None
     module: str | None = None
     version: str | None = None
-    meta: str | None = None
 
-    def field_items(self) -> ItemsView[str, str | None]:
-        return asdict(self).items()
+
+@dataclasses.dataclass(frozen=True)
+class Metadata(HasVersionInfo, HasContentType, HasFieldIterator):
+    meta: str | None = None
 
 
 def get_module(obj: Any) -> str:

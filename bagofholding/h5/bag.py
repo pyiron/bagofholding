@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 @dataclasses.dataclass(frozen=True)
 class H5Info(BagInfo):
-    libver_str: str
+    libver_str: str = "latest"
 
 
 class H5Bag(Bag):
