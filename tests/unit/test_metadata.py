@@ -4,11 +4,12 @@ import unittest
 import bidict
 import numpy as np
 
+from bagofholding import EnvironmentMismatchError
 from bagofholding.metadata import (
-    EnvironmentMismatchError,
     Metadata,
     _decompose_semver,
-    _get_module,
+    get_module,
+    get_qualname,
     get_version,
     validate_version,
 )
@@ -45,21 +46,25 @@ def numpy_modify_major(_: str) -> str:
 
 class TestMetadata(unittest.TestCase):
     def test_get_module(self):
-        self.assertEqual("builtins", _get_module(int), msg="Should work with types")
-        self.assertEqual("builtins", _get_module(5), msg="Should work with instances")
+        self.assertEqual("builtins", get_module(int), msg="Should work with types")
+        self.assertEqual("builtins", get_module(5), msg="Should work with instances")
+
+    def test_get_qualname(self):
+        self.assertEqual("int", get_qualname(int), msg="Should work with types")
+        self.assertEqual("int", get_qualname(5), msg="Should work with instances")
 
     def test_version_scraping(self):
 
         py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
         self.assertEqual(
             py_version,
-            get_version(_get_module(int), {}),
+            get_version(get_module(int), {}),
             msg="builtins should return the python version",
         )
 
         self.assertEqual(
             py_version,
-            get_version(_get_module(5), {"builtins": some_version_scraper}),
+            get_version(get_module(5), {"builtins": some_version_scraper}),
             msg="builtins should _always_ just return the python version",
         )
 
@@ -101,11 +106,12 @@ class TestMetadata(unittest.TestCase):
     def test_validate_version(self):
 
         self.assertIsNone(
-            validate_version(Metadata()),
+            validate_version(Metadata("SomeContentType")),
             msg="Empty metadata can't be invalid",
         )
 
         numpy_metadata = Metadata(
+            "DummyContentType",
             module=np.__name__,
             version=str(np.__version__),
         )
@@ -170,6 +176,7 @@ class TestMetadata(unittest.TestCase):
             )
 
         non_semantic_metadata = Metadata(
+            "DummyContentType",
             module=np.__name__,
             version=some_version_scraper(""),  # Force-override the version
         )

@@ -15,15 +15,16 @@ from objects import (
 )
 from pyiron_snippets.dotdict import DotDict
 
-import bagofholding.h5.content as c
-from bagofholding.bag import BagMismatchError
-from bagofholding.h5.bag import H5Bag, H5Info
-from bagofholding.h5.content import PickleProtocolError
-from bagofholding.metadata import (
+import bagofholding.content as c
+import bagofholding.h5.content
+from bagofholding import (
+    BagMismatchError,
     EnvironmentMismatchError,
     ModuleForbiddenError,
     NoVersionError,
+    PickleProtocolError,
 )
+from bagofholding.h5.bag import H5Bag, H5Info
 
 
 class BagVariant(H5Bag):
@@ -96,7 +97,7 @@ class TestBag(unittest.TestCase):
             (bytearray([42]), c.Bytearray),
         ]
         complex_items = [
-            (np.linspace(0, 1, 3), c.Array),
+            (np.linspace(0, 1, 3), bagofholding.h5.content.Array),
         ]
         simple_groups_ex_reducible = [
             ({42: 42.0}, c.Dict),
@@ -116,7 +117,7 @@ class TestBag(unittest.TestCase):
                 np.array,  # built-in function array -- types.BuiltinFunctionType
                 c.pack,  # function -- types.FunctionType
                 np.all,  # function -- types.FunctionType
-                H5Bag.read_bag_info,  # function -- types.FunctionType
+                H5Bag._unpack_bag_info,  # function -- types.FunctionType
                 DRAGON,  # Singleton
             ]
         ]
@@ -143,8 +144,9 @@ class TestBag(unittest.TestCase):
             with self.subTest(str(obj)):
                 H5Bag.save(obj, self.save_name)
                 bag = H5Bag(self.save_name)
-                content_name = bag.get_enriched_metadata("object")[0].split(".")[-1]
-                self.assertEqual(content_type.__name__, content_name)
+                self.assertEqual(
+                    content_type.__name__, bag["object"].content_type.split(".")[-1]
+                )
                 reloaded = bag.load()
                 self.assertIs(type(obj), type(reloaded))
                 self.assertTrue(np.all(obj == reloaded))
