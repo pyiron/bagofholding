@@ -9,7 +9,6 @@ from collections.abc import Iterator, Mapping
 from typing import (
     Any,
     ClassVar,
-    Protocol,
     Self,
     SupportsIndex,
 )
@@ -34,16 +33,6 @@ PATH_DELIMITER = "/"
 @dataclasses.dataclass(frozen=True)
 class BagInfo(HasVersionInfo, HasFieldIterator):
     pass
-
-
-class HasContents(Protocol):
-    @abc.abstractmethod
-    def __iter__(self) -> Iterator[str]:
-        pass
-
-    @abc.abstractmethod
-    def __len__(self) -> int:
-        pass
 
 
 class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):

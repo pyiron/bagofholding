@@ -6,7 +6,7 @@ import dataclasses
 import operator
 import pickle
 import types
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sized
 from typing import (
     Any,
     ClassVar,
@@ -50,10 +50,7 @@ PackingType = TypeVar("PackingType", bound=Any)
 UnpackingType = TypeVar("UnpackingType", bound=Any)
 
 
-# class HasContents(Sized, Iterable[str], Protocol):
-class HasContents(Protocol):
-    def __iter__(self) -> Iterator[str]: ...
-    def __len__(self) -> int: ...
+class HasContents(Sized, Iterable[str], Protocol): ...
 
 
 class Packer(Protocol):

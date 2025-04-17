@@ -205,7 +205,9 @@ class H5Bag(Bag, ArrayPacker):
         return subcontent_names
 
     # def get_bespoke_content_class(self, obj: object) -> type[BespokeItem[Any, Self]] | None:
-    def get_bespoke_content_class(self, obj: object) -> type[BespokeItem[Any, Self]] | None:
+    def get_bespoke_content_class(
+        self, obj: object
+    ) -> type[BespokeItem[Any, Self]] | None:
         if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
             return cast(type[BespokeItem[Any, Self]], Array)
         return None
