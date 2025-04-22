@@ -6,7 +6,7 @@ import unittest
 
 from objects import Recursing
 
-from bagofholding import H5Bag
+from bagofholding import H5Bag, RestructuredH5Bag
 
 
 class TestBenchmark(unittest.TestCase):
@@ -68,7 +68,7 @@ class TestBenchmark(unittest.TestCase):
         fname = "wf.pckl"
         n_pickle_repeats = 10
 
-        for n in [3, 30]:
+        for n in [10, 20, 40]:
             wf = Recursing(n)
             with self.subTest(f"------ {len(wf)}-sized graph ------"):
                 t0 = time.time()
@@ -89,7 +89,7 @@ class TestBenchmark(unittest.TestCase):
                     os.remove(fname)
 
                 fname = "wf.h5"
-                for bag_class in [H5Bag]:
+                for bag_class in [H5Bag, RestructuredH5Bag]:
                     t0 = time.time()
                     bag_class.save(wf, fname)
                     h5t_save = time.time() - t0
@@ -127,13 +127,13 @@ class TestBenchmark(unittest.TestCase):
                         round(pt_save * 1000, 2),
                         round(pt_load * 1000, 2),
                     )
-                    print(f"{bag_class} size, save, load (mb, ms, ms)")
+                    print(f"{bag_class.__name__} size, save, load (mb, ms, ms)")
                     print(
                         round(h5size / 1024, 2),
                         round(h5t_save * 1000, 2),
                         round(h5t_load * 1000, 2),
                     )
-                    print("Ratios: size, save, load")
+                    print(f"{bag_class.__name__} Ratios: size, save, load")
                     print(
                         round(h5size / psize, 2),
                         round(h5t_save / pt_save, 2),
