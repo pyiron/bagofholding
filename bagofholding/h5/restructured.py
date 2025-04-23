@@ -364,18 +364,10 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
 
     def open_group(self, path: str) -> set[str]:
         prefix = path if path.endswith(PATH_DELIMITER) else path + PATH_DELIMITER
-        try:
-            subpaths = self.trie.items(prefix)
-        except KeyError:
-            try:
-                prefix = prefix.rstrip(PATH_DELIMITER)
-                subpaths = self.trie.items(prefix)
-            except KeyError as e:
-                raise NotAGroupError(f"Couldn't find a group at {path} among {self.list_paths()}") from e
+        subpaths = self.trie.keys(prefix=path)[1:]
         children = {
-            key[len(prefix):].split(PATH_DELIMITER, 1)[0] for key, _ in subpaths
+            key[len(prefix):].split(PATH_DELIMITER, 1)[0] for key in subpaths
         }
-        children.discard("")
         return children
 
     # def get_bespoke_content_class(self, obj: object) -> type[BespokeItem[Any, Self]] | None:
