@@ -4,6 +4,7 @@ requires = [
     "h5py",
     "numpy",
     "pygtrie",
+    "pyiron_snippets",
     "setuptools",
     "versioneer[toml]==0.29",
 ]
@@ -28,9 +29,9 @@ classifiers = [
 dependencies = [
     "bidict==0.23.1",
     "h5py==3.12.1",
-    "pyiron_snippets==0.1.4",
     "numpy==2.1.3",
-    "pygtrie==2.5.0"
+    "pygtrie==2.5.0",
+    "pyiron_snippets==0.1.4",
 ]
 dynamic = [ "version",]
 authors = [
