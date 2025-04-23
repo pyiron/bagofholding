@@ -74,6 +74,7 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
         self._unpacked_paths: StringArrayType | None = None
         self._unpacked_type_index: IntArrayType | None = None
         self._unpacked_position_index: IntArrayType | None = None
+        self._unpacked_nonmetadata_paths: StringArrayType | None = None
         super().__init__(filepath)
         self._packed_paths: list[str] = []
         self._packed_type_index: list[int] = []
@@ -120,6 +121,14 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
             with self:
                 self._unpacked_position_index = self.file[self._position_index_key][:]
         return self._unpacked_position_index
+
+    @property
+    def unpacked_nonmetadata_paths(self) -> StringArrayType:
+        if self._unpacked_nonmetadata_paths is None:
+            self._unpacked_nonmetadata_paths = self.unpacked_paths[
+                ~np.char.find(self.unpacked_paths, self._field_delimiter) >= 0
+            ].tolist()
+        return self._unpacked_nonmetadata_paths
 
     def _write(self) -> None:
         str_type = h5py.string_dtype(encoding="utf-8")
@@ -182,9 +191,7 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
 
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
-        return self.unpacked_paths[
-            ~np.char.find(self.unpacked_paths, self._field_delimiter) >= 0
-        ].tolist()
+        return self.unpacked_nonmetadata_paths
 
     def __enter__(self) -> Self:
         self._context_depth += 1
