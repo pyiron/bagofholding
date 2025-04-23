@@ -75,6 +75,7 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
         self._unpacked_type_index: IntArrayType | None = None
         self._unpacked_position_index: IntArrayType | None = None
         self._unpacked_nonmetadata_paths: StringArrayType | None = None
+        self._path_to_index: dict[str, int] | None = None
         super().__init__(filepath)
         self._packed_paths: list[str] = []
         self._packed_type_index: list[int] = []
@@ -129,6 +130,12 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
                 ~np.char.find(self.unpacked_paths, self._field_delimiter) >= 0
             ].tolist()
         return self._unpacked_nonmetadata_paths
+
+    @property
+    def path_to_index(self) -> dict[str, int]:
+        if self._path_to_index is None:
+            self._path_to_index = {p: i for i, p in enumerate(self.unpacked_paths)}
+        return self._path_to_index
 
     def _write(self) -> None:
         str_type = h5py.string_dtype(encoding="utf-8")
@@ -252,13 +259,11 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
 
     def _read_pathlike(self, path: str) -> object:
         # A real path or one with the field delimiter to find a metadata field
-        sanitized_path = path
-        try:
-            packing_index = np.argwhere(self.unpacked_paths == sanitized_path)[0][0]
-        except IndexError as e:
+        packing_index = self.path_to_index.get(path, None)
+        if packing_index is None:
             raise IndexError(
-                f"Couldn't find {sanitized_path} among {self._unpacked_paths}"
-            ) from e
+                f"Couldn't find {path} among {self.unpacked_paths}"
+            )
         type_index = self.unpacked_type_index[packing_index]
         group_name = self._index_map.inverse[type_index]
         position_index = self.unpacked_position_index[packing_index]
