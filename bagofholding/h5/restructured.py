@@ -7,12 +7,14 @@ from typing import Any, ClassVar, Literal, Self, TypeAlias, TypeVar, cast
 import bidict
 import h5py
 import numpy as np
+import pygtrie
 
 from bagofholding.bag import PATH_DELIMITER, Bag
 from bagofholding.content import BespokeItem
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
     FileNotOpenError,
+    NotAGroupError,
 )
 from bagofholding.h5.bag import H5Info
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType
@@ -76,6 +78,7 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
         self._unpacked_position_index: IntArrayType | None = None
         self._unpacked_nonmetadata_paths: StringArrayType | None = None
         self._path_to_index: dict[str, int] | None = None
+        self._trie: pygtrie.CharTrie | None = None
         super().__init__(filepath)
         self._packed_paths: list[str] = []
         self._packed_type_index: list[int] = []
@@ -136,6 +139,14 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
         if self._path_to_index is None:
             self._path_to_index = {p: i for i, p in enumerate(self.unpacked_paths)}
         return self._path_to_index
+
+    @property
+    def trie(self) -> pygtrie.CharTrie:
+        if self._trie is None:
+            self._trie = pygtrie.CharTrie()
+            for path in self.list_paths():
+                self._trie[path] = True
+        return self._trie
 
     def _write(self) -> None:
         str_type = h5py.string_dtype(encoding="utf-8")
@@ -353,14 +364,18 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
 
     def open_group(self, path: str) -> set[str]:
         prefix = path if path.endswith(PATH_DELIMITER) else path + PATH_DELIMITER
-        plen = len(prefix)
+        try:
+            subpaths = self.trie.items(prefix)
+        except KeyError:
+            try:
+                prefix = prefix.rstrip(PATH_DELIMITER)
+                subpaths = self.trie.items(prefix)
+            except KeyError as e:
+                raise NotAGroupError(f"Couldn't find a group at {path} among {self.list_paths()}") from e
         children = {
-            p[plen:].split(PATH_DELIMITER, 1)[0]
-            for p in self.list_paths()
-            if p.startswith(prefix) and self._field_delimiter not in p[plen:]
+            key[len(prefix):].split(PATH_DELIMITER, 1)[0] for key, _ in subpaths
         }
-        # if not children:
-        #     raise NotAGroupError(f"Asked a group at {path}, but found no valid subpaths among {self.list_paths()}")
+        children.discard("")
         return children
 
     # def get_bespoke_content_class(self, obj: object) -> type[BespokeItem[Any, Self]] | None:
