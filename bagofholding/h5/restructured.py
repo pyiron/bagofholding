@@ -178,7 +178,7 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
 
     def __getitem__(self, path: str) -> Metadata:
         with self:
-            return super().__getitem__(path)
+            return super().__getitem__(self._sanitize_path(path))
 
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
@@ -218,7 +218,7 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
         self.close()
 
     def _field_to_path(self, path: str, key: str) -> str:
-        return self._sanitize_path(path) + self._field_delimiter + key
+        return path + self._field_delimiter + key
 
     def _sanitize_path(self, path: str) -> str:
         return path.rstrip(PATH_DELIMITER).lstrip(PATH_DELIMITER)
@@ -232,7 +232,8 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
         self._packed_position_index.append(len(data_list) - 1)
 
     def _pack_path(self, path: str) -> None:
-        self._packed_paths.append(self._sanitize_path(path))
+        path = "" if path == PATH_DELIMITER else path  # i.e. sanitize the root
+        self._packed_paths.append(path)
 
     def _unpack_field(self, path: str, key: str) -> str | None:
         try:
@@ -244,7 +245,7 @@ class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
 
     def _read_pathlike(self, path: str) -> object:
         # A real path or one with the field delimiter to find a metadata field
-        sanitized_path = self._sanitize_path(path)
+        sanitized_path = path
         try:
             packing_index = np.argwhere(self.unpacked_paths == sanitized_path)[0][0]
         except IndexError as e:
