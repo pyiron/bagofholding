@@ -25,12 +25,12 @@ from bagofholding import (
     PickleProtocolError,
 )
 from bagofholding.h5.bag import H5Info
-from bagofholding.h5.restructured import RestructuredH5Bag
+from bagofholding.h5.triebag import TrieH5Bag
 
-bag_class = RestructuredH5Bag
+bag_class = TrieH5Bag
 
 
-class BagVariant(RestructuredH5Bag):
+class BagVariant(TrieH5Bag):
     @classmethod
     def get_bag_info(cls) -> H5Info:
         return H5Info(
