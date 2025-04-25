@@ -27,7 +27,7 @@ StringArrayType: TypeAlias = np.ndarray[tuple[int, ...], np.dtype[np.str_]]
 IntArrayType: TypeAlias = np.ndarray[tuple[int, ...], IntTypesAlias]
 
 
-class RestructuredH5Bag(Bag[H5Info], ArrayPacker):
+class TrieH5Bag(Bag[H5Info], ArrayPacker):
     libver_str: ClassVar[str] = "latest"
     _content_key: ClassVar[str] = "content_type"
 

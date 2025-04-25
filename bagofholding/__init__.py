@@ -17,4 +17,4 @@ from bagofholding.exceptions import (
     StringReductionNotImportableError as StringReductionNotImportableError,
 )
 from bagofholding.h5.bag import H5Bag as H5Bag
-from bagofholding.h5.restructured import RestructuredH5Bag as RestructuredH5Bag
+from bagofholding.h5.restructured import TrieH5Bag as TrieH5Bag
