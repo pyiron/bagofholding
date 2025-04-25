@@ -94,7 +94,6 @@ class TestBenchmark(unittest.TestCase):
                     cls._load(fname)
                 return cls.repeats
 
-
         class WithPickle(Tester):
             repeats = 100
 
@@ -103,13 +102,13 @@ class TestBenchmark(unittest.TestCase):
                 with open(fname, "wb") as f:
                     pickle.dump(obj, f)
 
-
             @classmethod
             def _load(cls, fname):
                 with open(fname, "rb") as f:
                     pickle.load(f)
 
         BagType = TypeVar("BagType", bound=Bag)
+
         class WithBag(Tester, Generic[BagType], abc.ABC):
             @classmethod
             @abc.abstractmethod
@@ -123,18 +122,15 @@ class TestBenchmark(unittest.TestCase):
             def _load(cls, fname: str):
                 cls.bag_class()(fname).load()
 
-
         class WithH5Bag(WithBag[H5Bag]):
             @classmethod
             def bag_class(cls) -> type[H5Bag]:
                 return H5Bag
 
-
         class WithTrieH5Bag(WithBag[TrieH5Bag]):
             @classmethod
             def bag_class(cls) -> type[TrieH5Bag]:
                 return TrieH5Bag
-
 
         methods = [WithPickle, WithH5Bag, WithTrieH5Bag]
         method_names = [method.__name__ for method in methods]
@@ -144,7 +140,7 @@ class TestBenchmark(unittest.TestCase):
             for k in ["size (mb)", "save (ms)", "load (ms)"]
         }
         scales = {
-            "size (mb)": 1./1024,
+            "size (mb)": 1.0 / 1024,
             "save (ms)": 1000,
             "load (ms)": 1000,
         }
@@ -154,11 +150,15 @@ class TestBenchmark(unittest.TestCase):
 
                 t0 = time.time()
                 scale = method.save(obj, fname)
-                performance["save (ms)"][method.__name__].append((time.time() - t0) / scale)
+                performance["save (ms)"][method.__name__].append(
+                    (time.time() - t0) / scale
+                )
                 performance["size (mb)"][method.__name__].append(os.path.getsize(fname))
                 t1 = time.time()
                 scale = method.load(fname)
-                performance["load (ms)"][method.__name__].append((time.time() - t1) / scale)
+                performance["load (ms)"][method.__name__].append(
+                    (time.time() - t1) / scale
+                )
 
                 with contextlib.suppress(FileNotFoundError):
                     os.remove(fname)
@@ -168,12 +168,9 @@ class TestBenchmark(unittest.TestCase):
             print(f"size\t{'\t'.join(p.keys())}")
             for i, n in enumerate(sizes):
                 print(
-                    sizes[i],
+                    n,
                     "\t\t",
                     "\t\t".join(
-                        [
-                            str(round(pp[i] * scales[k], 2))
-                            for pp in p.values()
-                        ]
-                    )
+                        [str(round(pp[i] * scales[k], 2)) for pp in p.values()]
+                    ),
                 )

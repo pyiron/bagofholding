@@ -119,8 +119,13 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
         str_type = h5py.string_dtype(encoding="utf-8")
 
         self.open("w")
-        segments, parents, values = decompose_stringtrie(self._packed_trie, null_value=(-1, -1))
-        self.file.create_dataset("trie_segments", data=np.array(segments, dtype=h5py.string_dtype(encoding='utf-8')))
+        segments, parents, values = decompose_stringtrie(
+            self._packed_trie, null_value=(-1, -1)
+        )
+        self.file.create_dataset(
+            "trie_segments",
+            data=np.array(segments, dtype=h5py.string_dtype(encoding="utf-8")),
+        )
         self.file.create_dataset("trie_parents", data=np.array(parents, dtype=np.int32))
         self.file.create_dataset("trie_values", data=np.array(values, dtype=np.int32))
 
@@ -173,9 +178,12 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
         """A list of all available content paths."""
         if self._unpacked_nonmetadata_paths is None:
             paths = self.unpacked_trie.keys()
-            self._unpacked_nonmetadata_paths = [self._sanitize_path(p) for p in np.array(paths)[
-                ~np.char.find(paths, self._field_delimiter) >= 0
-            ]]
+            self._unpacked_nonmetadata_paths = [
+                self._sanitize_path(p)
+                for p in np.array(paths)[
+                    ~np.char.find(paths, self._field_delimiter) >= 0
+                ]
+            ]
         return self._unpacked_nonmetadata_paths
 
     def __enter__(self) -> Self:
@@ -318,8 +326,9 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
         subpaths = self.unpacked_trie.keys(prefix=prefix, shallow=False)
         next_depth_index = 1
         children = {
-            part[next_depth_index] for key in subpaths
-            if (part := key[len(prefix):].split(PATH_DELIMITER, next_depth_index + 1))
+            part[next_depth_index]
+            for key in subpaths
+            if (part := key[len(prefix) :].split(PATH_DELIMITER, next_depth_index + 1))
             and len(part) > next_depth_index
             and self._field_delimiter not in part[next_depth_index]
         }
