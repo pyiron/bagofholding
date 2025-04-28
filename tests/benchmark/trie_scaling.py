@@ -1,10 +1,9 @@
 import time
 import unittest
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie, Helper
+from bagofholding.trie import Helper, decompose_stringtrie, reconstruct_stringtrie
 
 
 class TestTrieScaling(unittest.TestCase):
@@ -16,7 +15,7 @@ class TestTrieScaling(unittest.TestCase):
         """
 
         depth_propensities = [0, 0.33, 0.67, 1]
-        sizes = np.array([2 ** n for n in range(2, 12)])
+        sizes = np.array([2**n for n in range(2, 12)])
         quadratic_coeffs = []
 
         for depth in depth_propensities:
@@ -34,11 +33,11 @@ class TestTrieScaling(unittest.TestCase):
                 times.append(np.mean(trials))
 
             coeffs = np.polyfit(sizes, times, 2)  # quadratic fit
-            quadratic_coeffs.append(coeffs[0])    # leading coefficient
+            quadratic_coeffs.append(coeffs[0])  # leading coefficient
 
         for earlier, later in zip(quadratic_coeffs, quadratic_coeffs[1:]):
             self.assertLessEqual(
                 earlier,
                 later,
-                f"Quadratic coefficient did not increase monotonically with dept propensity. {quadratic_coeffs}"
+                f"Quadratic coefficient did not increase monotonically with dept propensity. {quadratic_coeffs}",
             )

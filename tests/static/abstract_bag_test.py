@@ -2,7 +2,7 @@ import abc
 import contextlib
 import os
 import unittest
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 import numpy as np
 from objects import (
@@ -34,14 +34,15 @@ def always_42(module_name: str = "not even used") -> str:
 
 BagType = TypeVar("BagType", bound=bag.Bag[bag.BagInfo])
 
+
 class AbstractBagTest(unittest.TestCase, Generic[BagType], abc.ABC):
     """
     A generic bag test which should pass for all implementations of Bag.
     """
+
     @classmethod
     @abc.abstractmethod
     def bag_class(cls) -> type[BagType]: ...
-
 
     @classmethod
     def bag_variant(cls):
@@ -53,8 +54,9 @@ class AbstractBagTest(unittest.TestCase, Generic[BagType], abc.ABC):
                     module=klass.__module__,
                     version=always_42(),
                 )
+
         return BagVariant
-    
+
     @classmethod
     def setUpClass(cls):
         cls.save_name = "savefile"

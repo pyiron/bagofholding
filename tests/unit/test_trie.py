@@ -1,6 +1,7 @@
 import unittest
 
-from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie, Helper
+from bagofholding.trie import Helper, decompose_stringtrie, reconstruct_stringtrie
+
 
 class TestTrie(unittest.TestCase):
     def test_round_trip(self):

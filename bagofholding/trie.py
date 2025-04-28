@@ -42,12 +42,14 @@ def decompose_stringtrie[
     return segments, parents, values
 
 
-def reconstruct_stringtrie[ValueType](
-        segments: list[str],
-        parents: list[int],
-        values: list[ValueType],
-        null_value: ValueType,
-        separator: str = "/",
+def reconstruct_stringtrie[
+    ValueType
+](
+    segments: list[str],
+    parents: list[int],
+    values: list[ValueType],
+    null_value: ValueType,
+    separator: str = "/",
 ) -> pygtrie.StringTrie:
     trie = pygtrie.StringTrie(separator=separator)
     keys = [""] * len(segments)
@@ -68,7 +70,9 @@ def reconstruct_stringtrie[ValueType](
 
 class Helper:
     @staticmethod
-    def compute_softmax_weights(n: int, depth_propensity: float, temperature: float = 0.1) -> list[float]:
+    def compute_softmax_weights(
+        n: int, depth_propensity: float, temperature: float = 0.1
+    ) -> list[float]:
         pos = np.linspace(0, 1, n)
         scores = (2 * depth_propensity - 1) * pos / temperature
         exp_scores = np.exp(scores - np.max(scores))  # for numerical stability
@@ -76,7 +80,12 @@ class Helper:
 
     @classmethod
     def generate_paths(
-        cls, n_paths: int, depth_propensity: float = 0.5, temperature: float = 0.1, seed: int | None = None, separator: str = "/"
+        cls,
+        n_paths: int,
+        depth_propensity: float = 0.5,
+        temperature: float = 0.1,
+        seed: int | None = None,
+        separator: str = "/",
     ) -> list[str]:
         if seed is not None:
             random.seed(seed)
@@ -94,7 +103,9 @@ class Helper:
 
         while len(paths) < n_paths:
             # Choose existing prefix with bias towards depth
-            weights = cls.compute_softmax_weights(len(frontier), depth_propensity, temperature)
+            weights = cls.compute_softmax_weights(
+                len(frontier), depth_propensity, temperature
+            )
             prefix = random.choices(frontier, weights=weights, k=1)[0]
 
             new_path = prefix + [new_segment()]
@@ -106,9 +117,13 @@ class Helper:
         return paths
 
     @classmethod
-    def make_stochastic_trie(cls, n_paths: int, depth_propensity: float = 0.5, temperature: float = 0.1) -> tuple[pygtrie.StringTrie, int]:
+    def make_stochastic_trie(
+        cls, n_paths: int, depth_propensity: float = 0.5, temperature: float = 0.1
+    ) -> tuple[pygtrie.StringTrie, int]:
         trie = pygtrie.StringTrie()
-        for i, k in enumerate(cls.generate_paths(n_paths, depth_propensity, temperature)):
+        for i, k in enumerate(
+            cls.generate_paths(n_paths, depth_propensity, temperature)
+        ):
             trie[k] = i
         null = -1  # real values are >0
         return trie, null
