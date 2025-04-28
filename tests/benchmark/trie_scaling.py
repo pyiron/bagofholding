@@ -9,16 +9,19 @@ from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie, Help
 
 class TestTrieScaling(unittest.TestCase):
     def test_scaling(self):
-        depth_propensities = [0, 0.25, 0.5, 0.75, 1]
-        sizes = np.array([2 ** n for n in range(2, 11)])
+        """
+        The de/reconstruction of the trie should move from a best-case scenario of
+        nearly O(N) for breadth-like tries, to a worst-case scenario of O(N^2) scaling
+        of depth-like tries.
+        """
 
-        fig, ax = plt.subplots()
-        cmap = plt.get_cmap("tab10")
-        colours = [cmap(i) for i, _ in enumerate(depth_propensities)]
+        depth_propensities = [0, 0.33, 0.67, 1]
+        sizes = np.array([2 ** n for n in range(2, 12)])
+        quadratic_coeffs = []
 
-        for colour, depth in zip(colours, depth_propensities):
+        for depth in depth_propensities:
             times = []
-            n_trials = 20
+            n_trials = 50
             for n in sizes:
                 trie, null = Helper.make_stochastic_trie(n, depth_propensity=depth)
                 trials = []
@@ -30,9 +33,12 @@ class TestTrieScaling(unittest.TestCase):
                     trials.append(dt)
                 times.append(np.mean(trials))
 
-            ax.plot(sizes, times, label="depth=" + str(depth), marker="o", color=colour)
-            m, b = np.polyfit(sizes, times, 1)
-            print(f"depth {depth}: {b:.3f} +/- {m:.3f}", times, m * sizes + b)
-            ax.plot(sizes, m * sizes + b, linestyle="--", color=colour)
-        ax.legend()
-        plt.show()
+            coeffs = np.polyfit(sizes, times, 2)  # quadratic fit
+            quadratic_coeffs.append(coeffs[0])    # leading coefficient
+
+        for earlier, later in zip(quadratic_coeffs, quadratic_coeffs[1:]):
+            self.assertLessEqual(
+                earlier,
+                later,
+                f"Quadratic coefficient did not increase monotonically with dept propensity. {quadratic_coeffs}"
+            )
