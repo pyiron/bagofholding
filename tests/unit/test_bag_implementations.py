@@ -35,7 +35,7 @@ def always_42(module_name: str = "not even used") -> str:
 
 class AbstractTestNamespace:
 
-    class AbstractBagTest(unittest.TestCase, abc.ABC):
+    class TestBagImplementation(unittest.TestCase, abc.ABC):
         """
         A generic bag test which should pass for all implementations of Bag.
         """
@@ -240,13 +240,13 @@ class AbstractTestNamespace:
                 self.bag_class().save(42, self.save_name, _pickle_protocol=5)
 
 
-class TestH5Bag(AbstractTestNamespace.AbstractBagTest):
+class TestH5BagBagImplementation(AbstractTestNamespace.TestBagImplementation):
     @classmethod
     def bag_class(cls) -> type[bagofholding.h5.bag.H5Bag]:
         return bagofholding.h5.bag.H5Bag
 
 
-class TestH5TrieBag(AbstractTestNamespace.AbstractBagTest):
+class TestH5TrieBagBagImplementation(AbstractTestNamespace.TestBagImplementation):
     @classmethod
     def bag_class(cls) -> type[bagofholding.h5.triebag.TrieH5Bag]:
         return bagofholding.h5.triebag.TrieH5Bag
