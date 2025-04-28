@@ -68,7 +68,7 @@ class TestBenchmark(unittest.TestCase):
                 )
                 print("Average overhead", average_overhead_ms, "(ms)")
 
-    def test_timing(self):
+    def test_timing(self) -> None:
         fname = "benchmark"
 
         class Tester(abc.ABC):
@@ -98,12 +98,12 @@ class TestBenchmark(unittest.TestCase):
             repeats = 100
 
             @classmethod
-            def _save(cls, obj, fname) -> int:
+            def _save(cls, obj, fname) -> None:
                 with open(fname, "wb") as f:
                     pickle.dump(obj, f)
 
             @classmethod
-            def _load(cls, fname):
+            def _load(cls, fname) -> None:
                 with open(fname, "rb") as f:
                     pickle.load(f)
 
@@ -135,7 +135,7 @@ class TestBenchmark(unittest.TestCase):
         methods = [WithPickle, WithH5Bag, WithTrieH5Bag]
         method_names = [method.__name__ for method in methods]
         sizes = range(10, 200, 10)
-        performance = {
+        performance: dict[str, dict[str, list[float]]] = {
             k: {n: [] for n in method_names}
             for k in ["size (mb)", "save (ms)", "load (ms)"]
         }
