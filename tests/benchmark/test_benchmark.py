@@ -69,7 +69,7 @@ class TestBenchmark(unittest.TestCase):
                 print("Average overhead", average_overhead_ms, "(ms)")
 
     def test_timing(self) -> None:
-        fname = "benchmark"
+        fname = "benchmark_test"
 
         class Tester(abc.ABC):
             repeats: ClassVar[int] = 1

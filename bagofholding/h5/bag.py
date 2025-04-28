@@ -25,14 +25,14 @@ class H5Info(BagInfo):
     libver_str: str = "latest"
 
 
-class H5Bag(Bag[H5Info], ArrayPacker):
+class H5Bag(Bag, ArrayPacker):
     libver_str: ClassVar[str] = "latest"
     _content_key: ClassVar[str] = "content_type"
     _file: h5py.File | None
     _context_depth: int
 
     @classmethod
-    def get_bag_info(cls) -> H5Info:
+    def get_bag_info(cls) -> BagInfo:
         return H5Info(
             qualname=cls.__qualname__,
             module=cls.__module__,
@@ -41,7 +41,7 @@ class H5Bag(Bag[H5Info], ArrayPacker):
         )
 
     @classmethod
-    def _bag_info_class(cls) -> type[H5Info]:
+    def _bag_info_class(cls) -> type[BagInfo]:
         return H5Info
 
     def __init__(
@@ -68,7 +68,7 @@ class H5Bag(Bag[H5Info], ArrayPacker):
         self.open("w")
         super()._pack_bag_info()
 
-    def _unpack_bag_info(self) -> H5Info:
+    def _unpack_bag_info(self) -> BagInfo:
         with self:
             info = super()._unpack_bag_info()
         return info

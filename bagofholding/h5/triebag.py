@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import pygtrie
 
-from bagofholding.bag import PATH_DELIMITER, Bag
+from bagofholding.bag import PATH_DELIMITER, Bag, BagInfo
 from bagofholding.content import BespokeItem
 from bagofholding.exceptions import (
     FileAlreadyOpenError,
@@ -28,7 +28,7 @@ StringArrayType: TypeAlias = np.ndarray[tuple[int, ...], np.dtype[np.str_]]
 IntArrayType: TypeAlias = np.ndarray[tuple[int, ...], IntTypesAlias]
 
 
-class TrieH5Bag(Bag[H5Info], ArrayPacker):
+class TrieH5Bag(Bag, ArrayPacker):
     libver_str: ClassVar[str] = "latest"
     _content_key: ClassVar[str] = "content_type"
 
@@ -57,7 +57,7 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
     _context_depth: int
 
     @classmethod
-    def get_bag_info(cls) -> H5Info:
+    def get_bag_info(cls) -> BagInfo:
         return H5Info(
             qualname=cls.__qualname__,
             module=cls.__module__,
@@ -66,7 +66,7 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
         )
 
     @classmethod
-    def _bag_info_class(cls) -> type[H5Info]:
+    def _bag_info_class(cls) -> type[BagInfo]:
         return H5Info
 
     def __init__(
@@ -152,7 +152,7 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
 
         self.close()
 
-    def _unpack_bag_info(self) -> H5Info:
+    def _unpack_bag_info(self) -> BagInfo:
         with self:
             info = super()._unpack_bag_info()
         return info
