@@ -22,6 +22,7 @@ from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidator
 from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie
 
 PackedThingType = TypeVar("PackedThingType", str, bool, int, float, bytes, bytearray)
+H5Scalar: TypeAlias = np.generic  # i.e. str_, bytes_, and numerics of all precisions
 
 StringArrayType: TypeAlias = np.ndarray[tuple[int, ...], np.dtype[np.str_]]
 IntArrayType: TypeAlias = np.ndarray[tuple[int, ...], IntTypesAlias]
@@ -76,7 +77,7 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
         self._unpacked_paths: StringArrayType | None = None
         self._unpacked_type_index: IntArrayType | None = None
         self._unpacked_position_index: IntArrayType | None = None
-        self._unpacked_nonmetadata_paths: StringArrayType | None = None
+        self._unpacked_nonmetadata_paths: list[str] | None = None
         self._path_to_index: dict[str, int] | None = None
         self._unpacked_trie: pygtrie.StringTrie | None = None
         super().__init__(filepath)
@@ -221,7 +222,10 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
         self._packed_trie[PATH_DELIMITER + path] = [type_index, position_index]
 
     def _read_trie(self, path: str) -> tuple[int, int]:
-        return self.unpacked_trie.values(prefix=PATH_DELIMITER + path, shallow=True)[0]
+        return cast(
+            tuple[int, int],
+            self.unpacked_trie.values(prefix=PATH_DELIMITER + path, shallow=True)[0],
+        )
 
     def _field_to_path(self, path: str, key: str) -> str:
         return self._sanitize_path(path) + self._field_delimiter + key
@@ -238,17 +242,17 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
     def _unpack_field(self, path: str, key: str) -> str | None:
         try:
             return self.maybe_decode(
-                self._read_pathlike(self._field_to_path(path, key))
+                cast(str, self._read_pathlike(self._field_to_path(path, key)))
             )
         except KeyError:
             return None
 
-    def _read_pathlike(self, path: str) -> object:
+    def _read_pathlike(self, path: str) -> H5Scalar:
         # A real path or one with the field delimiter to find a metadata field
         type_index, position_index = self._read_trie(path)
         group_name = self._index_map.inverse[type_index]
         with self:
-            value = self.file[group_name][position_index]
+            value = cast(H5Scalar, self.file[group_name][position_index])
         return value
 
     @staticmethod
@@ -258,7 +262,9 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
     def pack_empty(self, path: str) -> None:
         self._pack_trie(path, self._index_map["empty"], -1)
 
-    def _pack_thing(self, obj: PackedThingType, type_name: str, path: str) -> None:
+    def _pack_thing(
+        self, obj: PackedThingType | ArrayType, type_name: str, path: str
+    ) -> None:
         type_index = self._index_map[type_name]
         group = self._packed[type_index]
         group.append(obj)  # type: ignore[arg-type]
@@ -268,7 +274,7 @@ class TrieH5Bag(Bag[H5Info], ArrayPacker):
         self._pack_thing(obj, "str", path)
 
     def unpack_string(self, path: str) -> str:
-        return self.maybe_decode(self._read_pathlike(path))
+        return self.maybe_decode(cast(str, self._read_pathlike(path)))
 
     def pack_bool(self, obj: bool, path: str) -> None:
         self._pack_thing(obj, "bool", path)
