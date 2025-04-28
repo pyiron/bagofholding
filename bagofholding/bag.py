@@ -9,10 +9,8 @@ from collections.abc import Iterator, Mapping
 from typing import (
     Any,
     ClassVar,
-    Generic,
     Self,
     SupportsIndex,
-    TypeVar,
 )
 
 import bidict
