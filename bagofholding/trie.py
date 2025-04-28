@@ -1,4 +1,5 @@
 import random
+from typing import cast
 
 import numpy as np
 import pygtrie
@@ -41,7 +42,13 @@ def decompose_stringtrie[
     return segments, parents, values
 
 
-def reconstruct_stringtrie(segments, parents, values, null_value, separator="/"):
+def reconstruct_stringtrie[ValueType](
+        segments: list[str],
+        parents: list[int],
+        values: list[ValueType],
+        null_value: ValueType,
+        separator: str = "/",
+) -> pygtrie.StringTrie:
     trie = pygtrie.StringTrie(separator=separator)
     keys = [""] * len(segments)
 
@@ -59,29 +66,29 @@ def reconstruct_stringtrie(segments, parents, values, null_value, separator="/")
     return trie
 
 
-def compute_softmax_weights(n, depth_propensity, temperature=0.1):
+def compute_softmax_weights(n: int, depth_propensity: float, temperature: float = 0.1) -> list[float]:
     pos = np.linspace(0, 1, n)
     scores = (2 * depth_propensity - 1) * pos / temperature
     exp_scores = np.exp(scores - np.max(scores))  # for numerical stability
-    return (exp_scores / exp_scores.sum()).tolist()
+    return cast(list[float], (exp_scores / exp_scores.sum()).tolist())
 
 
 def generate_paths(
-    n_paths, depth_propensity=0.5, temperature=0.1, seed=None, separator="/"
-):
+    n_paths: int, depth_propensity: float = 0.5, temperature: float = 0.1, seed: int | None = None, separator: str = "/"
+) -> list[str]:
     if seed is not None:
         random.seed(seed)
 
-    paths = []
+    paths: list[str] = []
     next_id = 0
 
-    def new_segment():
+    def new_segment() -> str:
         nonlocal next_id
         seg = f"seg{next_id}"
         next_id += 1
         return seg
 
-    frontier = [[]]  # list of existing path prefixes
+    frontier: list[list[str]] = [[]]  # list of existing path prefixes
 
     while len(paths) < n_paths:
         # Choose existing prefix with bias towards depth
