@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from types import TracebackType
-from typing import Any, ClassVar, Literal, Self, TypeAlias, TypeVar, cast
+from typing import Any, ClassVar, Self, TypeAlias, TypeVar, cast
 
 import bidict
 import h5py
@@ -11,12 +10,9 @@ import pygtrie
 
 from bagofholding.bag import PATH_DELIMITER, Bag, BagInfo
 from bagofholding.content import BespokeItem
-from bagofholding.exceptions import (
-    FileAlreadyOpenError,
-    FileNotOpenError,
-)
 from bagofholding.h5.bag import H5Info
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType
+from bagofholding.h5.context import HasH5FileContext
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, IntTypesAlias
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie
@@ -28,8 +24,7 @@ StringArrayType: TypeAlias = np.ndarray[tuple[int, ...], np.dtype[np.str_]]
 IntArrayType: TypeAlias = np.ndarray[tuple[int, ...], IntTypesAlias]
 
 
-class TrieH5Bag(Bag, ArrayPacker):
-    libver_str: ClassVar[str] = "latest"
+class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
     _content_key: ClassVar[str] = "content_type"
 
     _paths_key: ClassVar[str] = "paths"
@@ -52,9 +47,6 @@ class TrieH5Bag(Bag, ArrayPacker):
     )
     _field_delimiter: ClassVar[str] = "::"
     _child_delimiter: ClassVar[str] = ";"
-
-    _file: h5py.File | None
-    _context_depth: int
 
     @classmethod
     def get_bag_info(cls) -> BagInfo:
@@ -93,16 +85,6 @@ class TrieH5Bag(Bag, ArrayPacker):
             list[bytearray],
             list[ArrayType],
         ] = ([], [], [], [], [], [], [], [], [])
-
-    @property
-    def file(self) -> h5py.File:
-        if self._file is None:
-            raise FileNotOpenError(f"{self.filepath} is not open; use `open` or `with`")
-        return self._file
-
-    @file.setter
-    def file(self, new_file: h5py.File | None) -> None:
-        self._file = new_file
 
     @property
     def unpacked_trie(self) -> pygtrie.StringTrie:
@@ -193,31 +175,6 @@ class TrieH5Bag(Bag, ArrayPacker):
             self.open("r")
         return self
 
-    def open(self, mode: Literal["r", "r+", "w", "w-", "x", "a"]) -> h5py.File:
-        if self._file is None:
-            self.file = h5py.File(self.filepath, mode, libver=self.libver_str)
-            return self.file
-        else:
-            raise FileAlreadyOpenError(f"The bag at {self.filepath} is already open")
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        self._context_depth -= 1
-        if self._context_depth == 0:
-            self.close()
-
-    def close(self) -> None:
-        if self._file is not None:
-            self.file.close()
-            self._file = None
-
-    def __del__(self) -> None:
-        self.close()
-
     def _pack_trie(self, path: str, type_index: int, position_index: int) -> None:
         self._packed_trie[PATH_DELIMITER + path] = [type_index, position_index]
 
@@ -254,10 +211,6 @@ class TrieH5Bag(Bag, ArrayPacker):
         with self:
             value = cast(H5Scalar, self.file[group_name][position_index])
         return value
-
-    @staticmethod
-    def maybe_decode(attr: str | bytes) -> str:
-        return attr if isinstance(attr, str) else attr.decode("utf-8")
 
     def pack_empty(self, path: str) -> None:
         self._pack_trie(path, self._index_map["empty"], -1)
