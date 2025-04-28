@@ -2,7 +2,7 @@ import abc
 import contextlib
 import os
 import unittest
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import numpy as np
 from objects import (
@@ -32,7 +32,7 @@ def always_42(module_name: str = "not even used") -> str:
     return "42"
 
 
-BagType = TypeVar("BagType", bound=bag.Bag)
+BagType = TypeVar("BagType", bound=bag.Bag[bag.BagInfo])
 
 class AbstractBagTest(unittest.TestCase, Generic[BagType], abc.ABC):
     """
