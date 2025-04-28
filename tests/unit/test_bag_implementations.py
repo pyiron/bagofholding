@@ -33,6 +33,14 @@ def always_42(module_name: str = "not even used") -> str:
     return "42"
 
 
+def get_modified_bag_info(cls: type[bag.Bag]) -> bag.BagInfo:
+    return cls._bag_info_class()(
+        qualname=cls.__qualname__,
+        module=cls.__module__,
+        version=always_42(),
+    )
+
+
 class AbstractTestNamespace:
 
     class TestBagImplementation(unittest.TestCase, abc.ABC):
@@ -59,7 +67,11 @@ class AbstractTestNamespace:
             with self.assertRaises(
                 BagMismatchError, msg="We expect to fail hard when bag info mismatches"
             ):
-                pass
+                type(
+                    "BagSubclass",
+                    (self.bag_class(),),
+                    {"get_bag_info": classmethod(get_modified_bag_info)},
+                )(self.save_name)
 
         def test_version_checking(self):
             obj = np.polynomial.Polynomial([1, 2, 3])
@@ -188,7 +200,9 @@ class AbstractTestNamespace:
                 ModuleForbiddenError, msg="Fail hard when module forbidden"
             ):
                 self.bag_class().save(
-                    obj, self.save_name, forbidden_modules=(obj.__module__.split(".")[0],)
+                    obj,
+                    self.save_name,
+                    forbidden_modules=(obj.__module__.split(".")[0],),
                 )
 
         def test_list_paths(self):
