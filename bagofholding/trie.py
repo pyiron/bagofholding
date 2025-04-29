@@ -10,6 +10,24 @@ def decompose_stringtrie[
 ](trie: pygtrie.StringTrie, null_value: ValueType) -> tuple[
     list[str], list[int], list[ValueType]
 ]:
+    """
+    While tries are a useful representation of path-like tree data, storing the individual keys is not space-efficient.
+
+    This function decomposes the trie into a linked-list structure of individual path segments and their upstream
+    components. Each segment then gets its associated value. Since not all individual segments are necessarily valid
+    paths in the original tree, we also require a "null" value to keep all components the same length.
+
+    Args:
+        trie (pygtrie.StringTrie): The trie to decompose.
+        null_value (ValueType): What to store in lieu of a value for segments which do not correspond to trie paths.
+            Null values must implement a meaningful `==` operator with the values of the trie.
+
+    Returns:
+        list[str]: The path segments.
+        list[int]: Each segment's parent id in the segments list.
+        list[ValueType]: The value associated with each segment (taking the null value whenever the segment has no
+            associated path in the source trie).
+    """
     segments: list[str] = []
     parents: list[int] = []
     values: list[ValueType] = []
@@ -51,6 +69,28 @@ def reconstruct_stringtrie[
     null_value: ValueType,
     separator: str = "/",
 ) -> pygtrie.StringTrie:
+    """
+
+    While tries are a useful representation of path-like tree data, storing the individual keys is not space-efficient.
+
+    This function reconstructs a trie based on a linked-list structure of individual path segments and their upstream
+        parent segments.
+    Since it is possible that not all segments are intended to be terminal paths in the final trie, any segments whose
+        value matches the provided "null" value will not actually be added to the resulting trie.
+
+    Args:
+        segments (list[str]): The path segments.
+        parents (list[int]): The parent ids in the segments list.
+        values (list[ValueType]): The corresponding values to assign to the trie paths (or do not add if equal to null
+            values).
+        null_value (ValueType): The null value against which to compare values to see if they should be excluded from
+            the final trie. Null values must implement a meaningful `==` operator with elements of the values list.
+        separator (str): The path separator.
+
+    Returns:
+        (pygtrie.StringTrie): The resulting trie.
+    """
+
     trie = pygtrie.StringTrie(separator=separator)
     keys = [""] * len(segments)
 
@@ -69,6 +109,10 @@ def reconstruct_stringtrie[
 
 
 class Helper:
+    """
+    Useful tools for building tries on which to test the decomposition and reconstruction.
+    """
+
     @staticmethod
     def compute_softmax_weights(
         n: int, depth_propensity: float, temperature: float = 0.1
