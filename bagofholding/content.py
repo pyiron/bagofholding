@@ -1,3 +1,12 @@
+"""
+Content controls the decomposition of python objects into their component parts, along
+with a record of what type of object they are, and gathering any relevant metadata.
+
+Content is not, of itself, concerned with what you _do_ with this decompositon.
+That is handled via the "packer" protocol (for us, the relevant implementation of this
+is "bags").
+"""
+
 from __future__ import annotations
 
 import abc

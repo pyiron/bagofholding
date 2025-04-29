@@ -1,3 +1,5 @@
+# Designed and intended for use with H5 implementations, which treat arrays very nicely
+# but since bags merely follow a protocol, there is nothing intrinsically-h5 here
 from __future__ import annotations
 
 from typing import Protocol, TypeAlias

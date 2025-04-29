@@ -121,6 +121,7 @@ class Helper:
     Useful tools for building tries on which to test the decomposition of path-like
     tree data.
     """
+
     @staticmethod
     def compute_softmax_weights(
         n: int, depth_propensity: float, temperature: float = 0.1

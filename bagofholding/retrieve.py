@@ -1,3 +1,7 @@
+"""
+Helper functions for managing the relationship between strings and imports.
+"""
+
 from __future__ import annotations
 
 from importlib import import_module

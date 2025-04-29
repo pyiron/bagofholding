@@ -22,6 +22,13 @@ class H5Info(BagInfo):
 
 
 class H5Bag(Bag, HasH5FileContext, ArrayPacker):
+    """
+    A bag using HDF5 files based on `h5py`.
+
+    The underlying file structure is directly representative of the structure of the
+    decomposed object being stored, and `attrs` are used to store metadata.
+    """
+
     _content_key: ClassVar[str] = "content_type"
 
     @classmethod
