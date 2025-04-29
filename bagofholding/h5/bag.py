@@ -2,20 +2,16 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
-from types import TracebackType
-from typing import Any, ClassVar, Literal, Self, cast
+from typing import Any, ClassVar, Self, cast
 
 import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.content import BespokeItem
-from bagofholding.exceptions import (
-    FileAlreadyOpenError,
-    FileNotOpenError,
-    NotAGroupError,
-)
+from bagofholding.exceptions import NotAGroupError
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType
+from bagofholding.h5.context import HasH5FileContext
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
@@ -25,14 +21,11 @@ class H5Info(BagInfo):
     libver_str: str = "latest"
 
 
-class H5Bag(Bag[H5Info], ArrayPacker):
-    libver_str: ClassVar[str] = "latest"
+class H5Bag(Bag, HasH5FileContext, ArrayPacker):
     _content_key: ClassVar[str] = "content_type"
-    _file: h5py.File | None
-    _context_depth: int
 
     @classmethod
-    def get_bag_info(cls) -> H5Info:
+    def get_bag_info(cls) -> BagInfo:
         return H5Info(
             qualname=cls.__qualname__,
             module=cls.__module__,
@@ -41,7 +34,7 @@ class H5Bag(Bag[H5Info], ArrayPacker):
         )
 
     @classmethod
-    def _bag_info_class(cls) -> type[H5Info]:
+    def _bag_info_class(cls) -> type[BagInfo]:
         return H5Info
 
     def __init__(
@@ -51,16 +44,6 @@ class H5Bag(Bag[H5Info], ArrayPacker):
         self._context_depth = 0
         super().__init__(filepath)
 
-    @property
-    def file(self) -> h5py.File:
-        if self._file is None:
-            raise FileNotOpenError(f"{self.filepath} is not open; use `open` or `with`")
-        return self._file
-
-    @file.setter
-    def file(self, new_file: h5py.File | None) -> None:
-        self._file = new_file
-
     def _write(self) -> None:
         self.close()
 
@@ -68,7 +51,7 @@ class H5Bag(Bag[H5Info], ArrayPacker):
         self.open("w")
         super()._pack_bag_info()
 
-    def _unpack_bag_info(self) -> H5Info:
+    def _unpack_bag_info(self) -> BagInfo:
         with self:
             info = super()._unpack_bag_info()
         return info
@@ -104,31 +87,6 @@ class H5Bag(Bag[H5Info], ArrayPacker):
             self.open("r")
         return self
 
-    def open(self, mode: Literal["r", "r+", "w", "w-", "x", "a"]) -> h5py.File:
-        if self._file is None:
-            self.file = h5py.File(self.filepath, mode, libver=self.libver_str)
-            return self.file
-        else:
-            raise FileAlreadyOpenError(f"The bag at {self.filepath} is already open")
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        self._context_depth -= 1
-        if self._context_depth == 0:
-            self.close()
-
-    def close(self) -> None:
-        if self._file is not None:
-            self.file.close()
-            self._file = None
-
-    def __del__(self) -> None:
-        self.close()
-
     def _pack_field(self, path: str, key: str, value: str) -> None:
         self.file[path].attrs[key] = value
 
@@ -137,10 +95,6 @@ class H5Bag(Bag[H5Info], ArrayPacker):
             return self.maybe_decode(self.file[path].attrs[key])
         except KeyError:
             return None
-
-    @staticmethod
-    def maybe_decode(attr: str | bytes) -> str:
-        return attr if isinstance(attr, str) else attr.decode("utf-8")
 
     def pack_empty(self, path: str) -> None:
         self.file.create_dataset(path, data=h5py.Empty(dtype="f"))

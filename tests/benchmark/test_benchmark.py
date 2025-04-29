@@ -1,12 +1,16 @@
+import abc
 import contextlib
 import os
 import pickle
 import time
 import unittest
+from typing import ClassVar, Generic, TypeVar
 
 from objects import Recursing
 
-from bagofholding import H5Bag
+from bagofholding.bag import Bag
+from bagofholding.h5.bag import H5Bag
+from bagofholding.h5.triebag import TrieH5Bag
 
 
 class TestBenchmark(unittest.TestCase):
@@ -64,79 +68,109 @@ class TestBenchmark(unittest.TestCase):
                 )
                 print("Average overhead", average_overhead_ms, "(ms)")
 
-    def test_timing(self):
-        fname = "wf.pckl"
-        n_pickle_repeats = 10
+    def test_timing(self) -> None:
+        fname = "benchmark_test"
 
-        for n in [3, 30]:
-            wf = Recursing(n)
-            with self.subTest(f"------ {len(wf)}-sized graph ------"):
+        class Tester(abc.ABC):
+            repeats: ClassVar[int] = 1
+
+            @classmethod
+            @abc.abstractmethod
+            def _save(cls, obj: object, fname: str) -> None: ...
+
+            @classmethod
+            @abc.abstractmethod
+            def _load(cls, fname: str) -> None: ...
+
+            @classmethod
+            def save(cls, obj: object, fname: str) -> int:
+                for _ in range(cls.repeats):
+                    cls._save(obj, fname)
+                return cls.repeats
+
+            @classmethod
+            def load(cls, fname: str) -> int:
+                for _ in range(cls.repeats):
+                    cls._load(fname)
+                return cls.repeats
+
+        class WithPickle(Tester):
+            repeats = 100
+
+            @classmethod
+            def _save(cls, obj, fname) -> None:
+                with open(fname, "wb") as f:
+                    pickle.dump(obj, f)
+
+            @classmethod
+            def _load(cls, fname) -> None:
+                with open(fname, "rb") as f:
+                    pickle.load(f)
+
+        BagType = TypeVar("BagType", bound=Bag)
+
+        class WithBag(Tester, Generic[BagType], abc.ABC):
+            @classmethod
+            @abc.abstractmethod
+            def bag_class(cls) -> type[BagType]: ...
+
+            @classmethod
+            def _save(cls, obj: object, fname: str):
+                cls.bag_class().save(obj, fname)
+
+            @classmethod
+            def _load(cls, fname: str):
+                cls.bag_class()(fname).load()
+
+        class WithH5Bag(WithBag[H5Bag]):
+            @classmethod
+            def bag_class(cls) -> type[H5Bag]:
+                return H5Bag
+
+        class WithTrieH5Bag(WithBag[TrieH5Bag]):
+            @classmethod
+            def bag_class(cls) -> type[TrieH5Bag]:
+                return TrieH5Bag
+
+        methods = [WithPickle, WithH5Bag, WithTrieH5Bag]
+        method_names = [method.__name__ for method in methods]
+        sizes = range(10, 200, 10)
+        performance: dict[str, dict[str, list[float]]] = {
+            k: {n: [] for n in method_names}
+            for k in ["size (mb)", "save (ms)", "load (ms)"]
+        }
+        scales = {
+            "size (mb)": 1.0 / 1024,
+            "save (ms)": 1000,
+            "load (ms)": 1000,
+        }
+        for n in sizes:
+            obj = Recursing(n)
+            for method in methods:
+
                 t0 = time.time()
-                for _ in range(n_pickle_repeats):
-                    with open(fname, "wb") as f:
-                        pickle.dump(wf, f)
-                pt_save = (time.time() - t0) / n_pickle_repeats
-
-                psize = os.path.getsize(fname)
-
+                scale = method.save(obj, fname)
+                performance["save (ms)"][method.__name__].append(
+                    (time.time() - t0) / scale
+                )
+                performance["size (mb)"][method.__name__].append(os.path.getsize(fname))
                 t1 = time.time()
-                for _ in range(n_pickle_repeats):
-                    with open(fname, "rb") as f:
-                        pickle.load(f)
-                pt_load = (time.time() - t1) / n_pickle_repeats
+                scale = method.load(fname)
+                performance["load (ms)"][method.__name__].append(
+                    (time.time() - t1) / scale
+                )
 
                 with contextlib.suppress(FileNotFoundError):
                     os.remove(fname)
 
-                fname = "wf.h5"
-                for bag_class in [H5Bag]:
-                    t0 = time.time()
-                    bag_class.save(wf, fname)
-                    h5t_save = time.time() - t0
-
-                    h5size = os.path.getsize(fname)
-
-                    t1 = time.time()
-                    b = bag_class(fname)
-                    t2 = time.time()
-                    paths = b.list_paths()
-                    t3 = time.time()
-                    metadata = b["object/state/child/"]
-                    t4 = time.time()
-                    partial = b.load("object/state/child/")
-                    t5 = time.time()
-                    b.load()
-                    h5t_load = time.time() - t5
-                    print(paths[:10])
-                    print(metadata)
-                    print(partial.label)
-                    print(
-                        "Instantiate, list, item access, partial",
-                        t2 - t1,
-                        t3 - t2,
-                        t4 - t3,
-                        t5 - t4,
-                    )
-
-                    with contextlib.suppress(FileNotFoundError):
-                        os.remove(fname)
-
-                    print("Pickle baseline size, save, load (mb, ms, ms)")
-                    print(
-                        round(psize / 1024, 2),
-                        round(pt_save * 1000, 2),
-                        round(pt_load * 1000, 2),
-                    )
-                    print(f"{bag_class} size, save, load (mb, ms, ms)")
-                    print(
-                        round(h5size / 1024, 2),
-                        round(h5t_save * 1000, 2),
-                        round(h5t_load * 1000, 2),
-                    )
-                    print("Ratios: size, save, load")
-                    print(
-                        round(h5size / psize, 2),
-                        round(h5t_save / pt_save, 2),
-                        round(h5t_load / pt_load, 2),
-                    )
-                    print("--------------------------")
+        for k, p in performance.items():
+            print(k)
+            print(f"size\t{'\t'.join(p.keys())}")
+            for i, n in enumerate(sizes):
+                print(
+                    n,
+                    "\t\t",
+                    "\t\t".join(
+                        [str(round(pp[i] * scales[k], 2)) for pp in p.values()]
+                    ),
+                )
