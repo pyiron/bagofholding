@@ -8,6 +8,10 @@ from bagofholding.exceptions import FileAlreadyOpenError, FileNotOpenError
 
 
 class HasH5FileContext:
+    """
+    A mixin class for context management with an :class:`h5py.File` object.
+    """
+
     libver_str: ClassVar[str] = "latest"
 
     filepath: pathlib.Path

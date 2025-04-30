@@ -25,6 +25,18 @@ IntArrayType: TypeAlias = np.ndarray[tuple[int, ...], IntTypesAlias]
 
 
 class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
+    """
+    A bag using HDF5 files based on `h5py`.
+
+    Uses a trie structure to flatten the stored object. Compared to
+    :class:`bagofholding.h5.bag.H5Bag`, this is advantageous for file sizes but
+    (currently)  has worse scaling for save times.
+
+    The resulting HDF5 file cannot be directly related to the structure of the stored
+    object, but must be re-mapped via mapping fields. Metadata is also lumped in with
+    other string data to minimize the number of different h5 groups.
+    """
+
     _content_key: ClassVar[str] = "content_type"
 
     _paths_key: ClassVar[str] = "paths"

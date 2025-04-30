@@ -1,3 +1,14 @@
+"""
+The core user-facing object.
+
+Full implementations of bags should guarantee the key features promised by the package:
+- Storage and retrieval of arbitrary pickleable python objects
+- Metadata preservation
+- Versioning verification
+- Browsing without loading
+- Partial reloading
+"""
+
 from __future__ import annotations
 
 import abc

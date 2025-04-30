@@ -1,3 +1,7 @@
+"""
+Tools for extracting and logging information about python objects.
+"""
+
 from __future__ import annotations
 
 import dataclasses
@@ -12,6 +16,8 @@ from bagofholding.exceptions import EnvironmentMismatchError
 
 @dataclasses.dataclass(frozen=True)
 class HasFieldIterator:
+    """A simple helper mixin for dataclasses"""
+
     def field_items(self) -> ItemsView[str, str | None]:
         return dataclasses.asdict(self).items()
 
@@ -49,6 +55,21 @@ def get_version(
     module_name: str,
     version_scraping: VersionScrapingMap | None = None,
 ) -> str | None:
+    """
+    Given a module name, get its associated version (if any). By default, this simply
+    looks for the :attr:`__version__` attribute on the imported module.
+
+    For :mod:`builtins` this is just the python interpreter version.
+
+    Args:
+        module_name (str): The module to examine.
+        version_scraping (VersionScrapingMap | None): Since some modules may store
+            their version in other ways, this provides an optional map between module
+            names and callables to leverage for extracting that module's version.
+
+    Returns:
+        (str | None): The module's version as a string, if any can be found.
+    """
     if module_name == "builtins":
         return f"{version_info.major}.{version_info.minor}.{version_info.micro}"
 

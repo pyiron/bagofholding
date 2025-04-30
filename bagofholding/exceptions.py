@@ -1,3 +1,9 @@
+"""
+A centralized location for exceptions.
+
+Using custom exceptions allows us to be much more specific in the test suite.
+"""
+
 from __future__ import annotations
 
 
