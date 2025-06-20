@@ -18,3 +18,6 @@ jobs:
       alternate-tests-dir: tests/unit
       alternate-tests-python-version: '3.10'
       python-version-alt3: 'exclude'  # No python 3.9
+      do-codecov: true
+      do-codacy: false
+      do-coveralls: false
