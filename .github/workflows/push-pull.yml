@@ -17,6 +17,7 @@ jobs:
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-dir: tests/unit
       alternate-tests-python-version: '3.12'
+      extra-python-paths: tests/static
       python-version-alt3: '3.13'  # Rather than python 3.9
       python-version-alt2: 'exclude'  # No python 3.10
       python-version-alt1: 'exclude'  # No python 3.11
