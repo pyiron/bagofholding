@@ -47,7 +47,7 @@ Documentation = "https://bagofholding.readthedocs.io"
 Repository = "https://github.com/pyiron/bagofholding"
 
 [project.optional-dependencies]
-notebook = [
+widget = [
     "ipytree==0.2.2",
     "traitlets==5.14.3",
 ]
