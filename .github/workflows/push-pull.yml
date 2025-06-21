@@ -12,9 +12,9 @@ jobs:
     uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.2
     secrets: inherit
     with:
-      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-workflow.yml
-      tests-env-files: .ci_support/environment.yml .ci_support/environment-workflow.yml
-      alternate-tests-env-files: .ci_support/lower_bound.yml .ci_support/environment-workflow.yml
+      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
+      tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
+      alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-dir: tests/unit
       alternate-tests-python-version: '3.10'
       python-version-alt3: 'exclude'  # No python 3.9
