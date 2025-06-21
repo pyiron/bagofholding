@@ -23,13 +23,13 @@ if TYPE_CHECKING:
     from bagofholding.bag import Bag
 
 
+@import_alarm
 class BagTree(ipytree.Tree):  # type: ignore
     # Silence complaints about subclassing `Any` because of upstream issues
     """
     A widget for more convenient bag browsing inside notebooks.
     """
 
-    @import_alarm  # type: ignore
     # pyiron_snippets.import_alarm.ImportAlarm.__call__  is not correctly passing on
     # the hint
     def __init__(self, bag: Bag) -> None:
