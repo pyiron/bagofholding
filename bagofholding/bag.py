@@ -179,10 +179,10 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         """A list of all available content paths."""
 
     @alarm
-    def widget(self):  # type: ignore[misc] type only conditionally available
+    def widget(self):  # type: ignore[no-untyped-def]
         return BagTree(self)
 
-    def browse(self): # type: ignore[misc] type only conditionally available
+    def browse(self):  # type: ignore[no-untyped-def]
         try:
             return self.widget()
         except ImportError:
