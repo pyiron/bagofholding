@@ -1,5 +1,0 @@
-channels:
-  - conda-forge
-dependencies:
-  - nbval =0.11.0
-  - pytest =8.4.1
