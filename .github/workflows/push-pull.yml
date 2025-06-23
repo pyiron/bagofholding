@@ -24,18 +24,4 @@ jobs:
       do-codecov: true
       do-codacy: false
       do-coveralls: false
-
-  mypy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          architecture: x64
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install mypy
-        run: pip install mypy
-      - name: Test
-        run: mypy .
+      do-mypy: true
