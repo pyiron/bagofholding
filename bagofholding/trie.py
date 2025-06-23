@@ -5,11 +5,9 @@ import numpy as np
 import pygtrie
 
 
-def decompose_stringtrie[
-    ValueType
-](trie: pygtrie.StringTrie, null_value: ValueType) -> tuple[
-    list[str], list[int], list[ValueType]
-]:
+def decompose_stringtrie[ValueType](
+    trie: pygtrie.StringTrie, null_value: ValueType
+) -> tuple[list[str], list[int], list[ValueType]]:
     """
     While tries are a useful representation of path-like tree data, storing the
     individual keys is not space-efficient.
@@ -65,9 +63,7 @@ def decompose_stringtrie[
     return segments, parents, values
 
 
-def reconstruct_stringtrie[
-    ValueType
-](
+def reconstruct_stringtrie[ValueType](
     segments: list[str],
     parents: list[int],
     values: list[ValueType],

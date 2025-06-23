@@ -35,7 +35,7 @@ class TestTrieScaling(unittest.TestCase):
             coeffs = np.polyfit(sizes, times, 2)  # quadratic fit
             quadratic_coeffs.append(coeffs[0])  # leading coefficient
 
-        for earlier, later in zip(quadratic_coeffs, quadratic_coeffs[1:]):
+        for earlier, later in zip(quadratic_coeffs, quadratic_coeffs[1:], strict=True):
             self.assertLessEqual(
                 earlier,
                 later,

@@ -1,0 +1,27 @@
+# This runs jobs which pyiron modules should run on pushes or PRs to main
+
+name: Push-Pull
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  pyiron:
+    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.5
+    secrets: inherit
+    with:
+      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
+      tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
+      alternate-tests-env-files: .ci_support/lower_bound.yml
+      alternate-tests-dir: tests/unit
+      alternate-tests-python-version: '3.12'
+      extra-python-paths: tests
+      python-version-alt3: '3.13'  # Rather than python 3.9
+      python-version-alt2: 'exclude'  # No python 3.10
+      python-version-alt1: 'exclude'  # No python 3.11
+      do-codecov: true
+      do-codacy: false
+      do-coveralls: false
+      do-mypy: true

@@ -6,7 +6,7 @@ import time
 import unittest
 from typing import ClassVar, Generic, TypeVar
 
-from objects import Recursing
+from static.objects import Recursing
 
 from bagofholding.bag import Bag
 from bagofholding.h5.bag import H5Bag
@@ -31,6 +31,7 @@ class TestBenchmark(unittest.TestCase):
         for depth, n_reps in zip(
             (2, 20, 200),
             (500, 50, 5),
+            strict=True,
         ):
             with self.subTest(f"depth={depth}, reps={n_reps}"):
                 r = Recursing(depth)

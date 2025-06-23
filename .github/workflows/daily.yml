@@ -1,0 +1,15 @@
+# This runs cron jobs daily
+
+name: Daily
+
+on:
+  schedule:
+    - cron: '0 23 * * *'
+
+jobs:
+  codeql:
+    uses: pyiron/actions/.github/workflows/tests-and-coverage.yml@actions-4.0.5
+    secrets: inherit
+    with:
+      tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
+      extra-python-paths: tests

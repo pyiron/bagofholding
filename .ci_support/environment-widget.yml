@@ -1,0 +1,5 @@
+channels:
+  - conda-forge
+dependencies:
+  - ipytree =0.2.2
+  - traitlets =5.14.3

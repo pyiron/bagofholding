@@ -2,20 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyiron_snippets.import_alarm import ImportAlarm
-
-try:
-    import ipytree
-    import traitlets
-
-    import_alarm = ImportAlarm()
-except (ImportError, ModuleNotFoundError):
-    import_alarm = ImportAlarm(
-        "The browsing widget relies on ipytree, but this was unavailable. "
-        "You can browse all available paths with :meth:`bagofholding.bag.Bag.list_paths`.",
-        _fail_on_warning=True,
-    )
-
+import ipytree
+import traitlets
 
 from bagofholding.content import Reducible
 
@@ -29,7 +17,6 @@ class BagTree(ipytree.Tree):  # type: ignore
     A widget for more convenient bag browsing inside notebooks.
     """
 
-    @import_alarm  # type: ignore
     # pyiron_snippets.import_alarm.ImportAlarm.__call__  is not correctly passing on
     # the hint
     def __init__(self, bag: Bag) -> None:

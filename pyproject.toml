@@ -5,7 +5,7 @@ requires = [
     "numpy",
     "pygtrie",
     "pyiron_snippets",
-    "setuptools",
+    "setuptools==80.9.0",
     "versioneer[toml]==0.29",
 ]
 build-backend = "setuptools.build_meta"
@@ -15,23 +15,23 @@ name = "bagofholding"
 description = "bagofholding - browsable, partially-reloadable serialization for pickleable python objects."
 readme = "docs/README.md"
 keywords = [ "pyiron",]
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.12, <3.14"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Topic :: Scientific/Engineering",
     "License :: OSI Approved :: BSD License",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "bidict==0.23.1",
-    "h5py==3.12.1",
-    "numpy==2.1.3",
+    "h5py==3.14.0",
+    "mpi4py==4.0.1",
+    "numpy==2.3.0",
     "pygtrie==2.5.0",
-    "pyiron_snippets==0.1.4",
+    "pyiron_snippets==0.2.0",
 ]
 dynamic = [ "version",]
 authors = [
@@ -47,7 +47,10 @@ Documentation = "https://bagofholding.readthedocs.io"
 Repository = "https://github.com/pyiron/bagofholding"
 
 [project.optional-dependencies]
-notebook = ["ipytree==0.2.2"]
+widget = [
+    "ipytree==0.2.2",
+    "traitlets==5.14.3",
+]
 
 [tool.versioneer]
 VCS = "git"
@@ -80,7 +83,11 @@ select = [
     # isort
     "I",
 ]
-ignore = ["E501"] #ignore line-length violations
+ignore = [
+    "E501",  #ignore line-length violations
+    "UP040",  # recommended type alias syntax (PEP 695) only available in 3.12+
+    "UP046",   # recommended implicit generics (PEP 695) only available in 3.12+
+]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Ignore unused imports in init files -- we specify APIs this way
