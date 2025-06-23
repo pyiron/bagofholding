@@ -13,7 +13,7 @@ from bagofholding.content import BespokeItem
 from bagofholding.h5.bag import H5Info
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType
 from bagofholding.h5.context import HasH5FileContext
-from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, IntTypesAlias, H5Scalar
+from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5Scalar, IntTypesAlias
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie
 
