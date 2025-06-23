@@ -8,3 +8,4 @@ dependencies:
   - pygtrie =2.5.0
   - pyiron_snippets =0.2.0
   - python >=3.12,<3.14
+  - setuptools =80.9.0

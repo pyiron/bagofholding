@@ -5,7 +5,7 @@ requires = [
     "numpy",
     "pygtrie",
     "pyiron_snippets",
-    "setuptools",
+    "setuptools==80.9.0",
     "versioneer[toml]==0.29",
 ]
 build-backend = "setuptools.build_meta"
