@@ -25,6 +25,7 @@ from typing import (
 )
 
 import bidict
+from pyiron_snippets import import_alarm
 
 from bagofholding.content import BespokeItem, Packer, pack, unpack
 from bagofholding.exceptions import BagMismatchError, InvalidMetadataError
@@ -37,6 +38,19 @@ from bagofholding.metadata import (
     get_version,
 )
 from bagofholding.widget import BagTree
+
+
+try:
+    from bagofholding.widget import BagTree
+
+    alarm = import_alarm.ImportAlarm()
+except (ImportError, ModuleNotFoundError):
+    alarm = import_alarm.ImportAlarm(
+        "The browsing widget relies on ipytree and traitlets, but this was "
+        "unavailable. You can get a text-representation of all available paths with "
+        ":meth:`bagofholding.bag.Bag.list_paths`.",
+        _fail_on_warning=True,
+    )
 
 PATH_DELIMITER = "/"
 
@@ -166,11 +180,13 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     def list_paths(self) -> list[str]:
         """A list of all available content paths."""
 
-    def browse(self) -> BagTree | list[str]:
+    @alarm
+    def widget(self):
+        return BagTree(self)
+
+    def browse(self):
         try:
-            return BagTree(self)  # type: ignore
-            # BagTree is wrapped by pyiron_snippets.import_alarm.ImportAlarm.__call__
-            # and this is not correctly passing on the hint
+            return self.widget()
         except ImportError:
             return self.list_paths()
 
