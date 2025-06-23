@@ -280,7 +280,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         self._pack_thing(obj, "bytes", path)
 
     def unpack_bytes(self, path: str) -> bytes:
-        return self._read_pathlike(path).tobytes()
+        return cast(bytes, self._read_pathlike(path).tobytes())
 
     def pack_bytearray(self, obj: bytearray, path: str) -> None:
         self._pack_thing(obj, "bytearray", path)
