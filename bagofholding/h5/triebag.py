@@ -13,12 +13,11 @@ from bagofholding.content import BespokeItem
 from bagofholding.h5.bag import H5Info
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType
 from bagofholding.h5.context import HasH5FileContext
-from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, IntTypesAlias
+from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, IntTypesAlias, H5Scalar
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie
 
 PackedThingType = TypeVar("PackedThingType", str, bool, int, float, bytes, bytearray)
-H5Scalar: TypeAlias = np.generic  # i.e. str_, bytes_, and numerics of all precisions
 
 StringArrayType: TypeAlias = np.ndarray[tuple[int, ...], np.dtype[np.str_]]
 IntArrayType: TypeAlias = np.ndarray[tuple[int, ...], IntTypesAlias]

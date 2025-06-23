@@ -28,6 +28,26 @@ H5PY_DTYPE_WHITELIST = (
 )
 
 
+H5Scalar: TypeAlias = (
+    np.int8
+    | np.int16
+    | np.int32
+    | np.int64
+    | np.uint8
+    | np.uint16
+    | np.uint32
+    | np.uint64
+    | np.float16
+    | np.float32
+    | np.float64
+    | np.complex64
+    | np.complex128
+    | np.bool_
+    | np.bytes_
+    | np.str_
+)
+
+
 IntTypesAlias: TypeAlias = (
     np.dtype[np.int8]
     | np.dtype[np.int16]
