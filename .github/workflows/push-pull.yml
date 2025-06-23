@@ -24,7 +24,6 @@ jobs:
       do-codecov: true
       do-codacy: false
       do-coveralls: false
-      do-black: false
 
   mypy:
     runs-on: ubuntu-latest
