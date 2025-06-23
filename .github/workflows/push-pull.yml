@@ -13,7 +13,7 @@ jobs:
     secrets: inherit
     with:
       notebooks-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
-      tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
+      tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml .ci_support/environment-nbtests.yml
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-dir: tests/unit
       alternate-tests-python-version: '3.12'

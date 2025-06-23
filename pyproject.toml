@@ -51,6 +51,10 @@ widget = [
     "ipytree==0.2.2",
     "traitlets==5.14.3",
 ]
+nbtests = [
+    "nbval==0.11.0",
+    "pytest==8.4.1",
+]
 
 [tool.versioneer]
 VCS = "git"
