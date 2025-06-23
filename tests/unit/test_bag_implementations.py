@@ -4,6 +4,7 @@ import os
 import unittest
 
 import numpy as np
+from pyiron_snippets.dotdict import DotDict
 from static.objects import (
     DRAGON,
     CustomReduce,
@@ -13,7 +14,6 @@ from static.objects import (
     Recursing,
     SomeData,
 )
-from pyiron_snippets.dotdict import DotDict
 
 import bagofholding.bag as bag
 import bagofholding.content as c
