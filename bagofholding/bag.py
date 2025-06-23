@@ -37,8 +37,6 @@ from bagofholding.metadata import (
     VersionValidatorType,
     get_version,
 )
-from bagofholding.widget import BagTree
-
 
 try:
     from bagofholding.widget import BagTree
