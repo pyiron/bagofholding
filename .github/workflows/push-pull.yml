@@ -9,7 +9,7 @@ on:
 
 jobs:
   pyiron:
-    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.3
+    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.4
     secrets: inherit
     with:
       notebooks-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
@@ -25,17 +25,6 @@ jobs:
       do-codacy: false
       do-coveralls: false
       do-black: false
-
-  black:
-    runs-on: 'ubuntu-latest'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: psf/black@stable
-        with:
-          options: "--check --diff"
 
   mypy:
     runs-on: ubuntu-latest
