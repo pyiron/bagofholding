@@ -6,7 +6,7 @@ import time
 import unittest
 from typing import ClassVar, Generic, TypeVar
 
-from objects import Recursing
+from static.objects import Recursing
 
 from bagofholding.bag import Bag
 from bagofholding.h5.bag import H5Bag

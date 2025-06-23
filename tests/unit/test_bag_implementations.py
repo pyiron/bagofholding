@@ -4,7 +4,7 @@ import os
 import unittest
 
 import numpy as np
-from objects import (
+from static.objects import (
     DRAGON,
     CustomReduce,
     ExReducta,
