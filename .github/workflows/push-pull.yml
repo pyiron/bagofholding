@@ -25,6 +25,7 @@ jobs:
       do-codacy: false
       do-coveralls: false
       do-black: false
+      do-benchmark-tests: false  # actions bug: Benchmark job doesn't leverage add-to-python-path
 
   black:
     runs-on: 'ubuntu-latest'
