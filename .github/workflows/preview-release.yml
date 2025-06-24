@@ -15,4 +15,4 @@ jobs:
     secrets: inherit
     with:
       semantic-upper-bound: 'minor'
-      publish-to-pypi: false
+      publish-to-pypi: true
