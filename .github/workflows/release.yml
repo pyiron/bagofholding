@@ -5,7 +5,8 @@
 name: Preview Release
 
 on:
-  pull_request:
+  release:
+    types: [ published ]
 
 jobs:
   pyiron:
@@ -13,4 +14,4 @@ jobs:
     secrets: inherit
     with:
       semantic-upper-bound: 'minor'
-      publish-to-pypi: false
+      publish-to-pypi: true
