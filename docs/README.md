@@ -1,5 +1,7 @@
 # bagofholding
 
+<img src="_static/bagofholding_logo.png" alt="Logo" width="190"/>  
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/pyiron/bagofholding/HEAD)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Coverage](https://codecov.io/gh/pyiron/bagofholding/graph/badge.svg)](https://codecov.io/gh/pyiron/bagofholding)
