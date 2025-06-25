@@ -2,13 +2,13 @@
 requires = [
     "bidict",
     "h5py",
+    "hatchling==1.27.0",
+    "hatch-vcs==0.5.0",
     "numpy",
     "pygtrie",
     "pyiron_snippets",
-    "setuptools==80.9.0",
-    "versioneer[toml]==0.29",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
 
 [project]
 name = "bagofholding"
@@ -52,18 +52,27 @@ widget = [
     "traitlets==5.14.3",
 ]
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440-pre"
-versionfile_source = "bagofholding/_version.py"
-parentdir_prefix = "bagofholding"
-tag_prefix = "bagofholding-"
+[tool.hatch.build]
+include = [
+    "bagofholding"
+]
 
-[tool.setuptools.packages.find]
-include = [ "bagofholding*",]
+[tool.hatch.build.hooks.vcs]
+version-file = "bagofholding/_version.py"
 
-[tool.setuptools.dynamic.version]
-attr = "bagofholding.__version__"
+[tool.hatch.build.targets.sdist]
+include = [
+    "bagofholding"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "bagofholding"
+]
+
+[tool.hatch.version]
+source = "vcs"
+path = "bagofholding/_version.py"
 
 [tool.ruff]
 exclude = ["docs", "notebooks", "setup.py", "_version.py"]
