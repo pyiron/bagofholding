@@ -1,0 +1,16 @@
+# This runs jobs which pyiron modules should run on release
+# This job runs on pull requests and does not actually publish anything to pypi
+# It is useful for debugging new build recipes
+# To actually release, change the `on` and `publish-to-pypi` fields
+name: Preview Release
+
+on:
+  pull_request:
+
+jobs:
+  pyiron:
+    uses: pyiron/actions/.github/workflows/hatch-release.yml@actions-4.0.6
+    secrets: inherit
+    with:
+      semantic-upper-bound: 'minor'
+      publish-to-pypi: false
