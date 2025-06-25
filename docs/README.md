@@ -95,24 +95,24 @@ You can also specify at load-time how strict or relaxed `bagofholding` should be
 To increase the likelihood that stored data will be accessible in the future, you can outlaw any (sub)objects coming from particular modules:
 
 ```python
-import bagofholding.exception
+import bagofholding as boh
 >>> try:
-    ... boh.H5Bag.save(something, "will_fail.h5", forbidden_modules=("__main__",))
-    ... except bagofholding.exception.ModuleForbiddenError as e:
-    ... print(e)
-Module '__main__' is forbidden as a source of stored objects.Change the `forbidden_modules` or move this object to an allowed module.
+...     boh.H5Bag.save(something, "will_fail.h5", forbidden_modules=("__main__",))
+... except boh.ModuleForbiddenError as e:
+...     print(e)
+Module '__main__' is forbidden as a source of stored objects. Change the `forbidden_modules` or move this object to an allowed module.
 
 ```
 
 And/or demand that all objects have an identifiable version:
 
 ```python
-import bagofholding.exception
+import bagofholding as boh
 >>> try:
-... boh.H5Bag.save(something, "will_fail.h5", require_versions=True)
-... except bagofholding.exception.NoVersionError as e:
-... print(e)
-Could not find a version for __main__.Either disable `require_versions`, use `version_scraping` to find an existingversion for this package, or add versioning to the unversioned package.
+...     boh.H5Bag.save(something, "will_fail.h5", require_versions=True)
+... except boh.NoVersionError as e:
+...     print(e)
+Could not find a version for __main__. Either disable `require_versions`, use `version_scraping` to find an existing version for this package, or add versioning to the unversioned package.
 
 ```
 
