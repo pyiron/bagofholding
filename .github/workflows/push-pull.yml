@@ -5,7 +5,7 @@ name: Push-Pull
 on:
   push:
     branches: [ main ]
-  pull_request:
+#  pull_request:
 
 jobs:
   pyiron:
