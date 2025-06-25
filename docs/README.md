@@ -14,12 +14,12 @@
 [//]: # ([![Platform]&#40;https://anaconda.org/conda-forge/bagofholding/badges/platforms.svg&#41;]&#40;https://anaconda.org/conda-forge/bagofholding&#41;)
 [//]: # ([![Downloads]&#40;https://anaconda.org/conda-forge/bagofholding/badges/downloads.svg&#41;]&#40;https://anaconda.org/conda-forge/bagofholding&#41;)
 
-`bagofholding` is designed to be an easy stand-in for `pickle` serialization for python object that is transparent, flexible, and suitable for long-term storage.
+`bagofholding` is designed to be an easy stand-in for `pickle` serialization for python objects that is transparent, flexible, and suitable for long-term storage.
 
 ## Advantages
 ### Drop-in replacement
 
-`bagofholding` stores (almost) any `pickle`-able python object, and can be easily used as a drop-in replacement for `pickle` serialization:
+`bagofholding` stores `pickle`-able python objects, and can be easily used as a drop-in replacement for `pickle` serialization:
 
 ```python
 >>> import bagofholding as boh
@@ -33,7 +33,7 @@
 
 ### Browseable
 
-The contents of stored objects can be browsed without actually re-instantiating any of the stored data.
+The contents of stored objects can be browsed without re-instantiating any of the stored data.
 In the example above, we saw that saving is a class-method, while loading is an instance method.
 We can grab the "bag" instance and use it to peek at what's inside!
 
@@ -87,53 +87,32 @@ With only `bagofholding` and `numpy` installed, the end user can browse through 
 
 ### Version control
 
-In the examples above, we saw that version (and of course package) information is part of the stored metadata.
-This is useful post-facto for knowing what packages need to be installed to properly load your serialized data.
-You can also specify at load-time how strict or relaxed `bagofholding` should be in re-instantiating data if a stored version does not match the currently installed version, thus protecting you from flawed re-instantiations.
+In the examples above, we saw that version (and of course package) information is part of the automatically-scraped and stored metadata.
+This is useful post-facto for knowing what packages need to be installed to properly load your serialized data, and allows us to fail in clean and helpful ways if the loading environment does not match the saving environment.
+You can also specify at load-time how strict or relaxed `bagofholding` should be in re-instantiating data if a stored version does not match the currently installed version, giving flexible protection from flawed re-instantiations.
 
 `bagofholding` also provides tools to act on this data a-priori.
 To increase the likelihood that stored data will be accessible in the future, you can outlaw any (sub)objects coming from particular modules:
 
 ```python
 import bagofholding.exception
->> > try:
-    ...
-boh.H5Bag.save(something, "will_fail.h5", forbidden_modules=("__main__",))
-... except bagofholding.exception.ModuleForbiddenError as e:
-...
-print(e)
-Module
-'__main__' is forbidden as a
-source
-of
-stored
-objects.Change
-the
-`forbidden_modules` or move
-this
-object
-to
-an
-allowed
-module.
+>>> try:
+    ... boh.H5Bag.save(something, "will_fail.h5", forbidden_modules=("__main__",))
+    ... except bagofholding.exception.ModuleForbiddenError as e:
+    ... print(e)
+Module '__main__' is forbidden as a source of stored objects.Change the `forbidden_modules` or move this object to an allowed module.
 
 ```
 
-And/or demand that all objects have an identifiable version that:
+And/or demand that all objects have an identifiable version:
 
 ```python
 import bagofholding.exception
->> > try:
-    ...
-boh.H5Bag.save(something, "will_fail.h5", require_versions=True)
+>>> try:
+... boh.H5Bag.save(something, "will_fail.h5", require_versions=True)
 ... except bagofholding.exception.NoVersionError as e:
-...
-print(e)
-Could
-not find
-a
-version
-for __main__.Either disable `require_versions`, use `version_scraping` to find an existing version for this package, or add versioning to the unversioned package.
+... print(e)
+Could not find a version for __main__.Either disable `require_versions`, use `version_scraping` to find an existingversion for this package, or add versioning to the unversioned package.
 
 ```
 
@@ -151,9 +130,3 @@ H5Info(qualname='H5Bag', module='bagofholding.h5.bag', version='...', libver_str
 ## Going further
 
 For a more in-depth look at the above features and to explore other aspects of `bagofholding`, check out [the tutorial notebook](../notebooks/tutorial.ipynb).
-
-Finally, `bagofholding` prioritizes transparency in what is stored and ease-of-use for both savers and loaders/browsers.
-As such, the current hdf5-based implementation is likely to be significantly less performant than raw pickling, due to the creation of many small datasets that allow the h5 file to directly replicate the underlying structure of the python objects being saved.
-For objects which contain large `numpy` arrays, this disadvantage is significantly alleviated as we benefit from the very efficient treatment of such arrays in hdf5 and `h5py`.
-For all other objects, the current `bagofholding.H5Bag` is still an appropriate choice when the robustness of long term storage is more pressing than optimizing storage space.
-Other bag types may be available in the future.
