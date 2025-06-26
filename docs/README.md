@@ -5,14 +5,12 @@
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/pyiron/bagofholding/HEAD)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Coverage](https://codecov.io/gh/pyiron/bagofholding/graph/badge.svg)](https://codecov.io/gh/pyiron/bagofholding)
-
 [![Documentation](https://readthedocs.org/projects/bagofholding/badge/?version=latest)](https://bagofholding.readthedocs.io/en/latest/?badge=latest)
 
-[//]: # ([![Anaconda]&#40;https://anaconda.org/conda-forge/bagofholding/badges/version.svg&#41;]&#40;https://anaconda.org/conda-forge/bagofholding&#41;)
-[//]: # ([![Last Updated]&#40;https://anaconda.org/conda-forge/bagofholding/badges/latest_release_date.svg&#41;]&#40;https://anaconda.org/conda-forge/bagofholding&#41;)
-
-[//]: # ([![Platform]&#40;https://anaconda.org/conda-forge/bagofholding/badges/platforms.svg&#41;]&#40;https://anaconda.org/conda-forge/bagofholding&#41;)
-[//]: # ([![Downloads]&#40;https://anaconda.org/conda-forge/bagofholding/badges/downloads.svg&#41;]&#40;https://anaconda.org/conda-forge/bagofholding&#41;)
+[![Anaconda](https://anaconda.org/conda-forge/bagofholding/badges/version.svg)](https://anaconda.org/conda-forge/bagofholding)
+[![Last Updated](https://anaconda.org/conda-forge/bagofholding/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/bagofholding)
+[![Platform](https://anaconda.org/conda-forge/bagofholding/badges/platforms.svg)](https://anaconda.org/conda-forge/bagofholding)
+[![Downloads](https://anaconda.org/conda-forge/bagofholding/badges/downloads.svg)](https://anaconda.org/conda-forge/bagofholding)
 
 `bagofholding` is designed to be an easy stand-in for `pickle` serialization for python objects that is transparent, flexible, and suitable for long-term storage.
 
