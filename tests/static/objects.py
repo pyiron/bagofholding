@@ -156,3 +156,6 @@ class Recursing:
             and other.label == self.label
             and other.child == self.child
         )
+
+
+is_a_lambda = lambda x: isinstance(x, int)  # noqa: E731

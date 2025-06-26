@@ -35,6 +35,7 @@ from bagofholding.exceptions import (
     ModuleForbiddenError,
     NoVersionError,
     PickleProtocolError,
+    StringNotImportableError,
 )
 from bagofholding.metadata import (
     Metadata,
@@ -237,6 +238,15 @@ class Global(Item[GlobalType, Any, Packer]):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
+
+        if "<lambda>" in value:
+            raise StringNotImportableError(
+                f"Lambda functions are not re-importable, can't pack {obj}"
+            )
+        elif "<locals>" in value:
+            raise StringNotImportableError(
+                f"Local functions are not re-importable, can't pack {obj}"
+            )
         packer.pack_string(value, path)
 
     @classmethod

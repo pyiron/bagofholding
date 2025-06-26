@@ -13,6 +13,7 @@ from static.objects import (
     Parent,
     Recursing,
     SomeData,
+    is_a_lambda,
 )
 
 import bagofholding.bag as bag
@@ -26,6 +27,7 @@ from bagofholding import (
     ModuleForbiddenError,
     NoVersionError,
     PickleProtocolError,
+    StringNotImportableError,
 )
 
 
@@ -252,6 +254,17 @@ class AbstractTestNamespace:
                 PickleProtocolError, msg="We don't support out of band data transfers"
             ):
                 self.bag_class().save(42, self.save_name, _pickle_protocol=5)
+
+        def test_early_failure_for_lambda(self):
+            with self.assertRaises(StringNotImportableError):
+                self.bag_class().save(is_a_lambda, self.save_name)
+
+        def test_early_failure_for_locals(self):
+            def this_cannot_be_reimported(x):
+                return x + 1
+
+            with self.assertRaises(StringNotImportableError):
+                self.bag_class().save(this_cannot_be_reimported, self.save_name)
 
 
 class TestH5BagBagImplementation(AbstractTestNamespace.TestBagImplementation):
