@@ -24,4 +24,4 @@ class TestBag(unittest.TestCase):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             Bag.pickle_check(unpickleable, raise_exceptions=False, print_message=True)
-        self.assertIn("Can't get local object", buf.getvalue())
+        self.assertIn(f"Can't {verb} local object", buf.getvalue())
