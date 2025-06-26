@@ -18,9 +18,10 @@ jobs:
       alternate-tests-dir: tests/unit
       alternate-tests-python-version: '3.11'
       extra-python-paths: tests
+      python-version-alt1: 'exclude'  # No python 3.10
+      python-version-alt2: '3.11'
+      python-version: '3.12'
       python-version-alt3: '3.13'  # Rather than python 3.9
-      python-version-alt2: 'exclude'  # No python 3.10
-      python-version-alt1: '3.11'
       do-codecov: true
       do-codacy: false
       do-coveralls: false
