@@ -166,7 +166,8 @@ class TestBenchmark(unittest.TestCase):
 
         for k, p in performance.items():
             print(k)
-            print(f"size\t{'\t'.join(p.keys())}")
+            sep = "\t"  # python <3.12 compatibility -- no escaping inside f-strings
+            print(f"size\t{sep.join(p.keys())}")
             for i, n in enumerate(sizes):
                 print(
                     n,
