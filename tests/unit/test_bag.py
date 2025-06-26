@@ -17,7 +17,8 @@ class TestBag(unittest.TestCase):
         msg = Bag.pickle_check(unpickleable, raise_exceptions=False)
         verb = "get" if sys.version_info >= (3, 12) else "pickle"
         self.assertEqual(
-            f"Can't {verb} local object 'TestBag.test_pickle_helper.<locals>.<lambda>'", msg
+            f"Can't {verb} local object 'TestBag.test_pickle_helper.<locals>.<lambda>'",
+            msg,
         )
 
         buf = io.StringIO()
