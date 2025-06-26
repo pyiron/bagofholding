@@ -1,11 +1,12 @@
 import random
-from typing import cast
+from typing import TypeVar, cast
 
 import numpy as np
 import pygtrie
 
+ValueType = TypeVar("ValueType")
 
-def decompose_stringtrie[ValueType](
+def decompose_stringtrie(
     trie: pygtrie.StringTrie, null_value: ValueType
 ) -> tuple[list[str], list[int], list[ValueType]]:
     """
@@ -63,7 +64,7 @@ def decompose_stringtrie[ValueType](
     return segments, parents, values
 
 
-def reconstruct_stringtrie[ValueType](
+def reconstruct_stringtrie(
     segments: list[str],
     parents: list[int],
     values: list[ValueType],
