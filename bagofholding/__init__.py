@@ -19,7 +19,7 @@ from bagofholding.exceptions import NotAGroupError as NotAGroupError
 from bagofholding.exceptions import NoVersionError as NoVersionError
 from bagofholding.exceptions import PickleProtocolError as PickleProtocolError
 from bagofholding.exceptions import (
-    StringReductionNotImportableError as StringReductionNotImportableError,
+    StringNotImportableError as StringNotImportableError,
 )
 from bagofholding.h5.bag import H5Bag as H5Bag
 from bagofholding.h5.triebag import TrieH5Bag as TrieH5Bag

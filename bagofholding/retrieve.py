@@ -7,7 +7,7 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
-from bagofholding.exceptions import StringReductionNotImportableError
+from bagofholding.exceptions import StringNotImportableError
 
 
 def import_from_string(library_path: str) -> Any:
@@ -44,7 +44,7 @@ def get_importable_string_from_string_reduction(
         try:
             import_from_string(importable)
         except (ModuleNotFoundError, AttributeError) as e:
-            raise StringReductionNotImportableError(
+            raise StringNotImportableError(
                 f"Couldn't import {string_reduction} after scoping it as {importable}. "
                 f"Please contact the developers so we can figure out how to handle "
                 f"this edge case."
