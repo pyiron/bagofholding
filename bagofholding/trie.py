@@ -6,6 +6,7 @@ import pygtrie
 
 ValueType = TypeVar("ValueType")
 
+
 def decompose_stringtrie(
     trie: pygtrie.StringTrie, null_value: ValueType
 ) -> tuple[list[str], list[int], list[ValueType]]:
