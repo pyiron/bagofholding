@@ -130,3 +130,22 @@ H5Info(qualname='H5Bag', module='bagofholding.h5.bag', version='...', libver_str
 ## Going further
 
 For a more in-depth look at the above features and to explore other aspects of `bagofholding`, check out [the tutorial notebook](../notebooks/tutorial.ipynb).
+
+
+## Object requirements
+
+Under-the-hood, we follow the same patterns as `pickle` by explicitly invoking many of the same method (`__reduce__`, `__setstate__`, etc).
+_Almost_ and object which can be pickled can be stored using `bagofholding`.
+Our requirements are that the object...
+
+- Must be pickleable
+  - You can use the `pickle_check` method on bag classes to quickly assess this
+- Must not depend on `pickle` protocol >4
+- Must have a valid boolean response to `hasattr` for each of the following, and they must conform to python and `abc.collections` norms if present:
+  - `__setstate__`
+  - `__setitem__`
+  - `append`
+  - `extend`
+- Must have a valid boolean response to `hasattr` for `__metadata__`, and this attribute must be castable to a string if present
+
+If your object satisfies these conditions and fails to "bag", please raise a bug report on the issues page!
