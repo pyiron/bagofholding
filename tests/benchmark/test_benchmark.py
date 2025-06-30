@@ -63,11 +63,12 @@ class TestBenchmark(unittest.TestCase):
                     dt_context,
                     dt_reference,
                     msg="Expected the with-context speed to be faster since the file "
-                    "is not re-opened multiple times...or at least much not slower -- "
-                    "locally it's always faster, but sometimes on the remote CI it is "
-                    "a hair slower and fails.",
+                    "is not re-opened multiple times...or at least much not slower",
                 )
-                print("With context", dt_context, "<", dt_direct, "Direct acces")
+                print(
+                    f"With context {dt_context} < {dt_reference} = {fudge_factor} * "
+                    f"{dt_direct} Direct access with a fudge factor"
+                )
 
                 tolerable_overhead_ms = 100
                 average_overhead_ms = 1000 * ((dt_reference - dt_context) / n_reps)
