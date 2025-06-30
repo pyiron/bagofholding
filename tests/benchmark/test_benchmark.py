@@ -50,7 +50,7 @@ class TestBenchmark(unittest.TestCase):
                     bag.load()
                 dt_direct = time.time() - t0
 
-                fudge_factor = 1.02
+                fudge_factor = 1.05
                 # On the remote CI, the context does not always give a benefit but
                 # can actually be _slower_. This is stochastic, and I assume it relates
                 # to the load on the remote machine, which is outside our control
