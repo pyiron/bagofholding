@@ -53,7 +53,7 @@ class TestBenchmark(unittest.TestCase):
                 print(f"H5 with-context benchmark: depth={depth}, reps={n_reps}")
                 self.assertLess(
                     dt_context,
-                    1.01 * dt_direct,
+                    1.02 * dt_direct,
                     msg="Expected the with-context speed to be faster since the file "
                     "is not re-opened multiple times...or at least much not slower -- "
                     "locally it's always faster, but sometimes on the remote CI it is "
