@@ -50,10 +50,18 @@ class TestBenchmark(unittest.TestCase):
                     bag.load()
                 dt_direct = time.time() - t0
 
+                fudge_factor = 1.02
+                # On the remote CI, the context does not always give a benefit but
+                # can actually be _slower_. This is stochastic, and I assume it relates
+                # to the load on the remote machine, which is outside our control
+                # Instead of testing that it is faster, let's test that it is at least
+                # not much slower.
+                dt_reference = fudge_factor * dt_direct
+
                 print(f"H5 with-context benchmark: depth={depth}, reps={n_reps}")
                 self.assertLess(
                     dt_context,
-                    1.02 * dt_direct,
+                    dt_reference,
                     msg="Expected the with-context speed to be faster since the file "
                     "is not re-opened multiple times...or at least much not slower -- "
                     "locally it's always faster, but sometimes on the remote CI it is "
@@ -62,7 +70,7 @@ class TestBenchmark(unittest.TestCase):
                 print("With context", dt_context, "<", dt_direct, "Direct acces")
 
                 tolerable_overhead_ms = 100
-                average_overhead_ms = 1000 * ((dt_direct - dt_context) / n_reps)
+                average_overhead_ms = 1000 * ((dt_reference - dt_context) / n_reps)
                 self.assertLess(
                     average_overhead_ms,
                     tolerable_overhead_ms,
