@@ -71,7 +71,7 @@ class TestBenchmark(unittest.TestCase):
                 )
 
                 tolerable_overhead_ms = 100
-                average_overhead_ms = 1000 * ((dt_reference - dt_context) / n_reps)
+                average_overhead_ms = 1000 * ((dt_direct - dt_context) / n_reps)
                 self.assertLess(
                     average_overhead_ms,
                     tolerable_overhead_ms,
