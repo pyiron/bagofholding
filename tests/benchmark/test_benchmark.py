@@ -182,11 +182,17 @@ class TestBenchmark(unittest.TestCase):
                 for _ in range(method.repeats):
                     t0 = time.time()
                     scale = method.save(obj, fname)
-                    performance["save (ms)"][method.__name__][-1] += (time.time() - t0) / scale
-                    performance["size (mb)"][method.__name__][-1] = os.path.getsize(fname)
+                    performance["save (ms)"][method.__name__][-1] += (
+                        time.time() - t0
+                    ) / scale
+                    performance["size (mb)"][method.__name__][-1] = os.path.getsize(
+                        fname
+                    )
                     t1 = time.time()
                     scale = method.load(fname)
-                    performance["load (ms)"][method.__name__][-1] += (time.time() - t1) / scale
+                    performance["load (ms)"][method.__name__][-1] += (
+                        time.time() - t1
+                    ) / scale
                     with contextlib.suppress(FileNotFoundError):
                         os.remove(fname)
 
@@ -256,7 +262,7 @@ class TestBenchmark(unittest.TestCase):
             },
         }
 
-        max_leading_parameter_relative_error = 1./3.
+        max_leading_parameter_relative_error = 1.0 / 3.0
         for metric, tools in expected.items():
             for tool, (expected_model, expected_param) in tools.items():
                 with self.subTest(f"{metric} {tool}"):
