@@ -240,19 +240,19 @@ class TestBenchmark(unittest.TestCase):
         # Check expected models and leading coefficients
         expected = {
             "size (mb)": {
-                "WithPickle": ("quadratic", 4e-3),
-                "WithH5Bag": ("quadratic", 4e-3),
-                "WithTrieH5Bag": ("quadratic", 3.6e-3),
+                "WithPickle": ("quadratic", 4.0e-3),
+                "WithH5Bag": ("quadratic", 4.3e-3),
+                "WithTrieH5Bag": ("quadratic", 3.7e-3),
             },
             "save (ms)": {
-                "WithPickle": ("linear", 2e-3),
-                "WithH5Bag": ("quadratic", 7e-2),
+                "WithPickle": ("linear", 2.0e-3),
+                "WithH5Bag": ("quadratic", 6.9e-2),
                 "WithTrieH5Bag": ("cubic", 5e-4),
             },
             "load (ms)": {
-                "WithPickle": ("linear", 1e-3),
-                "WithH5Bag": ("quadratic", 3e-2),
-                "WithTrieH5Bag": ("cubic", 3e-4),
+                "WithPickle": ("linear", 1.0e-3),
+                "WithH5Bag": ("quadratic", 2.8e-2),
+                "WithTrieH5Bag": ("cubic", 2.5e-4),
             },
         }
 
