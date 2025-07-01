@@ -4,8 +4,12 @@ import os
 import pickle
 import time
 import unittest
-from typing import ClassVar, Generic, TypeVar
+from collections.abc import Callable
+from typing import Any, ClassVar, Generic, TypeVar
 
+import numpy as np
+from numpy.typing import NDArray
+from scipy import optimize
 from static.objects import Recursing
 
 from bagofholding.bag import Bag
@@ -81,10 +85,20 @@ class TestBenchmark(unittest.TestCase):
                 print("Average overhead", average_overhead_ms, "(ms)")
 
     def test_timing(self) -> None:
+        """
+        This is just a naive brute-force test to ensure that the scaling behaviour of
+        the established storage routines is doing what we expect.
+
+        Determining the scaling for :class:`bagofholding.h5.bag.TrieH5Bag` is a little
+        tricky, because as established in the trie scaling test, de/reconstruction of
+        the trie should move from a best-case scenario of nearly O(N) for breadth-like
+        tries, to a worst-case scenario of O(N^2) scaling of depth-like tries, and our
+        test object is not _perfectly_ depth-like.
+        """
         fname = "benchmark_test"
 
         class Tester(abc.ABC):
-            repeats: ClassVar[int] = 1
+            repeats: ClassVar[int] = 2
 
             @classmethod
             @abc.abstractmethod
@@ -96,18 +110,16 @@ class TestBenchmark(unittest.TestCase):
 
             @classmethod
             def save(cls, obj: object, fname: str) -> int:
-                for _ in range(cls.repeats):
-                    cls._save(obj, fname)
+                cls._save(obj, fname)
                 return cls.repeats
 
             @classmethod
             def load(cls, fname: str) -> int:
-                for _ in range(cls.repeats):
-                    cls._load(fname)
+                cls._load(fname)
                 return cls.repeats
 
         class WithPickle(Tester):
-            repeats = 100
+            repeats = 2000
 
             @classmethod
             def _save(cls, obj, fname) -> None:
@@ -145,36 +157,40 @@ class TestBenchmark(unittest.TestCase):
                 return TrieH5Bag
 
         methods = [WithPickle, WithH5Bag, WithTrieH5Bag]
-        method_names = [method.__name__ for method in methods]
-        sizes = range(10, 200, 10)
+        sizes = np.arange(start=10, stop=221, step=10)
         performance: dict[str, dict[str, list[float]]] = {
-            k: {n: [] for n in method_names}
-            for k in ["size (mb)", "save (ms)", "load (ms)"]
+            "size (mb)": {},
+            "save (ms)": {},
+            "load (ms)": {},
         }
         scales = {
             "size (mb)": 1.0 / 1024,
             "save (ms)": 1000,
             "load (ms)": 1000,
         }
+        for method in methods:
+            performance["size (mb)"][method.__name__] = []
+            performance["save (ms)"][method.__name__] = []
+            performance["load (ms)"][method.__name__] = []
         for n in sizes:
             obj = Recursing(n)
             for method in methods:
+                performance["save (ms)"][method.__name__].append(0)
+                performance["size (mb)"][method.__name__].append(0)
+                performance["load (ms)"][method.__name__].append(0)
 
-                t0 = time.time()
-                scale = method.save(obj, fname)
-                performance["save (ms)"][method.__name__].append(
-                    (time.time() - t0) / scale
-                )
-                performance["size (mb)"][method.__name__].append(os.path.getsize(fname))
-                t1 = time.time()
-                scale = method.load(fname)
-                performance["load (ms)"][method.__name__].append(
-                    (time.time() - t1) / scale
-                )
+                for _ in range(method.repeats):
+                    t0 = time.time()
+                    scale = method.save(obj, fname)
+                    performance["save (ms)"][method.__name__][-1] += (time.time() - t0) / scale
+                    performance["size (mb)"][method.__name__][-1] = os.path.getsize(fname)
+                    t1 = time.time()
+                    scale = method.load(fname)
+                    performance["load (ms)"][method.__name__][-1] += (time.time() - t1) / scale
+                    with contextlib.suppress(FileNotFoundError):
+                        os.remove(fname)
 
-                with contextlib.suppress(FileNotFoundError):
-                    os.remove(fname)
-
+        print("Raw scaling data")
         for k, p in performance.items():
             print(k)
             sep = "\t"  # python <3.12 compatibility -- no escaping inside f-strings
@@ -186,4 +202,89 @@ class TestBenchmark(unittest.TestCase):
                     "\t\t".join(
                         [str(round(pp[i] * scales[k], 2)) for pp in p.values()]
                     ),
+                )
+
+        def linear(x, a, b):
+            return a * x + b
+
+        def quadratic(x, a, b, c):
+            return a * x**2 + b * x + c
+
+        def cubic(x, a, b, c, d):
+            return a * x**3 + b * x**2 + c * x + d
+
+        models: dict[str, Callable[..., NDArray[np.float64]]] = {
+            "linear": linear,
+            "quadratic": quadratic,
+            "cubic": cubic,
+        }
+
+        fit_results: dict[str, dict[str, tuple[str, list[float]]]] = {}
+
+        residual_improvement_to_accept_new_model = 0.2
+        # Demand a 5x improvement in residuals to warrant a more complex model
+        for k, data in performance.items():
+            fit_results[k] = {}
+            for name, raw_y in data.items():
+                y = np.array(raw_y) * scales[k]
+                best_fit = ("not a model", [0.0])
+                best_res: np.floating[Any] | float = np.inf
+                for model_name, model_func in models.items():
+                    popt, _ = optimize.curve_fit(model_func, sizes, y, maxfev=10000)
+                    residual = np.mean((y - model_func(sizes, *popt)) ** 2)
+                    if residual < residual_improvement_to_accept_new_model * best_res:
+                        best_res = residual
+                        best_fit = (model_name, popt.tolist())
+                fit_results[k][name] = best_fit
+
+        # Check expected models and leading coefficients
+        expected = {
+            "size (mb)": {
+                "WithPickle": ("quadratic", 4e-3),
+                "WithH5Bag": ("quadratic", 4e-3),
+                "WithTrieH5Bag": ("quadratic", 3.6e-3),
+            },
+            "save (ms)": {
+                "WithPickle": ("linear", 2e-3),
+                "WithH5Bag": ("quadratic", 7e-2),
+                "WithTrieH5Bag": ("cubic", 5e-4),
+            },
+            "load (ms)": {
+                "WithPickle": ("linear", 1e-3),
+                "WithH5Bag": ("quadratic", 3e-2),
+                "WithTrieH5Bag": ("cubic", 3e-4),
+            },
+        }
+
+        max_leading_parameter_relative_error = 1./3.
+        for metric, tools in expected.items():
+            for tool, (expected_model, expected_param) in tools.items():
+                with self.subTest(f"{metric} {tool}"):
+                    actual_model, actual_params = fit_results[metric][tool]
+                    self.assertEqual(
+                        actual_model,
+                        expected_model,
+                        msg=f"Previous data has indicated that {tool} should scale "
+                        f"{expected_model} with respect to {metric}, but got "
+                        f"{actual_model}.",
+                    )
+                    with self.subTest(
+                        f"{metric} {tool} {expected_model} leading paremeter"
+                    ):
+                        rel_err = abs(actual_params[0] - expected_param) / abs(
+                            expected_param
+                        )
+                        self.assertLess(
+                            rel_err,
+                            max_leading_parameter_relative_error,
+                            msg=f"Expected parameter {expected_param} got {actual_params[0]} -- relative error {rel_err}",
+                        )
+
+        print("Fit results:")
+        for metric_name, tools_dict in fit_results.items():
+            print(metric_name)
+            for tool_name, (model_name, coefficients) in tools_dict.items():
+                print(
+                    f"  {tool_name}: {model_name}, params = {coefficients};"
+                    f"expected {expected[metric_name][tool_name]}"
                 )
