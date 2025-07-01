@@ -51,6 +51,9 @@ widget = [
     "ipytree==0.2.2",
     "traitlets==5.14.3",
 ]
+benchmark = [
+    "scipy==1.16.0",
+]
 
 [tool.hatch.build]
 include = [
