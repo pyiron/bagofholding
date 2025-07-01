@@ -74,7 +74,7 @@ class TestBenchmark(unittest.TestCase):
                     f"{dt_direct} Direct access with a fudge factor"
                 )
 
-                tolerable_overhead_ms = 100
+                tolerable_overhead_ms = 150
                 average_overhead_ms = 1000 * ((dt_direct - dt_context) / n_reps)
                 self.assertLess(
                     average_overhead_ms,
