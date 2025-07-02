@@ -26,3 +26,4 @@ jobs:
       do-codacy: false
       do-coveralls: false
       do-mypy: true
+      coverage-test-dir: tests/unit tests/integration
