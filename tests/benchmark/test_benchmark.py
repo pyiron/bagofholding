@@ -7,6 +7,7 @@ import unittest
 from typing import ClassVar, Generic, TypeVar
 
 import numpy as np
+from numpy.typing import NDArray
 from static.objects import Recursing
 
 from bagofholding.bag import Bag
@@ -315,6 +316,8 @@ def bic_improvement(
     return score < (best_score - improvement_threshold)
 
 
-def z_score(coeffs: list[float], covariance, expected: float) -> float:
+def z_score(
+        coeffs: list[float], covariance: NDArray[np.float64] , expected: float
+) -> float:
     std_leading = np.sqrt(covariance[0, 0])
     return abs(coeffs[0] - expected) / std_leading if std_leading > 0 else np.inf
