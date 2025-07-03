@@ -197,8 +197,8 @@ class TestBenchmark(unittest.TestCase):
                         os.remove(fname)
 
         print("Raw scaling data")
-        for k, p in performance.items():
-            print(k)
+        for metric, p in performance.items():
+            print(metric)
             sep = "\t"  # python <3.12 compatibility -- no escaping inside f-strings
             print(f"size\t{sep.join(p.keys())}")
             for i, n in enumerate(sizes):
@@ -206,7 +206,7 @@ class TestBenchmark(unittest.TestCase):
                     n,
                     "\t\t",
                     "\t\t".join(
-                        [str(round(pp[i] * scales[k], 2)) for pp in p.values()]
+                        [str(round(pp[i] * scales[metric], 2)) for pp in p.values()]
                     ),
                 )
 
@@ -249,10 +249,10 @@ class TestBenchmark(unittest.TestCase):
 
         residual_improvement_to_accept_new_model = 0.2
         # Demand a 5x improvement in residuals to warrant a more complex model
-        for k, data in performance.items():
-            fit_results[k] = {}
+        for metric, data in performance.items():
+            fit_results[metric] = {}
             for name, raw_y in data.items():
-                y = np.array(raw_y) * scales[k]
+                y = np.array(raw_y) * scales[metric]
                 best_fit = ("not a model", [0.0])
                 best_res: np.floating[Any] | float = np.inf
                 for model_name, model_func in models.items():
@@ -261,7 +261,7 @@ class TestBenchmark(unittest.TestCase):
                     if residual < residual_improvement_to_accept_new_model * best_res:
                         best_res = residual
                         best_fit = (model_name, popt.tolist())
-                fit_results[k][name] = best_fit
+                fit_results[metric][name] = best_fit
 
         max_leading_parameter_relative_error = 1.0 / 3.0
         for metric, tools in expected.items():
