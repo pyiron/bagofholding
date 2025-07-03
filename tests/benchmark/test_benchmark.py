@@ -225,24 +225,6 @@ class TestBenchmark(unittest.TestCase):
             "cubic": cubic,
         }
 
-        fit_results: dict[str, dict[str, tuple[str, list[float]]]] = {}
-
-        residual_improvement_to_accept_new_model = 0.2
-        # Demand a 5x improvement in residuals to warrant a more complex model
-        for k, data in performance.items():
-            fit_results[k] = {}
-            for name, raw_y in data.items():
-                y = np.array(raw_y) * scales[k]
-                best_fit = ("not a model", [0.0])
-                best_res: np.floating[Any] | float = np.inf
-                for model_name, model_func in models.items():
-                    popt, _ = optimize.curve_fit(model_func, sizes, y, maxfev=10000)
-                    residual = np.mean((y - model_func(sizes, *popt)) ** 2)
-                    if residual < residual_improvement_to_accept_new_model * best_res:
-                        best_res = residual
-                        best_fit = (model_name, popt.tolist())
-                fit_results[k][name] = best_fit
-
         # Check expected models and leading coefficients
         expected = {
             "size (mb)": {
@@ -261,6 +243,25 @@ class TestBenchmark(unittest.TestCase):
                 "WithTrieH5Bag": ("cubic", 2.5e-4),
             },
         }
+        # Data from earlier human-supervised runs
+
+        fit_results: dict[str, dict[str, tuple[str, list[float]]]] = {}
+
+        residual_improvement_to_accept_new_model = 0.2
+        # Demand a 5x improvement in residuals to warrant a more complex model
+        for k, data in performance.items():
+            fit_results[k] = {}
+            for name, raw_y in data.items():
+                y = np.array(raw_y) * scales[k]
+                best_fit = ("not a model", [0.0])
+                best_res: np.floating[Any] | float = np.inf
+                for model_name, model_func in models.items():
+                    popt, _ = optimize.curve_fit(model_func, sizes, y, maxfev=10000)
+                    residual = np.mean((y - model_func(sizes, *popt)) ** 2)
+                    if residual < residual_improvement_to_accept_new_model * best_res:
+                        best_res = residual
+                        best_fit = (model_name, popt.tolist())
+                fit_results[k][name] = best_fit
 
         max_leading_parameter_relative_error = 1.0 / 3.0
         for metric, tools in expected.items():
