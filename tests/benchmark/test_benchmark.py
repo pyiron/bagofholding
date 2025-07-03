@@ -243,7 +243,7 @@ class TestBenchmark(unittest.TestCase):
             "size (mb)": {},
             "load (ms)": {},
         }
-        name_map = [_, "linear", "quadratic", "cubic", "quartic"]
+        name_map = ["scalar", "linear", "quadratic", "cubic", "quartic"]
 
         for metric, data in performance.items():
             for tool_name, raw_y in data.items():
