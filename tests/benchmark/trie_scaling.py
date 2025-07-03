@@ -39,5 +39,6 @@ class TestTrieScaling(unittest.TestCase):
             self.assertLessEqual(
                 earlier,
                 later,
-                f"Quadratic coefficient did not increase monotonically with dept propensity. {quadratic_coeffs}",
+                msg=f"Quadratic coefficient did not increase monotonically with depth "
+                f"propensity. {quadratic_coeffs}",
             )
