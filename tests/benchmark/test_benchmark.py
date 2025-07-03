@@ -245,7 +245,13 @@ class TestBenchmark(unittest.TestCase):
         }
         # Data from earlier human-supervised runs
 
-        fit_results: dict[str, dict[str, tuple[str, list[float]]]] = {}
+        fit_results: dict[str, dict[str, list[float]]] = {}
+        best_models: dict[str, dict[str, str]] = {
+            "save (ms)": {},
+            "size (mb)": {},
+            "load (ms)": {},
+        }
+
 
         residual_improvement_to_accept_new_model = 0.2
         # Demand a 5x improvement in residuals to warrant a more complex model
@@ -260,8 +266,9 @@ class TestBenchmark(unittest.TestCase):
                     residual = np.mean((y - model_func(sizes, *popt)) ** 2)
                     if residual < residual_improvement_to_accept_new_model * best_res:
                         best_res = residual
-                        best_fit = (model_name, popt.tolist())
-                fit_results[metric][tool_name] = best_fit
+                        best_models[metric][tool_name] = model_name
+                    if model_name == expected[metric][tool_name][0]:
+                        fit_results[metric][tool_name] = popt.tolist()
 
         def relative_error(x: float, y: float) -> float:
             return abs(x - y) / abs(y)
@@ -269,8 +276,8 @@ class TestBenchmark(unittest.TestCase):
         max_leading_parameter_relative_error = 1.0 / 3.0
         for metric, tools in expected.items():
             for tool, (expected_model, expected_param) in tools.items():
-                with self.subTest(f"{metric} {tool}"):
-                    actual_model, actual_params = fit_results[metric][tool]
+                with self.subTest(f"{metric} {tool} best model"):
+                    actual_model = best_models[metric][tool]
                     self.assertEqual(
                         actual_model,
                         expected_model,
@@ -278,21 +285,24 @@ class TestBenchmark(unittest.TestCase):
                         f"{expected_model} with respect to {metric}, but got "
                         f"{actual_model}.",
                     )
-                    with self.subTest(
-                        f"{metric} {tool} {expected_model} leading paremeter"
-                    ):
-                        rel_err = relative_error(actual_params[0], expected_param)
-                        self.assertLess(
-                            rel_err,
-                            max_leading_parameter_relative_error,
-                            msg=f"Expected parameter {expected_param} got {actual_params[0]} -- relative error {rel_err}",
-                        )
+
+                actual_params = fit_results[metric][tool]
+                with self.subTest(
+                    f"{metric} {tool} {expected_model} leading paremeter"
+                ):
+                    rel_err = relative_error(actual_params[0], expected_param)
+                    self.assertLess(
+                        rel_err,
+                        max_leading_parameter_relative_error,
+                        msg=f"Expected parameter {expected_param} got "
+                        f"{actual_params[0]} -- relative error {rel_err}",
+                    )
 
         print("Fit results:")
-        for metric_name, tools_dict in fit_results.items():
+        for metric_name, parameters_dict in fit_results.items():
             print(metric_name)
-            for tool_name, (model_name, coefficients) in tools_dict.items():
+            for tool_name, coefficients in parameters_dict.items():
                 print(
-                    f"  {tool_name}: {model_name}, params = {coefficients};"
-                    f"expected {expected[metric_name][tool_name]}"
+                    f"  {tool_name}: {expected[metric_name][tool_name][0]}, params = "
+                    f"{coefficients}; expected {expected[metric_name][tool_name][1]}"
                 )
