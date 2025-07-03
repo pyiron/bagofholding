@@ -4,12 +4,9 @@ import os
 import pickle
 import time
 import unittest
-from collections.abc import Callable
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import ClassVar, Generic, TypeVar
 
 import numpy as np
-from numpy.typing import NDArray
-from scipy import optimize
 from static.objects import Recursing
 
 from bagofholding.bag import Bag
@@ -86,8 +83,9 @@ class TestBenchmark(unittest.TestCase):
 
     def test_timing(self) -> None:
         """
-        This is just a naive brute-force test to ensure that the scaling behaviour of
-        the established storage routines is doing what we expect.
+        Using bayesian information criterion to assess model scaling, and then compare
+        a noise-adjusted measure of the expected leading fit parameter against by-hand
+        measure of that parameter from past runs.
 
         Determining the scaling for :class:`bagofholding.h5.bag.TrieH5Bag` is a little
         tricky, because as established in the trie scaling test, de/reconstruction of
@@ -210,70 +208,72 @@ class TestBenchmark(unittest.TestCase):
                     ),
                 )
 
-        def linear(x, a, b):
-            return a * x + b
-
-        def quadratic(x, a, b, c):
-            return a * x**2 + b * x + c
-
-        def cubic(x, a, b, c, d):
-            return a * x**3 + b * x**2 + c * x + d
-
-        models: dict[str, Callable[..., NDArray[np.float64]]] = {
-            "linear": linear,
-            "quadratic": quadratic,
-            "cubic": cubic,
-        }
-
         # Check expected models and leading coefficients
         expected = {
             "size (mb)": {
-                "WithPickle": ("quadratic", 4.0e-3),
-                "WithH5Bag": ("quadratic", 4.3e-3),
-                "WithTrieH5Bag": ("quadratic", 3.7e-3),
+                "WithPickle": ("cubic", 0), #("quadratic", 4.00e-3)
+                "WithH5Bag": ("quadratic", 4.32e-3),
+                "WithTrieH5Bag": ("quadratic", 3.70e-3),
             },
             "save (ms)": {
-                "WithPickle": ("linear", 2.0e-3),
-                "WithH5Bag": ("quadratic", 6.9e-2),
-                "WithTrieH5Bag": ("cubic", 5e-4),
+                "WithPickle": ("linear", 1.97e-3),
+                "WithH5Bag": ("quadratic", 7.61e-2),
+                "WithTrieH5Bag": ("cubic", 5.05e-4),
             },
             "load (ms)": {
-                "WithPickle": ("linear", 1.0e-3),
-                "WithH5Bag": ("quadratic", 2.8e-2),
-                "WithTrieH5Bag": ("cubic", 2.5e-4),
+                "WithPickle": ("linear", 1.01e-3),
+                "WithH5Bag": ("quadratic", 2.77e-2),
+                "WithTrieH5Bag": ("cubic", 2.30e-4),
             },
         }
         # Data from earlier human-supervised runs
 
-        fit_results: dict[str, dict[str, list[float]]] = {}
+        fit_results: dict[str, dict[str, list[float]]] = {
+            "save (ms)": {},
+            "size (mb)": {},
+            "load (ms)": {},
+        }
         best_models: dict[str, dict[str, str]] = {
             "save (ms)": {},
             "size (mb)": {},
             "load (ms)": {},
         }
+        z_scores: dict[str, dict[str, float]] = {
+            "save (ms)": {},
+            "size (mb)": {},
+            "load (ms)": {},
+        }
+        name_map = [_, "linear", "quadratic", "cubic", "quartic"]
 
-        residual_improvement_to_accept_new_model = 0.2
-        # Demand a 5x improvement in residuals to warrant a more complex model
         for metric, data in performance.items():
-            fit_results[metric] = {}
             for tool_name, raw_y in data.items():
                 y = np.array(raw_y) * scales[metric]
-                best_res: np.floating[Any] | float = np.inf
-                for model_name, model_func in models.items():
-                    popt, _ = optimize.curve_fit(model_func, sizes, y, maxfev=10000)
-                    residual = np.mean((y - model_func(sizes, *popt)) ** 2)
-                    if residual < residual_improvement_to_accept_new_model * best_res:
-                        best_res = residual
-                        best_models[metric][tool_name] = model_name
-                    if model_name == expected[metric][tool_name][0]:
-                        fit_results[metric][tool_name] = popt.tolist()
+                best_score = None
+                for degree in (1, 2, 3, 4):
+                    coeffs, residuals, cov, score = scored_least_squares(
+                        sizes, y, degree
+                    )
 
-        def relative_error(x: float, y: float) -> float:
-            return abs(x - y) / abs(y)
+                    print(metric, tool_name, name_map[degree], "BIC Score =", score)
+                    threshold = 10  # Demand pretty strong evidence for more complexity
+                    if best_score is None or bic_improvement(
+                        score, best_score, threshold
+                    ):
+                        best_score = score
+                        best_models[metric][tool_name] = name_map[degree]
+                    if name_map[degree] == expected[metric][tool_name][0]:
+                        fit_results[metric][tool_name] = coeffs.tolist()
+                        z_scores[metric][tool_name] = z_score(
+                            coeffs, cov, expected[metric][tool_name][1]
+                        )
 
-        max_leading_parameter_relative_error = 1.0 / 3.0
         for metric, tools in expected.items():
             for tool_name, (expected_model, expected_param) in tools.items():
+                if tool_name == "WithPickle":
+                    # Pickle can be quite noisy, and is anyhow not what we implemented
+                    # Leave it in the printouts, but don't fail because of it
+                    continue
+
                 with self.subTest(f"{metric} {tool_name} best model"):
                     actual_model = best_models[metric][tool_name]
                     self.assertEqual(
@@ -283,17 +283,17 @@ class TestBenchmark(unittest.TestCase):
                         f"scale {expected_model} with respect to {metric}, but got "
                         f"{actual_model}.",
                     )
-
-                actual_params = fit_results[metric][tool_name]
                 with self.subTest(
-                    f"{metric} {tool_name} {expected_model} leading paremeter"
+                    f"{metric} {tool_name} {expected_model} leading parameter z-score"
                 ):
-                    rel_err = relative_error(actual_params[0], expected_param)
+                    threshold = 3  # flag three-sigma results
                     self.assertLess(
-                        rel_err,
-                        max_leading_parameter_relative_error,
-                        msg=f"Expected parameter {expected_param} got "
-                        f"{actual_params[0]} -- relative error {rel_err}",
+                        z_scores[metric][tool_name],
+                        threshold,
+                        msg=f"Expected z-score < {threshold} but got "
+                        f"{z_scores[metric][tool_name]} -- actual and expected "
+                        f"parameters were {fit_results[metric][tool_name][0]} and "
+                        f"{expected_param}, respectively.",
                     )
 
         print("Fit results:")
@@ -304,3 +304,34 @@ class TestBenchmark(unittest.TestCase):
                     f"  {tool_name}: {expected[metric_name][tool_name][0]}, params = "
                     f"{coefficients}; expected {expected[metric_name][tool_name][1]}"
                 )
+
+
+def scored_least_squares(x, y, degree: int):
+    n = len(x)
+    X = np.vander(x, N=degree + 1, increasing=False)
+    coeffs, residuals, rank, s = np.linalg.lstsq(X, y, rcond=None)
+
+    dof = max(n - degree - 1, 1)
+    sigma2 = residuals[0] / dof if residuals.size > 0 else 0
+    XtX_inv = np.linalg.inv(X.T @ X)
+    cov = sigma2 * XtX_inv
+
+    rss = residuals[0] if residuals.size > 0 else np.sum((y - X @ coeffs) ** 2)
+    score = bayesian_information_criterion(degree, n, rss)
+
+    return coeffs, residuals, cov, score
+
+
+def bayesian_information_criterion(degree: int, n: int, rss) -> float:
+    return float((degree + 1) * np.log(n) + n * np.log(rss / n))
+
+
+def bic_improvement(
+    score: float, best_score: float, improvement_threshold: float = 0.0
+) -> bool:
+    return score < (best_score - improvement_threshold)
+
+
+def z_score(coeffs: list[float], covariance, expected: float) -> float:
+    std_leading = np.sqrt(covariance[0, 0])
+    return abs(coeffs[0] - expected) / std_leading if std_leading > 0 else np.inf

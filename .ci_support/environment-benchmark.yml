@@ -1,4 +1,0 @@
-channels:
-  - conda-forge
-dependencies:
-  - scipy =1.16.0
