@@ -275,20 +275,20 @@ class TestBenchmark(unittest.TestCase):
 
         max_leading_parameter_relative_error = 1.0 / 3.0
         for metric, tools in expected.items():
-            for tool, (expected_model, expected_param) in tools.items():
-                with self.subTest(f"{metric} {tool} best model"):
-                    actual_model = best_models[metric][tool]
+            for tool_name, (expected_model, expected_param) in tools.items():
+                with self.subTest(f"{metric} {tool_name} best model"):
+                    actual_model = best_models[metric][tool_name]
                     self.assertEqual(
                         actual_model,
                         expected_model,
-                        msg=f"Previous data has indicated that {tool} should scale "
+                        msg=f"Previous data has indicated that {tool_name} should scale "
                         f"{expected_model} with respect to {metric}, but got "
                         f"{actual_model}.",
                     )
 
-                actual_params = fit_results[metric][tool]
+                actual_params = fit_results[metric][tool_name]
                 with self.subTest(
-                    f"{metric} {tool} {expected_model} leading paremeter"
+                    f"{metric} {tool_name} {expected_model} leading paremeter"
                 ):
                     rel_err = relative_error(actual_params[0], expected_param)
                     self.assertLess(
