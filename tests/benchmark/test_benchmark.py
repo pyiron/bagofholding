@@ -252,14 +252,12 @@ class TestBenchmark(unittest.TestCase):
             "load (ms)": {},
         }
 
-
         residual_improvement_to_accept_new_model = 0.2
         # Demand a 5x improvement in residuals to warrant a more complex model
         for metric, data in performance.items():
             fit_results[metric] = {}
             for tool_name, raw_y in data.items():
                 y = np.array(raw_y) * scales[metric]
-                best_fit = ("not a model", [0.0])
                 best_res: np.floating[Any] | float = np.inf
                 for model_name, model_func in models.items():
                     popt, _ = optimize.curve_fit(model_func, sizes, y, maxfev=10000)
@@ -281,8 +279,8 @@ class TestBenchmark(unittest.TestCase):
                     self.assertEqual(
                         actual_model,
                         expected_model,
-                        msg=f"Previous data has indicated that {tool_name} should scale "
-                        f"{expected_model} with respect to {metric}, but got "
+                        msg=f"Previous data has indicated that {tool_name} should "
+                        f"scale {expected_model} with respect to {metric}, but got "
                         f"{actual_model}.",
                     )
 
