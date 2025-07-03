@@ -251,7 +251,7 @@ class TestBenchmark(unittest.TestCase):
         # Demand a 5x improvement in residuals to warrant a more complex model
         for metric, data in performance.items():
             fit_results[metric] = {}
-            for name, raw_y in data.items():
+            for tool_name, raw_y in data.items():
                 y = np.array(raw_y) * scales[metric]
                 best_fit = ("not a model", [0.0])
                 best_res: np.floating[Any] | float = np.inf
@@ -261,7 +261,7 @@ class TestBenchmark(unittest.TestCase):
                     if residual < residual_improvement_to_accept_new_model * best_res:
                         best_res = residual
                         best_fit = (model_name, popt.tolist())
-                fit_results[metric][name] = best_fit
+                fit_results[metric][tool_name] = best_fit
 
         def relative_error(x: float, y: float) -> float:
             return abs(x - y) / abs(y)
