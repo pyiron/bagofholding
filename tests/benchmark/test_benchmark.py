@@ -154,41 +154,34 @@ class TestBenchmark(unittest.TestCase):
             def bag_class(cls) -> type[TrieH5Bag]:
                 return TrieH5Bag
 
-        methods = [WithPickle, WithH5Bag, WithTrieH5Bag]
         sizes = np.arange(start=10, stop=221, step=10)
-        performance: dict[str, dict[str, list[float]]] = {
-            "size (mb)": {},
-            "save (ms)": {},
-            "load (ms)": {},
-        }
+        metrics = ["size (mb)", "save (ms)", "load (ms)"]
+        tools = [WithPickle, WithH5Bag, WithTrieH5Bag]
         scales = {
             "size (mb)": 1.0 / 1024,
             "save (ms)": 1000,
             "load (ms)": 1000,
         }
-        for method in methods:
-            performance["size (mb)"][method.__name__] = []
-            performance["save (ms)"][method.__name__] = []
-            performance["load (ms)"][method.__name__] = []
+        performance: dict[str, dict[str, list[float]]] = {
+            metric: {tool.__name__: [] for tool in tools} for metric in metrics
+        }
         for n in sizes:
             obj = Recursing(n)
-            for method in methods:
-                performance["save (ms)"][method.__name__].append(0)
-                performance["size (mb)"][method.__name__].append(0)
-                performance["load (ms)"][method.__name__].append(0)
+            for tool in tools:
+                performance["save (ms)"][tool.__name__].append(0)
+                performance["size (mb)"][tool.__name__].append(0)
+                performance["load (ms)"][tool.__name__].append(0)
 
-                for _ in range(method.repeats):
+                for _ in range(tool.repeats):
                     t0 = time.time()
-                    scale = method.save(obj, fname)
-                    performance["save (ms)"][method.__name__][-1] += (
+                    scale = tool.save(obj, fname)
+                    performance["save (ms)"][tool.__name__][-1] += (
                         time.time() - t0
                     ) / scale
-                    performance["size (mb)"][method.__name__][-1] = os.path.getsize(
-                        fname
-                    )
+                    performance["size (mb)"][tool.__name__][-1] = os.path.getsize(fname)
                     t1 = time.time()
-                    scale = method.load(fname)
-                    performance["load (ms)"][method.__name__][-1] += (
+                    scale = tool.load(fname)
+                    performance["load (ms)"][tool.__name__][-1] += (
                         time.time() - t1
                     ) / scale
                     with contextlib.suppress(FileNotFoundError):
@@ -229,20 +222,10 @@ class TestBenchmark(unittest.TestCase):
         # Data from earlier human-supervised runs
 
         fit_results: dict[str, dict[str, list[float]]] = {
-            "save (ms)": {},
-            "size (mb)": {},
-            "load (ms)": {},
+            metric: {} for metric in metrics
         }
-        best_models: dict[str, dict[str, str]] = {
-            "save (ms)": {},
-            "size (mb)": {},
-            "load (ms)": {},
-        }
-        z_scores: dict[str, dict[str, float]] = {
-            "save (ms)": {},
-            "size (mb)": {},
-            "load (ms)": {},
-        }
+        best_models: dict[str, dict[str, str]] = {metric: {} for metric in metrics}
+        z_scores: dict[str, dict[str, float]] = {metric: {} for metric in metrics}
         name_map = ["scalar", "linear", "quadratic", "cubic", "quartic"]
 
         for metric, data in performance.items():
@@ -267,8 +250,8 @@ class TestBenchmark(unittest.TestCase):
                             coeffs, cov, expected[metric][tool_name][1]
                         )
 
-        for metric, tools in expected.items():
-            for tool_name, (expected_model, expected_param) in tools.items():
+        for metric, tool_expectation in expected.items():
+            for tool_name, (expected_model, expected_param) in tool_expectation.items():
                 if tool_name == "WithPickle":
                     # Pickle can be quite noisy, and is anyhow not what we implemented
                     # Leave it in the printouts, but don't fail because of it
