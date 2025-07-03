@@ -263,6 +263,9 @@ class TestBenchmark(unittest.TestCase):
                         best_fit = (model_name, popt.tolist())
                 fit_results[metric][name] = best_fit
 
+        def relative_error(x: float, y: float) -> float:
+            return abs(x - y) / abs(y)
+
         max_leading_parameter_relative_error = 1.0 / 3.0
         for metric, tools in expected.items():
             for tool, (expected_model, expected_param) in tools.items():
@@ -278,9 +281,7 @@ class TestBenchmark(unittest.TestCase):
                     with self.subTest(
                         f"{metric} {tool} {expected_model} leading paremeter"
                     ):
-                        rel_err = abs(actual_params[0] - expected_param) / abs(
-                            expected_param
-                        )
+                        rel_err = relative_error(actual_params[0], expected_param)
                         self.assertLess(
                             rel_err,
                             max_leading_parameter_relative_error,
