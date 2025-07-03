@@ -320,4 +320,4 @@ def z_score(
         coeffs: list[float], covariance: NDArray[np.float64] , expected: float
 ) -> float:
     std_leading = np.sqrt(covariance[0, 0])
-    return abs(coeffs[0] - expected) / std_leading if std_leading > 0 else np.inf
+    return float(abs(coeffs[0] - expected) / std_leading if std_leading > 0 else np.inf)
