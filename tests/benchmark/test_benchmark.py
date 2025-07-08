@@ -73,12 +73,14 @@ class TestBenchmark(unittest.TestCase):
                     bag.load()
                 dt_direct = time.perf_counter() - t0
 
-                fudge_factor = 1.05
+                fudge_factor = 1.0
                 # On the remote CI, the context does not always give a benefit but
                 # can actually be _slower_. This is stochastic, and I assume it relates
                 # to the load on the remote machine, which is outside our control
                 # Instead of testing that it is faster, let's test that it is at least
                 # not much slower.
+                # Restricting the environment variables seems to have resolved this,
+                # so set the fudge factor back to unity; but leave it around for now
                 dt_reference = fudge_factor * dt_direct
 
                 print(f"H5 with-context benchmark: depth={depth}, reps={n_reps}")
