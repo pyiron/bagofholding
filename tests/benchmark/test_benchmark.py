@@ -2,6 +2,8 @@ import abc
 import contextlib
 import os
 import pickle
+import platform
+import subprocess
 import time
 import unittest
 from typing import ClassVar, Generic, TypeVar
@@ -289,17 +291,23 @@ class TestBenchmark(unittest.TestCase):
                         f"{actual_model}.",
                     )
 
-                with self.subTest(
-                    f"{metric} {tool_name} {expected_model} leading parameter z-score"
-                ):
-                    self.assertLess(
-                        z_scores[metric][tool_name],
-                        z_score_threshold_sigma,
-                        msg=f"Expected z-score < {z_score_threshold_sigma} but got "
-                        f"{z_scores[metric][tool_name]} -- actual and expected "
-                        f"parameters were {fit_results[metric][tool_name][0]} and "
-                        f"{expected_param}, respectively.",
-                    )
+                stored_z_scores_are_reasonable = is_m3_pro()
+                if stored_z_scores_are_reasonable:
+                    # They were collected manually on my (@liamhuber) macbook
+                    # Since I'm the one working on this, I want the tests to be failable
+                    # when I run them locally, but overall it's sufficient to check the
+                    # scaling behaviour
+                    with self.subTest(
+                        f"{metric} {tool_name} {expected_model} leading parameter z-score"
+                    ):
+                        self.assertLess(
+                            z_scores[metric][tool_name],
+                            z_score_threshold_sigma,
+                            msg=f"Expected z-score < {z_score_threshold_sigma} but got "
+                            f"{z_scores[metric][tool_name]} -- actual and expected "
+                            f"parameters were {fit_results[metric][tool_name][0]} and "
+                            f"{expected_param}, respectively.",
+                        )
 
         print("Fit results:")
         for metric_name, parameters_dict in fit_results.items():
@@ -342,3 +350,15 @@ def z_score(
 ) -> float:
     std_leading = np.sqrt(covariance[0, 0])
     return float(abs(coeffs[0] - expected) / std_leading if std_leading > 0 else np.inf)
+
+
+def is_m3_pro():
+    if platform.system() != "Darwin":
+        return False
+    try:
+        output = subprocess.check_output(
+            ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
+        )
+        return "Apple M3 Pro" in output
+    except Exception:
+        return False
