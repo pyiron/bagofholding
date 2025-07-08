@@ -41,16 +41,16 @@ class TestBenchmark(unittest.TestCase):
 
                 bag = H5Bag(self.save_name)
 
-                t0 = time.time()
+                t0 = time.perf_counter()
                 with bag:
                     for _ in range(n_reps):
                         bag.load()
-                dt_context = time.time() - t0
+                dt_context = time.perf_counter() - t0
 
-                t0 = time.time()
+                t0 = time.perf_counter()
                 for _ in range(n_reps):
                     bag.load()
-                dt_direct = time.time() - t0
+                dt_direct = time.perf_counter() - t0
 
                 fudge_factor = 1.05
                 # On the remote CI, the context does not always give a benefit but
@@ -174,16 +174,16 @@ class TestBenchmark(unittest.TestCase):
                 performance["load (ms)"][tool.__name__].append(0)
 
                 for _ in range(tool.repeats):
-                    t0 = time.time()
+                    t0 = time.perf_counter()
                     scale = tool.save(obj, fname)
                     performance["save (ms)"][tool.__name__][-1] += (
-                        time.time() - t0
+                        time.perf_counter() - t0
                     ) / scale
                     performance["size (mb)"][tool.__name__][-1] = os.path.getsize(fname)
-                    t1 = time.time()
+                    t1 = time.perf_counter()
                     scale = tool.load(fname)
                     performance["load (ms)"][tool.__name__][-1] += (
-                        time.time() - t1
+                        time.perf_counter() - t1
                     ) / scale
                     with contextlib.suppress(FileNotFoundError):
                         os.remove(fname)
