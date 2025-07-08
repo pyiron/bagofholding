@@ -80,9 +80,7 @@ class TestBenchmark(unittest.TestCase):
                     msg="Expected the with-context speed to be faster since the file "
                     "is not re-opened multiple times...or at least not slower",
                 )
-                print(
-                    f"With context {dt_context} < {dt_direct} direct access."
-                )
+                print(f"With context {dt_context} < {dt_direct} direct access.")
 
                 tolerable_overhead_ms = 150
                 average_overhead_ms = 1000 * ((dt_direct - dt_context) / n_reps)
