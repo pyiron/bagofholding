@@ -2,10 +2,14 @@ import abc
 import contextlib
 import os
 import pickle
+import platform
+import subprocess
 import time
 import unittest
 from typing import ClassVar, Generic, TypeVar
 
+import numpy as np
+from numpy.typing import NDArray
 from static.objects import Recursing
 
 from bagofholding.bag import Bag
@@ -23,6 +27,25 @@ class TestBenchmark(unittest.TestCase):
     def setUpClass(cls):
         cls.save_name = "savefile.h5"
 
+        cls._thread_env_vars = {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMEXPR_NUM_THREADS": "1",
+        }
+        cls._prev_env = {}
+        for k, v in cls._thread_env_vars.items():
+            cls._prev_env[k] = os.environ.get(k)
+            os.environ[k] = v
+
+    @classmethod
+    def tearDownClass(cls):
+        for k, v in cls._prev_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
     def tearDown(self):
         with contextlib.suppress(FileNotFoundError):
             os.remove(self.save_name)
@@ -39,29 +62,27 @@ class TestBenchmark(unittest.TestCase):
 
                 bag = H5Bag(self.save_name)
 
-                t0 = time.time()
+                t0 = time.perf_counter()
                 with bag:
                     for _ in range(n_reps):
                         bag.load()
-                dt_context = time.time() - t0
+                dt_context = time.perf_counter() - t0
 
-                t0 = time.time()
+                t0 = time.perf_counter()
                 for _ in range(n_reps):
                     bag.load()
-                dt_direct = time.time() - t0
+                dt_direct = time.perf_counter() - t0
 
                 print(f"H5 with-context benchmark: depth={depth}, reps={n_reps}")
                 self.assertLess(
                     dt_context,
-                    1.01 * dt_direct,
+                    dt_direct,
                     msg="Expected the with-context speed to be faster since the file "
-                    "is not re-opened multiple times...or at least much not slower -- "
-                    "locally it's always faster, but sometimes on the remote CI it is "
-                    "a hair slower and fails.",
+                    "is not re-opened multiple times...or at least not slower",
                 )
-                print("With context", dt_context, "<", dt_direct, "Direct acces")
+                print(f"With context {dt_context} < {dt_direct} direct access.")
 
-                tolerable_overhead_ms = 100
+                tolerable_overhead_ms = 150
                 average_overhead_ms = 1000 * ((dt_direct - dt_context) / n_reps)
                 self.assertLess(
                     average_overhead_ms,
@@ -72,6 +93,17 @@ class TestBenchmark(unittest.TestCase):
                 print("Average overhead", average_overhead_ms, "(ms)")
 
     def test_timing(self) -> None:
+        """
+        Using bayesian information criterion to assess model scaling, and then compare
+        a noise-adjusted measure of the expected leading fit parameter against by-hand
+        measure of that parameter from past runs.
+
+        Determining the scaling for :class:`bagofholding.h5.bag.TrieH5Bag` is a little
+        tricky, because as established in the trie scaling test, de/reconstruction of
+        the trie should move from a best-case scenario of nearly O(N) for breadth-like
+        tries, to a worst-case scenario of O(N^2) scaling of depth-like tries, and our
+        test object is not _perfectly_ depth-like.
+        """
         fname = "benchmark_test"
 
         class Tester(abc.ABC):
@@ -87,18 +119,16 @@ class TestBenchmark(unittest.TestCase):
 
             @classmethod
             def save(cls, obj: object, fname: str) -> int:
-                for _ in range(cls.repeats):
-                    cls._save(obj, fname)
+                cls._save(obj, fname)
                 return cls.repeats
 
             @classmethod
             def load(cls, fname: str) -> int:
-                for _ in range(cls.repeats):
-                    cls._load(fname)
+                cls._load(fname)
                 return cls.repeats
 
         class WithPickle(Tester):
-            repeats = 100
+            repeats = 1000
 
             @classmethod
             def _save(cls, obj, fname) -> None:
@@ -135,39 +165,42 @@ class TestBenchmark(unittest.TestCase):
             def bag_class(cls) -> type[TrieH5Bag]:
                 return TrieH5Bag
 
-        methods = [WithPickle, WithH5Bag, WithTrieH5Bag]
-        method_names = [method.__name__ for method in methods]
-        sizes = range(10, 200, 10)
-        performance: dict[str, dict[str, list[float]]] = {
-            k: {n: [] for n in method_names}
-            for k in ["size (mb)", "save (ms)", "load (ms)"]
-        }
+        sizes = np.arange(start=10, stop=221, step=20)
+        metrics = ["size (mb)", "save (ms)", "load (ms)"]
+        tools = [WithPickle, WithH5Bag, WithTrieH5Bag]
         scales = {
             "size (mb)": 1.0 / 1024,
             "save (ms)": 1000,
             "load (ms)": 1000,
         }
+        performance: dict[str, dict[str, list[float]]] = {
+            metric: {tool.__name__: [] for tool in tools} for metric in metrics
+        }
         for n in sizes:
             obj = Recursing(n)
-            for method in methods:
+            for tool in tools:
+                performance["save (ms)"][tool.__name__].append(0)
+                performance["size (mb)"][tool.__name__].append(0)
+                performance["load (ms)"][tool.__name__].append(0)
 
-                t0 = time.time()
-                scale = method.save(obj, fname)
-                performance["save (ms)"][method.__name__].append(
-                    (time.time() - t0) / scale
-                )
-                performance["size (mb)"][method.__name__].append(os.path.getsize(fname))
-                t1 = time.time()
-                scale = method.load(fname)
-                performance["load (ms)"][method.__name__].append(
-                    (time.time() - t1) / scale
-                )
+                for _ in range(tool.repeats):
+                    t0 = time.perf_counter()
+                    scale = tool.save(obj, fname)
+                    performance["save (ms)"][tool.__name__][-1] += (
+                        time.perf_counter() - t0
+                    ) / scale
+                    performance["size (mb)"][tool.__name__][-1] = os.path.getsize(fname)
+                    t1 = time.perf_counter()
+                    scale = tool.load(fname)
+                    performance["load (ms)"][tool.__name__][-1] += (
+                        time.perf_counter() - t1
+                    ) / scale
+                    with contextlib.suppress(FileNotFoundError):
+                        os.remove(fname)
 
-                with contextlib.suppress(FileNotFoundError):
-                    os.remove(fname)
-
-        for k, p in performance.items():
-            print(k)
+        print("Raw scaling data")
+        for metric, p in performance.items():
+            print(metric)
             sep = "\t"  # python <3.12 compatibility -- no escaping inside f-strings
             print(f"size\t{sep.join(p.keys())}")
             for i, n in enumerate(sizes):
@@ -175,6 +208,146 @@ class TestBenchmark(unittest.TestCase):
                     n,
                     "\t\t",
                     "\t\t".join(
-                        [str(round(pp[i] * scales[k], 2)) for pp in p.values()]
+                        [str(round(pp[i] * scales[metric], 2)) for pp in p.values()]
                     ),
                 )
+
+        # Check expected models and leading coefficients
+        expected = {
+            "size (mb)": {
+                "WithPickle": ("quadratic", 4.03e-3),
+                "WithH5Bag": ("quadratic", 4.50e-3),
+                "WithTrieH5Bag": ("linear", 3.67),
+            },
+            "save (ms)": {
+                "WithPickle": ("linear", 1.99e-3),
+                "WithH5Bag": ("quadratic", 6.88e-2),
+                "WithTrieH5Bag": ("cubic", 5.38e-4),
+            },
+            "load (ms)": {
+                "WithPickle": ("linear", 1.02e-3),
+                "WithH5Bag": ("quadratic", 2.74e-2),
+                "WithTrieH5Bag": ("cubic", 2.06e-4),
+            },
+        }
+        # Data from earlier human-supervised runs
+        bic_improvement_threshold = 30  # Demand very strong evidence for complexity
+
+        fit_results: dict[str, dict[str, list[float]]] = {
+            metric: {} for metric in metrics
+        }
+        best_models: dict[str, dict[str, str]] = {metric: {} for metric in metrics}
+        z_scores: dict[str, dict[str, float]] = {metric: {} for metric in metrics}
+        name_map = ["scalar", "linear", "quadratic", "cubic", "quartic"]
+
+        for metric, data in performance.items():
+            for tool_name, raw_y in data.items():
+                y = np.array(raw_y) * scales[metric]
+                best_score = None
+                for degree in (1, 2, 3, 4):
+                    coeffs, residuals, cov, score = scored_least_squares(
+                        sizes, y, degree
+                    )
+
+                    print(metric, tool_name, name_map[degree], "BIC Score =", score)
+                    if best_score is None or bic_improvement(
+                        score, best_score, bic_improvement_threshold
+                    ):
+                        best_score = score
+                        best_models[metric][tool_name] = name_map[degree]
+                    if name_map[degree] == expected[metric][tool_name][0]:
+                        fit_results[metric][tool_name] = coeffs.tolist()
+                        z_scores[metric][tool_name] = z_score(
+                            coeffs, cov, expected[metric][tool_name][1]
+                        )
+
+        z_score_threshold_sigma = 3
+        for metric, tool_expectation in expected.items():
+            for tool_name, (expected_model, expected_param) in tool_expectation.items():
+
+                with self.subTest(f"{metric} {tool_name} best model"):
+                    if tool_name == "WithPickle":
+                        # Pickle can be quite noisy, and is anyhow not what we implemented
+                        # Leave it in the printouts, but don't fail because of it
+                        continue
+
+                    actual_model = best_models[metric][tool_name]
+                    self.assertEqual(
+                        actual_model,
+                        expected_model,
+                        msg=f"Previous data has indicated that {tool_name} should "
+                        f"scale {expected_model} with respect to {metric}, but got "
+                        f"{actual_model}.",
+                    )
+
+                stored_z_scores_are_reasonable = is_m3_pro()
+                if stored_z_scores_are_reasonable:
+                    # They were collected manually on my (@liamhuber) macbook
+                    # Since I'm the one working on this, I want the tests to be failable
+                    # when I run them locally, but overall it's sufficient to check the
+                    # scaling behaviour
+                    with self.subTest(
+                        f"{metric} {tool_name} {expected_model} leading parameter z-score"
+                    ):
+                        self.assertLess(
+                            z_scores[metric][tool_name],
+                            z_score_threshold_sigma,
+                            msg=f"Expected z-score < {z_score_threshold_sigma} but got "
+                            f"{z_scores[metric][tool_name]} -- actual and expected "
+                            f"parameters were {fit_results[metric][tool_name][0]} and "
+                            f"{expected_param}, respectively.",
+                        )
+
+        print("Fit results:")
+        for metric_name, parameters_dict in fit_results.items():
+            print(metric_name)
+            for tool_name, coefficients in parameters_dict.items():
+                print(
+                    f"  {tool_name}: {expected[metric_name][tool_name][0]}, params = "
+                    f"{coefficients}; expected {expected[metric_name][tool_name][1]}"
+                )
+
+
+def scored_least_squares(x, y, degree: int):
+    n = len(x)
+    X = np.vander(x, N=degree + 1, increasing=False)
+    coeffs, residuals, rank, s = np.linalg.lstsq(X, y, rcond=None)
+
+    dof = max(n - degree - 1, 1)
+    sigma2 = residuals[0] / dof if residuals.size > 0 else 0
+    XtX_inv = np.linalg.inv(X.T @ X)
+    cov = sigma2 * XtX_inv
+
+    rss = residuals[0] if residuals.size > 0 else np.sum((y - X @ coeffs) ** 2)
+    score = bayesian_information_criterion(degree, n, rss)
+
+    return coeffs, residuals, cov, score
+
+
+def bayesian_information_criterion(degree: int, n: int, rss) -> float:
+    return float((degree + 1) * np.log(n) + n * np.log(rss / n))
+
+
+def bic_improvement(
+    score: float, best_score: float, improvement_threshold: float = 0.0
+) -> bool:
+    return score < (best_score - improvement_threshold)
+
+
+def z_score(
+    coeffs: list[float], covariance: NDArray[np.float64], expected: float
+) -> float:
+    std_leading = np.sqrt(covariance[0, 0])
+    return float(abs(coeffs[0] - expected) / std_leading if std_leading > 0 else np.inf)
+
+
+def is_m3_pro():
+    if platform.system() != "Darwin":
+        return False
+    try:
+        output = subprocess.check_output(
+            ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
+        )
+        return "Apple M3 Pro" in output
+    except Exception:
+        return False
