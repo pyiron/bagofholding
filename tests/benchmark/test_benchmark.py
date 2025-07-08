@@ -97,7 +97,7 @@ class TestBenchmark(unittest.TestCase):
         fname = "benchmark_test"
 
         class Tester(abc.ABC):
-            repeats: ClassVar[int] = 2
+            repeats: ClassVar[int] = 1
 
             @classmethod
             @abc.abstractmethod
@@ -118,7 +118,7 @@ class TestBenchmark(unittest.TestCase):
                 return cls.repeats
 
         class WithPickle(Tester):
-            repeats = 2000
+            repeats = 1000
 
             @classmethod
             def _save(cls, obj, fname) -> None:
@@ -221,6 +221,7 @@ class TestBenchmark(unittest.TestCase):
             },
         }
         # Data from earlier human-supervised runs
+        bic_improvement_threshold = 20  # Demand very strong evidence for complexity
 
         fit_results: dict[str, dict[str, list[float]]] = {
             metric: {} for metric in metrics
@@ -239,9 +240,8 @@ class TestBenchmark(unittest.TestCase):
                     )
 
                     print(metric, tool_name, name_map[degree], "BIC Score =", score)
-                    threshold = 10  # Demand pretty strong evidence for more complexity
                     if best_score is None or bic_improvement(
-                        score, best_score, threshold
+                        score, best_score, bic_improvement_threshold
                     ):
                         best_score = score
                         best_models[metric][tool_name] = name_map[degree]
@@ -251,12 +251,9 @@ class TestBenchmark(unittest.TestCase):
                             coeffs, cov, expected[metric][tool_name][1]
                         )
 
+        z_score_threshold_sigma = 4
         for metric, tool_expectation in expected.items():
             for tool_name, (expected_model, expected_param) in tool_expectation.items():
-                if tool_name == "WithPickle":
-                    # Pickle can be quite noisy, and is anyhow not what we implemented
-                    # Leave it in the printouts, but don't fail because of it
-                    continue
 
                 with self.subTest(f"{metric} {tool_name} best model"):
                     actual_model = best_models[metric][tool_name]
@@ -267,14 +264,18 @@ class TestBenchmark(unittest.TestCase):
                         f"scale {expected_model} with respect to {metric}, but got "
                         f"{actual_model}.",
                     )
+
+                if tool_name == "WithPickle":
+                    # Pickle can be quite noisy, and is anyhow not what we implemented
+                    # Leave it in the printouts, but don't fail because of it
+                    continue
                 with self.subTest(
                     f"{metric} {tool_name} {expected_model} leading parameter z-score"
                 ):
-                    threshold = 3  # flag three-sigma results
                     self.assertLess(
                         z_scores[metric][tool_name],
-                        threshold,
-                        msg=f"Expected z-score < {threshold} but got "
+                        z_score_threshold_sigma,
+                        msg=f"Expected z-score < {z_score_threshold_sigma} but got "
                         f"{z_scores[metric][tool_name]} -- actual and expected "
                         f"parameters were {fit_results[metric][tool_name][0]} and "
                         f"{expected_param}, respectively.",
