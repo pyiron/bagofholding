@@ -25,6 +25,25 @@ class TestBenchmark(unittest.TestCase):
     def setUpClass(cls):
         cls.save_name = "savefile.h5"
 
+        cls._thread_env_vars = {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "NUMEXPR_NUM_THREADS": "1",
+        }
+        cls._prev_env = {}
+        for k, v in cls._thread_env_vars.items():
+            cls._prev_env[k] = os.environ.get(k)
+            os.environ[k] = v
+
+    @classmethod
+    def tearDownClass(cls):
+        for k, v in cls._prev_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
     def tearDown(self):
         with contextlib.suppress(FileNotFoundError):
             os.remove(self.save_name)
