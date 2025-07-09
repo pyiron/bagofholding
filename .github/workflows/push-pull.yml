@@ -27,3 +27,4 @@ jobs:
       do-coveralls: false
       do-mypy: true
       coverage-test-dir: tests/unit tests/integration
+      do-benchmark-tests: ${{ github.event_name == 'pull_request' }}
