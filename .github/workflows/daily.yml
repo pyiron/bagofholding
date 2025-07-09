@@ -8,7 +8,7 @@ on:
 
 jobs:
   codeql:
-    uses: pyiron/actions/.github/workflows/tests-and-coverage.yml@actions-4.0.6
+    uses: pyiron/actions/.github/workflows/tests-and-coverage.yml@actions-4.0.8
     secrets: inherit
     with:
       tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
