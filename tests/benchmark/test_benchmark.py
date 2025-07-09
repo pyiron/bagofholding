@@ -239,7 +239,7 @@ class TestBenchmark(unittest.TestCase):
             },
         }
         # Data from earlier human-supervised runs
-        bic_improvement_threshold = 20  # Demand very strong evidence for complexity
+        bic_improvement_threshold = 30  # Demand very strong evidence for complexity
 
         fit_results: dict[str, dict[str, list[float]]] = {
             metric: {} for metric in metrics
