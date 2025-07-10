@@ -13,4 +13,5 @@ jobs:
     secrets: inherit
     with:
       semantic-upper-bound: 'minor'
+      lower-bound-yaml: '.ci_support/lower_bound.yml'
       publish-to-pypi: false
