@@ -2,7 +2,7 @@
 # This job runs on pull requests and does not actually publish anything to pypi
 # It is useful for debugging new build recipes
 # To actually release, change the `on` and `publish-to-pypi` fields
-name: Preview Release
+name: Release
 
 on:
   release:
