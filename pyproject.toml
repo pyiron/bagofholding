@@ -29,7 +29,6 @@ classifiers = [
 dependencies = [
     "bidict==0.23.1",
     "h5py==3.14.0",
-    "mpi4py==4.1.0",
     "numpy==2.3.1",
     "pygtrie==2.5.0",
     "pyiron_snippets==0.2.0",
