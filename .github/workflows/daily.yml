@@ -14,3 +14,5 @@ jobs:
       tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
       extra-python-paths: tests
       test-dir: tests/unit tests/integration
+      do-codecov: false
+      do-coveralls: false
