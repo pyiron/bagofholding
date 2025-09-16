@@ -133,7 +133,7 @@ For a more in-depth look at the above features and to explore other aspects of `
 ## Object requirements
 
 Under-the-hood, we follow the same patterns as `pickle` by explicitly invoking many of the same method (`__reduce__`, `__setstate__`, etc).
-_Almost_ and object which can be pickled can be stored using `bagofholding`.
+_Almost_ any object which can be pickled can be stored using `bagofholding`.
 Our requirements are that the object...
 
 - Must be pickleable
