@@ -27,8 +27,10 @@ def import_from_string(library_path: str) -> Any:
             current_path = f"{obj.__name__}.{k}"
             try:
                 obj = importlib.import_module(current_path)
-            except ImportError:
-                raise AttributeError(f"module '{obj.__name__}' has no attribute '{k}'")
+            except ImportError as e:
+                raise AttributeError(
+                    f"module '{obj.__name__}' has no attribute '{k}'"
+                ) from e
     return obj
 
 
