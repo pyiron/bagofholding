@@ -4,7 +4,7 @@ Helper functions for managing the relationship between strings and imports.
 
 from __future__ import annotations
 
-from importlib import import_module
+import importlib
 from typing import Any
 
 from bagofholding.exceptions import StringNotImportableError
@@ -16,9 +16,21 @@ def import_from_string(library_path: str) -> Any:
         module_name, path = split_path[0], ""
     else:
         module_name, path = split_path
-    obj = import_module(module_name)
+    obj = importlib.import_module(module_name)
     for k in path.split("."):
-        obj = getattr(obj, k)
+        try:
+            obj = getattr(obj, k)
+        except AttributeError:
+            # Try importing as a submodule
+            # This can be necessary of an __init__.py is empty and nothing else has
+            # referenced the module yet
+            current_path = f"{obj.__name__}.{k}"
+            try:
+                obj = importlib.import_module(current_path)
+            except ImportError as e:
+                raise AttributeError(
+                    f"module '{obj.__name__}' has no attribute '{k}'"
+                ) from e
     return obj
 
 
