@@ -7,5 +7,5 @@ dependencies:
 - hatch-vcs =0.5.0
 - numpy =2.3.3
 - pygtrie =2.5.0
-- pyiron_snippets =0.2.0
+- pyiron_snippets >=1.0.0,<2.0.0
 - python >=3.11,<3.14
