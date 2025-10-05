@@ -30,6 +30,7 @@ from typing import (
 
 import bidict
 import h5py
+from pyiron_snippets import retrieve
 
 from bagofholding.exceptions import (
     ModuleForbiddenError,
@@ -45,10 +46,6 @@ from bagofholding.metadata import (
     get_qualname,
     get_version,
     validate_version,
-)
-from bagofholding.retrieve import (
-    get_importable_string_from_string_reduction,
-    import_from_string,
 )
 
 PackingMemoAlias: TypeAlias = bidict.bidict[int, str]
@@ -252,7 +249,7 @@ class Global(Item[GlobalType, Any, Packer]):
     @classmethod
     def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> Any:
         import_string = packer.unpack_string(path)
-        return import_from_string(import_string)
+        return retrieve.import_from_string(import_string)
 
 
 class NoneItem(Item[type[None], None, Packer]):
@@ -831,7 +828,7 @@ def pack(
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
         Global.pack(
-            get_importable_string_from_string_reduction(rv, obj),
+            retrieve.get_importable_string_from_string_reduction(rv, obj),
             packer,
             path,
             packing_args,
@@ -887,7 +884,7 @@ def unpack(
     memo_value = memo.get(path, NotData)
     if memo_value is NotData:
         metadata = packer.unpack_metadata(path)
-        content_class = import_from_string(metadata.content_type)
+        content_class = retrieve.import_from_string(metadata.content_type)
         if metadata is not None:
             validate_version(
                 metadata, validator=version_validator, version_scraping=version_scraping
