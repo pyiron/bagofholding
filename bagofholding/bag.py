@@ -47,7 +47,7 @@ except (ImportError, ModuleNotFoundError):
         "The browsing widget relies on ipytree and traitlets, but this was "
         "unavailable. You can get a text-representation of all available paths with "
         ":meth:`bagofholding.bag.Bag.list_paths`.",
-        _fail_on_warning=True,
+        raise_exception=True,
     )
 
 PATH_DELIMITER = "/"
