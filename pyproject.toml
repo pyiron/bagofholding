@@ -15,7 +15,7 @@ name = "bagofholding"
 description = "bagofholding - browsable, partially-reloadable serialization for pickleable python objects."
 readme = "docs/README.md"
 keywords = [ "pyiron",]
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.11, <3.15"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Topic :: Scientific/Engineering",
@@ -25,13 +25,14 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "bidict==0.23.1",
     "h5py==3.14.0",
     "numpy==2.3.3",
     "pygtrie==2.5.0",
-    "pyiron_snippets==1.0.0",
+    "pyiron_snippets==1.0.2",
 ]
 dynamic = [ "version",]
 authors = [
