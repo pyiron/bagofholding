@@ -1,5 +1,6 @@
 import contextlib
 import io
+import pickle
 import sys
 import unittest
 
@@ -11,7 +12,7 @@ class TestBag(unittest.TestCase):
     def test_pickle_helper(self):
         unpickleable = lambda x: x  # noqa E731
 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises((AttributeError, pickle.PicklingError)):
             Bag.pickle_check(unpickleable)
 
         msg = Bag.pickle_check(unpickleable, raise_exceptions=False)
