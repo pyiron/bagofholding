@@ -27,7 +27,7 @@ from typing import (
 import bidict
 from pyiron_snippets import import_alarm
 
-from bagofholding.content import BespokeItem, Packer, pack, unpack
+from bagofholding.content import MAX_PICKLE_PROTOCOL, BespokeItem, Packer, pack, unpack
 from bagofholding.exceptions import BagMismatchError, InvalidMetadataError
 from bagofholding.metadata import (
     HasFieldIterator,
@@ -87,7 +87,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         require_versions: bool = False,
         forbidden_modules: list[str] | tuple[str, ...] = (),
         version_scraping: VersionScrapingMap | None = None,
-        _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
+        _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
         overwrite_existing: bool = True,
     ) -> None:
         """
