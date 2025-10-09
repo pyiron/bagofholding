@@ -13,7 +13,6 @@ import abc
 import collections.abc
 import dataclasses
 import operator
-import pickle
 import types
 from collections.abc import Callable, Iterable, Iterator, Sized
 from typing import (
@@ -55,6 +54,12 @@ UnpackingMemoAlias: TypeAlias = dict[str, Any]
 
 PackingType = TypeVar("PackingType", bound=Any)
 UnpackingType = TypeVar("UnpackingType", bound=Any)
+
+
+MAX_PICKLE_PROTOCOL = 4
+# Although many of the same patterns as `pickle` are exploited to decompose data,
+# `bagofholding` does not actually _execute_ `pickle`.
+# To this end, the highest protocol value exploiting out-of-band data is not supported
 
 
 class HasContents(Sized, Iterable[str], Protocol): ...
@@ -779,7 +784,7 @@ def pack(
     require_versions: bool,
     forbidden_modules: list[str] | tuple[str, ...],
     version_scraping: VersionScrapingMap | None,
-    _pickle_protocol: SupportsIndex = pickle.DEFAULT_PROTOCOL,
+    _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
 ) -> None:
     if _pickle_protocol not in (4, 3, 2, 1, 0):
         raise PickleProtocolError(
