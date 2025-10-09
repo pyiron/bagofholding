@@ -28,7 +28,7 @@ class TestBag(unittest.TestCase):
         obj = (
             f"'{obj_reference}'"
             if sys.version_info < (3, 14)
-            else f"<function {obj_reference} at {id(unpickleable):#x}"
+            else f"<function {obj_reference} at {id(unpickleable):#x}>"
         )
 
         self.assertEqual(msg_reference.substitute(verb=verb, obj=obj), msg)
