@@ -1,0 +1,9 @@
+cff-version: 1.1.0
+message: "If you use pyiron_workflow software, please cite it as below."
+authors:
+- family-names: Huber
+  given-names: Liam
+  orcid: "https://orcid.org/0009-0009-2560-5851"
+doi: 10.5281/zenodo.17701281
+title: bagofholding
+date-released: 2025-11-24
