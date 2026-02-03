@@ -109,6 +109,8 @@ class AbstractTestNamespace:
                 (bytes("some plain old bytes", encoding="utf8"), c.Bytes),
                 (b"\x00", c.Bytes),  # h5py leverages the null character, so we need to
                 # ensure we treat our bytes specially
+                (b"", c.Bytes),  # h5py can give size complaints about zero-length
+                # bytes, so test our the special handling there
                 (bytearray([42]), c.Bytearray),
             ]
             complex_items = [

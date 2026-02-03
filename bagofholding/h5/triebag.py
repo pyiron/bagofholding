@@ -54,6 +54,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             "array": 8,
             "empty": 9,
             "group": 10,
+            "empty_bytes": 11,
         }
     )
     _field_delimiter: ClassVar[str] = "::"
@@ -277,10 +278,17 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         return value
 
     def pack_bytes(self, obj: bytes, path: str) -> None:
-        self._pack_thing(obj, "bytes", path)
+        if obj == b"":
+            self._pack_trie(path, self._index_map["empty_bytes"], -1)
+        else:
+            self._pack_thing(obj, "bytes", path)
 
     def unpack_bytes(self, path: str) -> bytes:
-        return cast(bytes, self._read_pathlike(path).tobytes())
+        type_index, _ = self._read_trie(path)
+        if self._index_map.inverse[type_index] == "empty_bytes":
+            return b""
+        else:
+            return cast(bytes, self._read_pathlike(path).tobytes())
 
     def pack_bytearray(self, obj: bytearray, path: str) -> None:
         self._pack_thing(obj, "bytearray", path)
