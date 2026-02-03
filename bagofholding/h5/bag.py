@@ -146,7 +146,11 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
         return complex(data[0], data[1])
 
     def pack_bytes(self, obj: bytes, path: str) -> None:
-        self.file.create_dataset(path, data=np.void(obj))
+        if obj == b"":
+            special = h5py.special_dtype(vlen=bytes)
+            self.file.create_dataset(path, data=b"", dtype=special)
+        else:
+            self.file.create_dataset(path, data=np.void(obj))
 
     def unpack_bytes(self, path: str) -> bytes:
         return bytes(self._unpack_raw(path))
