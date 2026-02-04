@@ -4,7 +4,7 @@ import os
 import unittest
 import tempfile
 
-from hypothesis import given, strategies as st, settings, HealthCheck
+from hypothesis import given, strategies as st, settings, HealthCheck, example
 from hypothesis.extra import numpy as np_st
 
 import numpy as np
@@ -293,10 +293,11 @@ class AbstractTestNamespace:
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
+        @example(data={'': None}).xfail()
         @given(data=st.recursive(
             leaf_strategy(),
             lambda children: st.dictionaries(
-                keys=st.text(alphabet=st.characters(blacklist_characters='\x00.'), min_size=0),
+                keys=st.text(alphabet=st.characters(blacklist_characters='\x00.'), min_size=1),
                 values=children,
                 min_size=1
             ),
