@@ -11,3 +11,4 @@ dependencies:
   - python =3.11
   - ipytree =0.2.2
   - traitlets =5.14.3
+  - hypothesis==6.100.2
