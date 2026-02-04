@@ -2,6 +2,10 @@ import abc
 import contextlib
 import os
 import unittest
+import tempfile
+
+from hypothesis import given, strategies as st, settings, HealthCheck
+from hypothesis.extra import numpy as np_st
 
 import numpy as np
 from pyiron_snippets.dotdict import DotDict
@@ -40,6 +44,26 @@ def get_modified_bag_info(cls: type[bag.Bag]) -> bag.BagInfo:
         qualname=cls.__qualname__,
         module=cls.__module__,
         version=always_42(),
+    )
+
+
+def numpy_array_strategy():
+    return np_st.arrays(
+        dtype=st.sampled_from(bagofholding.h5.dtypes.H5PY_DTYPE_WHITELIST),
+        shape=np_st.array_shapes()
+    )
+
+def leaf_strategy():
+    return st.one_of(
+        st.none(),
+        st.text(alphabet=st.characters(blacklist_characters='\x00')),
+        st.booleans(),
+        st.integers(min_value=np.iinfo(np.int64).min, max_value=np.iinfo(np.int64).max),
+        st.floats(allow_nan=False, allow_infinity=False),
+        st.complex_numbers(allow_nan=False, allow_infinity=False),
+        st.binary(),
+        st.binary().map(bytearray),
+        numpy_array_strategy(),
     )
 
 
@@ -268,12 +292,39 @@ class AbstractTestNamespace:
             with self.assertRaises(StringNotImportableError):
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
 
+        @settings(suppress_health_check=[HealthCheck.differing_executors])
+        @given(data=st.recursive(
+            leaf_strategy(),
+            lambda children: st.dictionaries(
+                keys=st.text(alphabet=st.characters(blacklist_characters='\x00.'), min_size=0),
+                values=children,
+                min_size=1
+            ),
+            max_leaves=10
+        ))
+        def test_hypothesis(self, data):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = os.path.join(tmpdir, "test.h5")
+                self.bag_class().save(data, filepath=path)
+                loaded_data = self.bag_class()(path).load()
+
+            self.assert_equal_recursive(data, loaded_data)
+
+        def assert_equal_recursive(self, a, b):
+            if isinstance(a, dict) and isinstance(b, dict):
+                self.assertEqual(len(a), len(b))
+                for key in a:
+                    self.assertIn(key, b)
+                    self.assert_equal_recursive(a[key], b[key])
+            elif isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+                self.assertTrue(np.array_equal(a, b))
+            else:
+                self.assertEqual(a, b)
 
 class TestH5BagBagImplementation(AbstractTestNamespace.TestBagImplementation):
     @classmethod
     def bag_class(cls) -> type[bagofholding.h5.bag.H5Bag]:
         return bagofholding.h5.bag.H5Bag
-
 
 class TestH5TrieBagBagImplementation(AbstractTestNamespace.TestBagImplementation):
     @classmethod
