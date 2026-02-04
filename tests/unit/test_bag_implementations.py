@@ -293,7 +293,10 @@ class AbstractTestNamespace:
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
-        @example(data={'': None}).xfail()
+        @example(data={'': None}).xfail(
+                reason='Zero-sized strings explicitly disallowed.',
+                # TODO: use exception args once API raises stable error
+        )
         @given(data=st.recursive(
             leaf_strategy(),
             lambda children: st.dictionaries(
