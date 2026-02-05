@@ -135,9 +135,9 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             "complex_imag", data=np.array(self._packed[5], dtype=float)
         )
         self.file.create_dataset("bytes", data=np.array(self._packed[6]))
-        self.file.create_dataset(
-            "bytearray", data=np.array(self._packed[7])
-        )  # dtype=bytearray
+        bytearray_group = self.file.create_group("bytearrays")
+        for i, ba in enumerate(self._packed[7]):
+            bytearray_group.create_dataset(f"i{i}", data=ba)
         array_group = self.file.create_group("ndarrays")
         for i, ra in enumerate(self._packed[8]):
             array_group.create_dataset(f"i{i}", data=ra)
@@ -294,7 +294,10 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         self._pack_thing(obj, "bytearray", path)
 
     def unpack_bytearray(self, path: str) -> bytearray:
-        return bytearray(self._read_pathlike(path))
+        _, position_index = self._read_trie(path)
+        with self:
+            value = bytearray(self.file[f"bytearrays/i{position_index}"][()])
+        return value
 
     def create_group(self, path: str) -> None:
         self._pack_trie(path, self._index_map["group"], -1)
