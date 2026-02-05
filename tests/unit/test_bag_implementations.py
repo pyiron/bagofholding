@@ -23,7 +23,7 @@ from static.objects import (
 import bagofholding.bag as bag
 import bagofholding.content as c
 import bagofholding.h5.bag
-import bagofholding.h5.content
+import bagofholding.h5.content as h5c
 import bagofholding.h5.triebag
 from bagofholding import (
     BagMismatchError,
@@ -138,7 +138,8 @@ class AbstractTestNamespace:
                 (bytearray([42]), c.Bytearray),
             ]
             complex_items = [
-                (np.linspace(0, 1, 3), bagofholding.h5.content.Array),
+                (np.linspace(0, 1, 3), h5c.Array),
+                # (, h5c.Array)
             ]
             simple_groups_ex_reducible = [
                 ({42: 42.0}, c.Dict),
@@ -149,6 +150,8 @@ class AbstractTestNamespace:
                 ([42.0], c.List),
                 ({"42"}, c.Set),
                 (frozenset({42}), c.FrozenSet),
+                ({'0': bytearray(b'\x00'), '1': bytearray(b'')}, c.Dict),
+                ({'0': 282574505116416}, c.Dict),  # Just a big int
             ]
             global_content = [
                 (obj, c.Global)
@@ -173,6 +176,10 @@ class AbstractTestNamespace:
                     DotDict({"forty-two": 42}),  # Inheriting from a built-in class
                     NestedParent.NestedChild(),  # Requiring qualname
                     Recursing(2),
+                    # Arrays of str and bytes types get special treatment
+                    np.array([''], dtype='<U1'),  # string
+                    np.array([b''], dtype='|S1'),  # byte
+                    np.array([b'a', b'abc'], dtype='|S3')  # different lengths
                 ]
             ]
 
