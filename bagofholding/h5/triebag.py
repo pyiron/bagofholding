@@ -140,6 +140,9 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         bytearray_group = self.file.create_group("bytearrays")
         for i, ba in enumerate(self._packed[7]):
             bytearray_group.create_dataset(f"i{i}", data=ba)
+        # A reasonable alternative would be to group bytes and bytearrays by their
+        # length, creating fewer overall groups. Benefit depends on how heavily weighted
+        # unique lengths are to shared lengths, so for now keep it simple
         array_group = self.file.create_group("ndarrays")
         for i, ra in enumerate(self._packed[8]):
             array_group.create_dataset(f"i{i}", data=ra)
