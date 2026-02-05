@@ -158,6 +158,7 @@ class AbstractTestNamespace:
                 ({"0/": None}, c.Dict),
                 ({"0/0": None}, c.Dict),
                 ({"_0": None}, c.Dict),
+                ({"\ud800": None}, c.Dict),
             ]
             global_content = [
                 (obj, c.Global)

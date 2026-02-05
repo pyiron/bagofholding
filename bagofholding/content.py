@@ -875,6 +875,14 @@ def is_simple_string(string: str) -> bool:
     return string.isascii() and ("/" not in string) and (string[0].isalpha())
 
 
+def has_surrogates(s: str) -> bool:
+    try:
+        s.encode("utf-8")
+        return False
+    except UnicodeEncodeError:
+        return True
+
+
 def get_group_content_class(obj: object) -> type[Group[Any, Any]] | None:
     t = type(obj)
     if t is dict and all(
