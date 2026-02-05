@@ -872,7 +872,7 @@ KNOWN_GROUP_MAP: dict[type, type[Group[Any, Any]]] = {
 
 
 def is_simple_string(string: str) -> bool:
-    return string.isascii() and ("/" not in string) and (string[0].isalpha())
+    return string.isascii() and ("/" not in string)
 
 
 def has_surrogates(s: str) -> bool:

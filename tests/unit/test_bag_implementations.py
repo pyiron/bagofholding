@@ -151,13 +151,13 @@ class AbstractTestNamespace:
                 ([42.0], c.List),
                 ({"42"}, c.Set),
                 (frozenset({42}), c.FrozenSet),
-                ({"0": bytearray(b"\x00"), "1": bytearray(b"")}, c.Dict),
-                ({"0": 282574505116416}, c.Dict),  # Just a big int
+                ({"0": bytearray(b"\x00"), "1": bytearray(b"")}, c.StrKeyDict),
+                ({"0": 282574505116416}, c.StrKeyDict),  # Just a big int
                 ({"Ă": None}, c.Dict),
                 ({"/": None}, c.Dict),
                 ({"0/": None}, c.Dict),
                 ({"0/0": None}, c.Dict),
-                ({"_0": None}, c.Dict),
+                ({"_0": None}, c.StrKeyDict),
                 ({"\ud800": None}, c.Dict),
             ]
             global_content = [
