@@ -9,7 +9,7 @@ import numpy as np
 import pygtrie
 
 from bagofholding.bag import PATH_DELIMITER, Bag, BagInfo
-from bagofholding.content import BespokeItem
+from bagofholding.content import BespokeItem, has_surrogates
 from bagofholding.h5.bag import H5Info
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType
 from bagofholding.h5.context import HasH5FileContext
@@ -55,6 +55,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             "empty": 9,
             "group": 10,
             "empty_bytes": 11,
+            "surrogate_str": 12,
         }
     )
     _field_delimiter: ClassVar[str] = "::"
@@ -96,7 +97,8 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             list[bytes],
             list[bytearray],
             list[ArrayType],
-        ] = ([], [], [], [], [], [], [], [], [])
+            list[bytes],
+        ] = ([], [], [], [], [], [], [], [], [], [])
 
     @property
     def unpacked_trie(self) -> pygtrie.StringTrie:
@@ -134,15 +136,25 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         self.file.create_dataset(
             "complex_imag", data=np.array(self._packed[5], dtype=float)
         )
-        self.file.create_dataset("bytes", data=np.array(self._packed[6]))
-        self.file.create_dataset(
-            "bytearray", data=np.array(self._packed[7])
-        )  # dtype=bytearray
+        bytes_group = self.file.create_group("bytes_data")
+        for i, b in enumerate(self._packed[6]):
+            bytes_group.create_dataset(f"i{i}", data=np.void(b))
+        bytearray_group = self.file.create_group("bytearrays")
+        for i, ba in enumerate(self._packed[7]):
+            bytearray_group.create_dataset(f"i{i}", data=ba)
+        # A reasonable alternative would be to group bytes and bytearrays by their
+        # length, creating fewer overall groups. Benefit depends on how heavily weighted
+        # unique lengths are to shared lengths, so for now keep it simple
         array_group = self.file.create_group("ndarrays")
         for i, ra in enumerate(self._packed[8]):
             array_group.create_dataset(f"i{i}", data=ra)
         # Empty doesn't need to be packed -- it's always None so the meta info is enough
         # Groups don't need to be packed -- they are just holders so meta info is enough
+
+        # Some string encoding requires special treatment to play with h5py
+        surrogate_group = self.file.create_group("surrogate_strs")
+        for i, s in enumerate(self._packed[9]):
+            surrogate_group.create_dataset(f"i{i}", data=np.void(s))
 
         self.close()
 
@@ -236,9 +248,21 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         self._pack_trie(path, type_index, len(group) - 1)
 
     def pack_string(self, obj: str, path: str) -> None:
-        self._pack_thing(obj, "str", path)
+        if has_surrogates(obj):
+            encoded = obj.encode("utf-16", errors="surrogatepass")
+            type_index = self._index_map["surrogate_str"]
+            group = self._packed[9]
+            group.append(encoded)
+            self._pack_trie(path, type_index, len(group) - 1)
+        else:
+            self._pack_thing(obj, "str", path)
 
     def unpack_string(self, path: str) -> str:
+        type_index, position_index = self._read_trie(path)
+        if self._index_map.inverse[type_index] == "surrogate_str":
+            with self:
+                data = self.file[f"surrogate_strs/i{position_index}"][()]
+            return cast(str, data.tobytes().decode("utf-16", errors="surrogatepass"))
         return self.maybe_decode(cast(str, self._read_pathlike(path)))
 
     def pack_bool(self, obj: bool, path: str) -> None:
@@ -284,17 +308,21 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             self._pack_thing(obj, "bytes", path)
 
     def unpack_bytes(self, path: str) -> bytes:
-        type_index, _ = self._read_trie(path)
+        type_index, position_index = self._read_trie(path)
         if self._index_map.inverse[type_index] == "empty_bytes":
             return b""
         else:
-            return cast(bytes, self._read_pathlike(path).tobytes())
+            with self:
+                return bytes(self.file[f"bytes_data/i{position_index}"][()])
 
     def pack_bytearray(self, obj: bytearray, path: str) -> None:
         self._pack_thing(obj, "bytearray", path)
 
     def unpack_bytearray(self, path: str) -> bytearray:
-        return bytearray(self._read_pathlike(path))
+        _, position_index = self._read_trie(path)
+        with self:
+            value = bytearray(self.file[f"bytearrays/i{position_index}"][()])
+        return value
 
     def create_group(self, path: str) -> None:
         self._pack_trie(path, self._index_map["group"], -1)
@@ -316,7 +344,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
     def get_bespoke_content_class(
         self, obj: object
     ) -> type[BespokeItem[Any, Self]] | None:
-        if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
+        if type(obj) is np.ndarray and obj.dtype.type in H5PY_DTYPE_WHITELIST:
             return cast(type[BespokeItem[Any, Self]], Array)
         return None
 

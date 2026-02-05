@@ -1,13 +1,13 @@
 import abc
 import contextlib
 import os
-import unittest
 import tempfile
-
-from hypothesis import given, strategies as st, settings, HealthCheck, example
-from hypothesis.extra import numpy as np_st
+import unittest
 
 import numpy as np
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+from hypothesis.extra import numpy as np_st
 from pyiron_snippets.dotdict import DotDict
 from static.objects import (
     DRAGON,
@@ -23,7 +23,7 @@ from static.objects import (
 import bagofholding.bag as bag
 import bagofholding.content as c
 import bagofholding.h5.bag
-import bagofholding.h5.content
+import bagofholding.h5.content as h5c
 import bagofholding.h5.triebag
 from bagofholding import (
     BagMismatchError,
@@ -50,13 +50,14 @@ def get_modified_bag_info(cls: type[bag.Bag]) -> bag.BagInfo:
 def numpy_array_strategy():
     return np_st.arrays(
         dtype=st.sampled_from(bagofholding.h5.dtypes.H5PY_DTYPE_WHITELIST),
-        shape=np_st.array_shapes()
+        shape=np_st.array_shapes(),
     )
+
 
 def leaf_strategy():
     return st.one_of(
         st.none(),
-        st.text(alphabet=st.characters(blacklist_characters='\x00')),
+        st.text(alphabet=st.characters(blacklist_characters="\x00")),
         st.booleans(),
         st.integers(min_value=np.iinfo(np.int64).min, max_value=np.iinfo(np.int64).max),
         st.floats(allow_nan=False, allow_infinity=False),
@@ -138,7 +139,8 @@ class AbstractTestNamespace:
                 (bytearray([42]), c.Bytearray),
             ]
             complex_items = [
-                (np.linspace(0, 1, 3), bagofholding.h5.content.Array),
+                (np.linspace(0, 1, 3), h5c.Array),
+                # (, h5c.Array)
             ]
             simple_groups_ex_reducible = [
                 ({42: 42.0}, c.Dict),
@@ -149,6 +151,14 @@ class AbstractTestNamespace:
                 ([42.0], c.List),
                 ({"42"}, c.Set),
                 (frozenset({42}), c.FrozenSet),
+                ({"0": bytearray(b"\x00"), "1": bytearray(b"")}, c.StrKeyDict),
+                ({"0": 282574505116416}, c.StrKeyDict),  # Just a big int
+                ({"Ă": None}, c.Dict),
+                ({"/": None}, c.Dict),
+                ({"0/": None}, c.Dict),
+                ({"0/0": None}, c.Dict),
+                ({"_0": None}, c.StrKeyDict),
+                ({"\ud800": None}, c.Dict),
             ]
             global_content = [
                 (obj, c.Global)
@@ -173,6 +183,10 @@ class AbstractTestNamespace:
                     DotDict({"forty-two": 42}),  # Inheriting from a built-in class
                     NestedParent.NestedChild(),  # Requiring qualname
                     Recursing(2),
+                    # Arrays of str and bytes types get special treatment
+                    np.array([""], dtype="<U1"),  # string
+                    np.array([b""], dtype="|S1"),  # byte
+                    np.array([b"a", b"abc"], dtype="|S3"),  # different lengths
                 ]
             ]
 
@@ -294,15 +308,19 @@ class AbstractTestNamespace:
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
-        @given(data=st.recursive(
-            leaf_strategy(),
-            lambda children: st.dictionaries(
-                keys=st.text(alphabet=st.characters(blacklist_characters='\x00.'), min_size=1),
-                values=children,
-                min_size=1
-            ),
-            max_leaves=10
-        ))
+        @given(
+            data=st.recursive(
+                leaf_strategy(),
+                lambda children: st.dictionaries(
+                    keys=st.text(
+                        alphabet=st.characters(blacklist_characters="\x00."), min_size=1
+                    ),
+                    values=children,
+                    min_size=1,
+                ),
+                max_leaves=10,
+            )
+        )
         def test_hypothesis(self, data):
             with tempfile.TemporaryDirectory() as tmpdir:
                 path = os.path.join(tmpdir, "test.h5")
@@ -326,10 +344,12 @@ class AbstractTestNamespace:
             else:
                 self.assertEqual(a, b)
 
+
 class TestH5BagBagImplementation(AbstractTestNamespace.TestBagImplementation):
     @classmethod
     def bag_class(cls) -> type[bagofholding.h5.bag.H5Bag]:
         return bagofholding.h5.bag.H5Bag
+
 
 class TestH5TrieBagBagImplementation(AbstractTestNamespace.TestBagImplementation):
     @classmethod

@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 
 from bagofholding.bag import Bag, BagInfo
-from bagofholding.content import BespokeItem
+from bagofholding.content import BespokeItem, has_surrogates
 from bagofholding.exceptions import NotAGroupError
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType
 from bagofholding.h5.context import HasH5FileContext
@@ -107,11 +107,21 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
         self.file.create_dataset(path, data=h5py.Empty(dtype="f"))
 
     def pack_string(self, obj: str, path: str) -> None:
-        self.file.create_dataset(
-            path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
-        )
+        if has_surrogates(obj):
+            encoded = obj.encode("utf-16", errors="surrogatepass")
+            self.file.create_dataset(path, data=np.void(encoded))
+            self.file[path].attrs["_surrogate_str"] = True
+        else:
+            self.file.create_dataset(
+                path, data=obj, dtype=h5py.string_dtype(encoding="utf-8")
+            )
 
     def unpack_string(self, path: str) -> str:
+        if self.file[path].attrs.get("_surrogate_str", False):
+            return cast(
+                str,
+                self.file[path][()].tobytes().decode("utf-16", errors="surrogatepass"),
+            )
         return cast(str, self._unpack_raw(path).decode("utf-8"))
 
     def _pack_raw(self, obj: bytearray | bool | int | float, path: str) -> None:
@@ -176,7 +186,7 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
     def get_bespoke_content_class(
         self, obj: object
     ) -> type[BespokeItem[Any, Self]] | None:
-        if type(obj) is np.ndarray and obj.dtype in H5PY_DTYPE_WHITELIST:
+        if type(obj) is np.ndarray and obj.dtype.type in H5PY_DTYPE_WHITELIST:
             return cast(type[BespokeItem[Any, Self]], Array)
         return None
 
