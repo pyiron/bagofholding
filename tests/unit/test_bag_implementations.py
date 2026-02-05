@@ -143,6 +143,7 @@ class AbstractTestNamespace:
             simple_groups_ex_reducible = [
                 ({42: 42.0}, c.Dict),
                 ({"forty-two": 42}, c.StrKeyDict),
+                ({"forty/two": 42}, c.Dict),
                 (union_type, c.Union),
                 ((42,), c.Tuple),
                 ([42.0], c.List),
@@ -293,10 +294,6 @@ class AbstractTestNamespace:
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
-        @example(data={'': None}).xfail(
-                reason='Zero-sized strings explicitly disallowed.',
-                # TODO: use exception args once API raises stable error
-        )
         @given(data=st.recursive(
             leaf_strategy(),
             lambda children: st.dictionaries(
@@ -321,7 +318,11 @@ class AbstractTestNamespace:
                     self.assertIn(key, b)
                     self.assert_equal_recursive(a[key], b[key])
             elif isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
-                self.assertTrue(np.array_equal(a, b))
+                try:
+                    self.assertTrue(np.array_equal(a, b, equal_nan=True))
+                # np.isnan may complain on some non numerica dtypes
+                except TypeError:
+                    self.assertTrue(np.array_equal(a, b))
             else:
                 self.assertEqual(a, b)
 

@@ -871,9 +871,17 @@ KNOWN_GROUP_MAP: dict[type, type[Group[Any, Any]]] = {
 }
 
 
+def is_simple_string(string: str):
+    return (
+            string.isascii()
+        and ("/" not in string)
+        and (string[0].isalpha())
+    )
+
+
 def get_group_content_class(obj: object) -> type[Group[Any, Any]] | None:
     t = type(obj)
-    if t is dict and all(isinstance(k, str) for k in cast(dict[str, Any], obj)):
+    if t is dict and all(isinstance(k, str) and is_simple_string(k) for k in cast(dict[str, Any], obj)):
         return StrKeyDict
 
     return KNOWN_GROUP_MAP.get(t)
