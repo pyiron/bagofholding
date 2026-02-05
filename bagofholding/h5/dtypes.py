@@ -23,8 +23,9 @@ H5PY_DTYPE_WHITELIST = (
     np.complex64,
     np.complex128,
     np.bool_,
-    np.bytes_,
-    np.str_,
+    # np.bytes_,
+    # np.str_,
+    # h5py needs special handling for byte and string info
 )
 
 
