@@ -1,9 +1,13 @@
 import abc
 import contextlib
 import os
+import tempfile
 import unittest
 
 import numpy as np
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+from hypothesis.extra import numpy as np_st
 from pyiron_snippets.dotdict import DotDict
 from static.objects import (
     DRAGON,
@@ -19,7 +23,7 @@ from static.objects import (
 import bagofholding.bag as bag
 import bagofholding.content as c
 import bagofholding.h5.bag
-import bagofholding.h5.content
+import bagofholding.h5.content as h5c
 import bagofholding.h5.triebag
 from bagofholding import (
     BagMismatchError,
@@ -40,6 +44,27 @@ def get_modified_bag_info(cls: type[bag.Bag]) -> bag.BagInfo:
         qualname=cls.__qualname__,
         module=cls.__module__,
         version=always_42(),
+    )
+
+
+def numpy_array_strategy():
+    return np_st.arrays(
+        dtype=st.sampled_from(bagofholding.h5.dtypes.H5PY_DTYPE_WHITELIST),
+        shape=np_st.array_shapes(),
+    )
+
+
+def leaf_strategy():
+    return st.one_of(
+        st.none(),
+        st.text(alphabet=st.characters(blacklist_characters="\x00")),
+        st.booleans(),
+        st.integers(min_value=np.iinfo(np.int64).min, max_value=np.iinfo(np.int64).max),
+        st.floats(allow_nan=False, allow_infinity=False),
+        st.complex_numbers(allow_nan=False, allow_infinity=False),
+        st.binary(),
+        st.binary().map(bytearray),
+        numpy_array_strategy(),
     )
 
 
@@ -114,16 +139,26 @@ class AbstractTestNamespace:
                 (bytearray([42]), c.Bytearray),
             ]
             complex_items = [
-                (np.linspace(0, 1, 3), bagofholding.h5.content.Array),
+                (np.linspace(0, 1, 3), h5c.Array),
+                # (, h5c.Array)
             ]
             simple_groups_ex_reducible = [
                 ({42: 42.0}, c.Dict),
                 ({"forty-two": 42}, c.StrKeyDict),
+                ({"forty/two": 42}, c.Dict),
                 (union_type, c.Union),
                 ((42,), c.Tuple),
                 ([42.0], c.List),
                 ({"42"}, c.Set),
                 (frozenset({42}), c.FrozenSet),
+                ({"0": bytearray(b"\x00"), "1": bytearray(b"")}, c.StrKeyDict),
+                ({"0": 282574505116416}, c.StrKeyDict),  # Just a big int
+                ({"Ă": None}, c.Dict),
+                ({"/": None}, c.Dict),
+                ({"0/": None}, c.Dict),
+                ({"0/0": None}, c.Dict),
+                ({"_0": None}, c.StrKeyDict),
+                ({"\ud800": None}, c.Dict),
             ]
             global_content = [
                 (obj, c.Global)
@@ -148,6 +183,10 @@ class AbstractTestNamespace:
                     DotDict({"forty-two": 42}),  # Inheriting from a built-in class
                     NestedParent.NestedChild(),  # Requiring qualname
                     Recursing(2),
+                    # Arrays of str and bytes types get special treatment
+                    np.array([""], dtype="<U1"),  # string
+                    np.array([b""], dtype="|S1"),  # byte
+                    np.array([b"a", b"abc"], dtype="|S3"),  # different lengths
                 ]
             ]
 
@@ -267,6 +306,43 @@ class AbstractTestNamespace:
 
             with self.assertRaises(StringNotImportableError):
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
+
+        @settings(suppress_health_check=[HealthCheck.differing_executors])
+        @given(
+            data=st.recursive(
+                leaf_strategy(),
+                lambda children: st.dictionaries(
+                    keys=st.text(
+                        alphabet=st.characters(blacklist_characters="\x00."), min_size=1
+                    ),
+                    values=children,
+                    min_size=1,
+                ),
+                max_leaves=10,
+            )
+        )
+        def test_hypothesis(self, data):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = os.path.join(tmpdir, "test.h5")
+                self.bag_class().save(data, filepath=path)
+                loaded_data = self.bag_class()(path).load()
+
+            self.assert_equal_recursive(data, loaded_data)
+
+        def assert_equal_recursive(self, a, b):
+            if isinstance(a, dict) and isinstance(b, dict):
+                self.assertEqual(len(a), len(b))
+                for key in a:
+                    self.assertIn(key, b)
+                    self.assert_equal_recursive(a[key], b[key])
+            elif isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+                try:
+                    self.assertTrue(np.array_equal(a, b, equal_nan=True))
+                # np.isnan may complain on some non numerica dtypes
+                except TypeError:
+                    self.assertTrue(np.array_equal(a, b))
+            else:
+                self.assertEqual(a, b)
 
 
 class TestH5BagBagImplementation(AbstractTestNamespace.TestBagImplementation):

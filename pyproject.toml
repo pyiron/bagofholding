@@ -33,6 +33,7 @@ dependencies = [
     "numpy==2.4.2",
     "pygtrie==2.5.0",
     "pyiron_snippets==1.0.2",
+    "hypothesis==6.151.5",
 ]
 dynamic = [ "version",]
 authors = [
