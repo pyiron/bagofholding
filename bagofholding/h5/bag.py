@@ -10,7 +10,7 @@ import numpy as np
 from bagofholding.bag import Bag, BagInfo
 from bagofholding.content import BespokeItem, has_surrogates
 from bagofholding.exceptions import NotAGroupError
-from bagofholding.h5.content import Array, ArrayPacker, ArrayType
+from bagofholding.h5.content import Array, ArrayPacker, ArrayType, int_overflows
 from bagofholding.h5.context import HasH5FileContext
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
@@ -137,9 +137,17 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
         return bool(self._unpack_raw(path))
 
     def pack_long(self, obj: int, path: str) -> None:
-        return self._pack_raw(obj, path)
+        if int_overflows(obj):
+            self.file.create_dataset(
+                path, data=str(obj), dtype=h5py.string_dtype(encoding="utf-8")
+            )
+            self.file[path].attrs["_bigint"] = True
+        else:
+            self._pack_raw(obj, path)
 
     def unpack_long(self, path: str) -> int:
+        if self.file[path].attrs.get("_bigint", False):
+            return int(self._unpack_raw(path).decode("utf-8"))
         return int(self._unpack_raw(path))
 
     def pack_float(self, obj: float, path: str) -> None:

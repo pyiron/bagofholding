@@ -137,6 +137,8 @@ class AbstractTestNamespace:
                 (b"", c.Bytes),  # h5py can give size complaints about zero-length
                 # bytes, so test our the special handling there
                 (bytearray([42]), c.Bytearray),
+                (h5c._INT64_MIN - 1, c.Long),
+                (h5c._UINT64_MAX + 1, c.Long),
             ]
             complex_items = [
                 (np.linspace(0, 1, 3), h5c.Array),

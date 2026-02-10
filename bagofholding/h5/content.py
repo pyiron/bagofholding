@@ -9,6 +9,15 @@ import numpy as np
 from bagofholding.content import BespokeItem, Packer, UnpackingArguments
 from bagofholding.h5.dtypes import H5DtypeAlias
 
+_INT64_MIN = -9_223_372_036_854_775_808
+_UINT64_MAX = 18_446_744_073_709_551_615
+
+
+def int_overflows(n: int) -> bool:
+    """h5py breaks on very extreme integers. Catch them."""
+    return n < _INT64_MIN or n > _UINT64_MAX
+
+
 ArrayType: TypeAlias = np.ndarray[tuple[int, ...], H5DtypeAlias]
 
 
