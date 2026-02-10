@@ -11,7 +11,7 @@ import pygtrie
 from bagofholding.bag import PATH_DELIMITER, Bag, BagInfo
 from bagofholding.content import BespokeItem, has_surrogates
 from bagofholding.h5.bag import H5Info
-from bagofholding.h5.content import Array, ArrayPacker, ArrayType
+from bagofholding.h5.content import Array, ArrayPacker, ArrayType, int_overflows
 from bagofholding.h5.context import HasH5FileContext
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5Scalar, IntTypesAlias
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
@@ -43,6 +43,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
     _position_index_key: ClassVar[str] = "position_index"
     _index_map: ClassVar[bidict.bidict[str, int]] = bidict.bidict(
         {
+            # Real codes mapping to pack lists in self._packed
             "str": 0,
             "bool": 1,
             "long": 2,
@@ -53,9 +54,11 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             "bytearray": 7,
             "array": 8,
             "empty": 9,
-            "group": 10,
-            "empty_bytes": 11,
-            "surrogate_str": 12,
+            "bigint": 10,
+            # Synthetic codes mapping to concepts
+            "group": 100,
+            "empty_bytes": 101,
+            "surrogate_str": 102,
         }
     )
     _field_delimiter: ClassVar[str] = "::"
@@ -98,7 +101,8 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             list[bytearray],
             list[ArrayType],
             list[bytes],
-        ] = ([], [], [], [], [], [], [], [], [], [])
+            list[str],
+        ] = ([], [], [], [], [], [], [], [], [], [], [])
 
     @property
     def unpacked_trie(self) -> pygtrie.StringTrie:
@@ -155,6 +159,11 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         surrogate_group = self.file.create_group("surrogate_strs")
         for i, s in enumerate(self._packed[9]):
             surrogate_group.create_dataset(f"i{i}", data=np.void(s))
+
+        # h5py has overflow limits on integers, so store them separately stringified
+        self.file.create_dataset(
+            "bigint", data=np.array(self._packed[10], dtype=str_type)
+        )
 
         self.close()
 
@@ -272,7 +281,10 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         return bool(self._read_pathlike(path))
 
     def pack_long(self, obj: int, path: str) -> None:
-        self._pack_thing(obj, "long", path)
+        if int_overflows(obj):
+            self._pack_thing(str(obj), "bigint", path)
+        else:
+            self._pack_thing(obj, "long", path)
 
     def unpack_long(self, path: str) -> int:
         return int(self._read_pathlike(path))
