@@ -1,4 +1,4 @@
 channels:
 - conda-forge
 dependencies:
-- hypothesis =6.151.5
+- hypothesis =6.151.9
