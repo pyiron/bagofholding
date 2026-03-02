@@ -32,7 +32,7 @@ dependencies = [
     "h5py==3.15.1",
     "numpy==2.4.2",
     "pygtrie==2.5.0",
-    "pyiron_snippets==1.0.2",
+    "pyiron_snippets==1.2.0",
 ]
 dynamic = [ "version",]
 authors = [
