@@ -7,6 +7,7 @@
 [![Coverage](https://codecov.io/gh/pyiron/bagofholding/graph/badge.svg)](https://codecov.io/gh/pyiron/bagofholding)
 [![Documentation](https://readthedocs.org/projects/bagofholding/badge/?version=latest)](https://bagofholding.readthedocs.io/en/latest/?badge=latest)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17701281.svg)](https://doi.org/10.5281/zenodo.17701281)
 [![Anaconda](https://anaconda.org/conda-forge/bagofholding/badges/version.svg)](https://anaconda.org/conda-forge/bagofholding)
 [![Last Updated](https://anaconda.org/conda-forge/bagofholding/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/bagofholding)
 [![Platform](https://anaconda.org/conda-forge/bagofholding/badges/platforms.svg)](https://anaconda.org/conda-forge/bagofholding)
