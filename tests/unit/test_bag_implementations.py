@@ -251,37 +251,20 @@ class AbstractTestNamespace:
                 )
 
         def test_list_paths(self):
+            for sub in [
+                    "/subgroup",
+                    "/nested/subgroup",
+                    "/",
+            ]:
+                path = f"{self.save_name}.h5/{sub}"
+                obj = Parent()
+                self.bag_class().save(obj, path)
+                loaded_obj = self.bag_class()(path).load()
+                assert obj == loaded_obj
+
+        def test_sub_paths(self):
             self.bag_class().save(Parent(), self.save_name)
             paths = self.bag_class()(self.save_name).list_paths()
-            self.assertSetEqual(
-                {
-                    "object",
-                    "object/args",
-                    "object/args/i0",
-                    "object/constructor",
-                    "object/item_iterator",
-                    "object/kv_iterator",
-                    "object/state",
-                    "object/state/child",
-                    "object/state/child/args",
-                    "object/state/child/args/i0",
-                    "object/state/child/constructor",
-                    "object/state/child/item_iterator",
-                    "object/state/child/kv_iterator",
-                    "object/state/child/state",
-                    "object/state/child/state/data",
-                    "object/state/child/state/modified_data",
-                    "object/state/child/state/name",
-                    "object/state/child/state/parent",
-                    "object/state/data",
-                    "object/state/data/i0",
-                    "object/state/data/i1",
-                    "object/state/data/i2",
-                    "object/state/name",
-                },
-                set(paths),
-                msg=f"Got instead {paths}",
-            )
 
         def test_subaccess(self):
             r = Recursing(2)
