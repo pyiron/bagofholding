@@ -38,6 +38,7 @@ from bagofholding import (
 class MyTestStr(str):
     pass
 
+
 def always_42(module_name: str = "not even used") -> str:
     return "42"
 
