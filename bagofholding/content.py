@@ -872,7 +872,7 @@ KNOWN_GROUP_MAP: dict[type, type[Group[Any, Any]]] = {
 
 
 def is_simple_string(string: str) -> bool:
-    return string.isascii() and ("/" not in string)
+    return len(string) > 0 and string.isascii() and ("/" not in string)
 
 
 def has_surrogates(s: str) -> bool:
@@ -886,7 +886,7 @@ def has_surrogates(s: str) -> bool:
 def get_group_content_class(obj: object) -> type[Group[Any, Any]] | None:
     t = type(obj)
     if t is dict and all(
-        isinstance(k, str) and is_simple_string(k) for k in cast(dict[str, Any], obj)
+        type(k) is str and is_simple_string(k) for k in cast(dict[str, Any], obj)
     ):
         return StrKeyDict
 

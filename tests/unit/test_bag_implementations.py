@@ -35,6 +35,10 @@ from bagofholding import (
 )
 
 
+class MyTestStr(str):
+    pass
+
+
 def always_42(module_name: str = "not even used") -> str:
     return "42"
 
@@ -148,6 +152,8 @@ class AbstractTestNamespace:
                 ({42: 42.0}, c.Dict),
                 ({"forty-two": 42}, c.StrKeyDict),
                 ({"forty/two": 42}, c.Dict),
+                ({"": 42}, c.Dict),
+                ({MyTestStr("forty/two"): 42}, c.Dict),
                 (union_type, c.Union),
                 ((42,), c.Tuple),
                 ([42.0], c.List),
