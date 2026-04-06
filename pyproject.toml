@@ -53,7 +53,7 @@ widget = [
     "traitlets==5.14.3",
 ]
 dev = [
-    "hypothesis==6.151.10",
+    "hypothesis==6.151.11",
 ]
 
 [tool.hatch.build]
