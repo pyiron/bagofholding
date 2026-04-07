@@ -26,5 +26,6 @@ jobs:
       do-codacy: false
       do-coveralls: false
       do-mypy: true
+      mypy-env-files: .ci_support/environment.yml
       coverage-test-dir: tests/unit tests/integration
       do-benchmark-tests: ${{ github.event_name == 'pull_request' }}
