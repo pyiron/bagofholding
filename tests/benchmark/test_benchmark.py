@@ -173,7 +173,8 @@ class TestBenchmark(unittest.TestCase):
             def bag_class(cls) -> type[TrieH5Bag]:
                 return TrieH5Bag
 
-        sizes = np.arange(start=10, stop=221, step=20)
+        sizes = np.arange(10, 221, 20)
+        # Call positionally instead of start=,stop=,step= for sake of mypy numpy stubs
         metrics = ["size (mb)", "save (ms)", "load (ms)"]
         tools = [WithPickle, WithH5Bag, WithTrieH5Bag]
         scales = {
