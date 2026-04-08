@@ -28,10 +28,24 @@ class HasH5FileContext:
     def file(self, new_file: h5py.File | None) -> None:
         self._file = new_file
 
-    def open(self, mode: Literal["r", "r+", "w", "w-", "x", "a"]) -> h5py.File:
+    def _parse_path(self) -> tuple[pathlib.Path, str]:
+        '''Break the given filepath into the actual file path and a group path inside the file.'''
+        path = self.filepath.absolute()
+        while not (path.suffix == ".h5" or path.is_file()) and path != pathlib.Path("/"):
+            path = path.parent
+        # found neither .h5 extension or existing path, just take the whole path as given
+        if path == pathlib.Path("/"):
+            return self.filepath, "/"
+        return path, str(self.filepath.absolute().relative_to(path))
+
+    def open(self, mode: Literal["r", "r+", "w", "w-", "x", "a"]) -> h5py.Group:
+        filepath, grouppath = self._parse_path()
         if self._file is None:
-            self.file = h5py.File(self.filepath, mode, libver=self.libver_str)
-            return self.file
+            self.file = h5py.File(filepath, mode, libver=self.libver_str)
+            try:
+                return self.file[grouppath]
+            except KeyError:
+                return self.file.create_group(grouppath)
         else:
             raise FileAlreadyOpenError(f"The bag at {self.filepath} is already open")
 
