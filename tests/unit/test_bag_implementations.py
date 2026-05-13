@@ -84,8 +84,9 @@ class AbstractTestNamespace:
             cls.save_name = "savefile"
 
         def tearDown(self):
-            with contextlib.suppress(FileNotFoundError):
-                os.remove(self.save_name)
+            for path in (self.save_name, f"{self.save_name}.h5"):
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove(path)
 
         def test_bag_info_check(self):
             self.bag_class().save(42, self.save_name)
@@ -282,6 +283,115 @@ class AbstractTestNamespace:
                 set(paths),
                 msg=f"Got instead {paths}",
             )
+
+        def test_interior_paths_roundtrip(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                for sub in ("group", "nested/group", "/leading/slash"):
+                    path = f"{file_path}/{sub}"
+                    obj = Parent()
+                    self.bag_class().save(obj, path)
+                    self.assertEqual(obj, self.bag_class()(path).load())
+
+        def test_multiple_bags_per_file(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                payloads = {
+                    "first": Parent(),
+                    "deeply/nested/second": SomeData(),
+                    "third": Recursing(2),
+                }
+                for sub, obj in payloads.items():
+                    self.bag_class().save(obj, f"{file_path}/{sub}")
+                for sub, obj in payloads.items():
+                    self.assertEqual(
+                        obj,
+                        self.bag_class()(f"{file_path}/{sub}").load(),
+                        msg="Each bag in the file should round-trip independently",
+                    )
+
+        def test_interior_path_metadata_isolation(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                obj_a = np.polynomial.Polynomial([1, 2, 3])
+                obj_b = SomeData()
+
+                self.bag_class().save(obj_a, f"{file_path}/poly")
+                self.bag_class().save(
+                    obj_b, f"{file_path}/data", require_versions=False
+                )
+
+                bag_a = self.bag_class()(f"{file_path}/poly")
+                bag_b = self.bag_class()(f"{file_path}/data")
+
+                self.assertEqual(
+                    np.__version__,
+                    bag_a["object"].version,
+                    msg="Object metadata should be scoped to its own bag/group",
+                )
+                self.assertIsNone(
+                    bag_b["object"].version,
+                    msg="Metadata from another bag in the same file must not bleed across",
+                )
+                self.assertEqual(obj_a, bag_a.load())
+                self.assertEqual(obj_b, bag_b.load())
+
+        def test_interior_path_overwrite(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                self.bag_class().save(Parent(), f"{file_path}/spot")
+                # A peer bag we want to preserve across overwrites
+                self.bag_class().save(SomeData(), f"{file_path}/peer")
+
+                # overwrite=False must refuse, leaving the existing bag intact
+                with self.assertRaises(FileExistsError):
+                    self.bag_class().save(
+                        Recursing(2),
+                        f"{file_path}/spot",
+                        overwrite_existing=False,
+                    )
+                self.assertEqual(
+                    Parent(), self.bag_class()(f"{file_path}/spot").load()
+                )
+
+                # overwrite=True replaces just the targeted group
+                self.bag_class().save(
+                    Recursing(2), f"{file_path}/spot", overwrite_existing=True
+                )
+                self.assertEqual(
+                    Recursing(2),
+                    self.bag_class()(f"{file_path}/spot").load(),
+                )
+                self.assertEqual(
+                    SomeData(),
+                    self.bag_class()(f"{file_path}/peer").load(),
+                    msg="Overwriting one bag must not disturb its peers",
+                )
+
+        def test_interior_path_missing_group_for_read(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                self.bag_class().save(Parent(), f"{file_path}/present")
+                with self.assertRaises(
+                    KeyError,
+                    msg="Reading from a missing interior group should raise",
+                ):
+                    self.bag_class()(f"{file_path}/absent").load()
+
+        def test_custom_file_extension(self):
+            CustomExtBag = type(
+                "CustomExtBag",
+                (self.bag_class(),),
+                {"file_extensions": (".bag",)},
+            )
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "custom.bag")
+                obj_a = Parent()
+                obj_b = Recursing(2)
+                CustomExtBag.save(obj_a, f"{file_path}/a")
+                CustomExtBag.save(obj_b, f"{file_path}/b")
+                self.assertEqual(obj_a, CustomExtBag(f"{file_path}/a").load())
+                self.assertEqual(obj_b, CustomExtBag(f"{file_path}/b").load())
 
         def test_subaccess(self):
             r = Recursing(2)

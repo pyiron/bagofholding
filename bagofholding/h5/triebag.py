@@ -12,7 +12,11 @@ from bagofholding.bag import PATH_DELIMITER, Bag, BagInfo
 from bagofholding.content import BespokeItem, has_surrogates
 from bagofholding.h5.bag import H5Info
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType, int_overflows
-from bagofholding.h5.context import HasH5FileContext
+from bagofholding.h5.context import (
+    HasH5FileContext,
+    h5_prepare_save_target,
+    h5_target_exists,
+)
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST, H5Scalar, IntTypesAlias
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 from bagofholding.trie import decompose_stringtrie, reconstruct_stringtrie
@@ -116,10 +120,19 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
                 )
         return self._unpacked_trie
 
+    def _target_exists(self) -> bool:
+        return h5_target_exists(self.filepath, self.file_extensions)
+
+    @classmethod
+    def _prepare_save_target(
+        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+    ) -> None:
+        h5_prepare_save_target(filepath, overwrite_existing, cls.file_extensions)
+
     def _write(self) -> None:
         str_type = h5py.string_dtype(encoding="utf-8")
 
-        self.open("w")
+        self.open("a" if self.is_subpath else "w")
         segments, parents, values = decompose_stringtrie(
             self._packed_trie, null_value=(-1, -1)
         )

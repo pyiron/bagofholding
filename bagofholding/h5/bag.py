@@ -11,7 +11,11 @@ from bagofholding.bag import Bag, BagInfo
 from bagofholding.content import BespokeItem, has_surrogates
 from bagofholding.exceptions import NotAGroupError
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType, int_overflows
-from bagofholding.h5.context import HasH5FileContext
+from bagofholding.h5.context import (
+    HasH5FileContext,
+    h5_prepare_save_target,
+    h5_target_exists,
+)
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
@@ -51,11 +55,20 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
         self._context_depth = 0
         super().__init__(filepath)
 
+    def _target_exists(self) -> bool:
+        return h5_target_exists(self.filepath, self.file_extensions)
+
+    @classmethod
+    def _prepare_save_target(
+        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+    ) -> None:
+        h5_prepare_save_target(filepath, overwrite_existing, cls.file_extensions)
+
     def _write(self) -> None:
         self.close()
 
     def _pack_bag_info(self) -> None:
-        self.open("w")
+        self.open("a" if self.is_subpath else "w")
         super()._pack_bag_info()
 
     def _unpack_bag_info(self) -> BagInfo:
@@ -94,12 +107,15 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
             self.open("r")
         return self
 
+    def _resolve(self, path: str) -> h5py.Group | h5py.Dataset:
+        return self.file if path in ("/", "") else self.file[path]
+
     def _pack_field(self, path: str, key: str, value: str) -> None:
-        self.file[path].attrs[key] = value
+        self._resolve(path).attrs[key] = value
 
     def _unpack_field(self, path: str, key: str) -> str | None:
         try:
-            return self.maybe_decode(self.file[path].attrs[key])
+            return self.maybe_decode(self._resolve(path).attrs[key])
         except KeyError:
             return None
 

@@ -108,12 +108,10 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 dictionary mapping module names to a callable that takes this name and
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
+            overwrite_existing (bool): Whether to overwrite an existing bag at the
+                target location. (Default is True.)
         """
-        if os.path.exists(filepath):
-            if overwrite_existing and os.path.isfile(filepath):
-                os.remove(filepath)
-            else:
-                raise FileExistsError(f"{filepath} already exists or is not a file.")
+        cls._prepare_save_target(filepath, overwrite_existing)
         bag = cls(filepath)
         bag._pack_bag_info()
         pack(
@@ -130,6 +128,22 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         bag._write()
 
     @classmethod
+    def _prepare_save_target(
+        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+    ) -> None:
+        """Hook for clearing an existing target before a save.
+
+        By default, deletes an existing file at ``filepath`` (when allowed),
+        or raises :class:`FileExistsError` otherwise. Subclasses can override
+        to support more granular targets (e.g., a group inside a file).
+        """
+        if os.path.exists(filepath):
+            if overwrite_existing and os.path.isfile(filepath):
+                os.remove(filepath)
+            else:
+                raise FileExistsError(f"{filepath} already exists or is not a file.")
+
+    @classmethod
     def get_version(cls) -> str:
         return str(get_version(cls.__module__, {}))
 
@@ -138,7 +152,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
-        if os.path.isfile(self.filepath):
+        if self._target_exists():
             self.bag_info = self._unpack_bag_info()
             if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
                 raise BagMismatchError(
@@ -146,6 +160,15 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                     f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
                     f"is {self.bag_info}"
                 )
+
+    def _target_exists(self) -> bool:
+        """Hook for checking whether a saved bag is already present at the target.
+
+        By default, checks whether ``filepath`` is an existing file. Subclasses
+        can override to recognize more granular targets (e.g., a group inside
+        an HDF5 file).
+        """
+        return os.path.isfile(self.filepath)
 
     @abc.abstractmethod
     def _pack_field(self, path: str, key: str, value: str) -> None: ...
