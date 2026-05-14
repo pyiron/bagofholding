@@ -13,11 +13,7 @@ from bagofholding.exceptions import FileAlreadyOpenError, FileNotOpenError
 def _parse_h5_path(
     filepath: str | pathlib.Path, file_extensions: tuple[str, ...]
 ) -> tuple[pathlib.Path, str]:
-    """Split a path into (filesystem path, interior HDF5 group path).
-
-    See :meth:`HasH5FileContext._parse_path` for semantics; this is the same
-    logic exposed as a free function for use outside an instance.
-    """
+    """Split a path into (filesystem path, interior HDF5 group path)."""
     full = pathlib.Path(filepath).absolute()
     candidate = full
     while True:
@@ -58,24 +54,23 @@ def h5_prepare_save_target(
     """
     file_path, group_path = _parse_h5_path(filepath, file_extensions)
     if group_path == "/":
-        if os.path.exists(filepath):
-            if overwrite_existing and os.path.isfile(filepath):
-                os.remove(filepath)
-            else:
-                raise FileExistsError(
-                    f"{filepath} already exists or is not a file."
-                )
-        return
+        if not os.path.exists(filepath):
+            return
+        if overwrite_existing and os.path.isfile(filepath):
+            os.remove(filepath)
+            return
+        raise FileExistsError(f"{filepath} already exists or is not a file.")
     if not file_path.is_file():
         return
     with h5py.File(file_path, "a") as f:
-        if group_path in f:
-            if overwrite_existing:
-                del f[group_path]
-            else:
-                raise FileExistsError(
-                    f"Group {group_path!r} already exists in {file_path}."
-                )
+        if group_path not in f:
+            return
+        if overwrite_existing:
+            del f[group_path]
+            return
+        raise FileExistsError(
+            f"Group {group_path!r} already exists in {file_path}."
+        )
 
 
 class HasH5FileContext:
