@@ -82,6 +82,8 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
     ) -> None:
         self._file = None
         self._context_depth = 0
+        self._parsed_path = None
+        self._working_root = None
         self._unpacked_paths: StringArrayType | None = None
         self._unpacked_type_index: IntArrayType | None = None
         self._unpacked_position_index: IntArrayType | None = None

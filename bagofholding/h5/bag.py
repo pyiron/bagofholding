@@ -49,6 +49,8 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
     ) -> None:
         self._file = None
         self._context_depth = 0
+        self._parsed_path = None
+        self._working_root = None
         super().__init__(filepath, *args, **kwargs)
 
     def _load_existing_bag_info(self) -> BagInfo | None:

@@ -27,6 +27,8 @@ class HasH5FileContext:
     filepath: pathlib.Path
     _file: h5py.File | None
     _context_depth: int
+    _parsed_path: tuple[pathlib.Path, str] | None
+    _working_root: h5py.Group | None
 
     @property
     def file(self) -> h5py.Group:
@@ -39,14 +41,17 @@ class HasH5FileContext:
         """
         if self._file is None:
             raise FileNotOpenError(f"{self.filepath} is not open; use `open` or `with`")
-        group_path = self.h5_group_path
-        if group_path == "/":
-            return self._file
-        return self._file[group_path]
+        if self._working_root is None:
+            group_path = self.h5_group_path
+            self._working_root = (
+                self._file if group_path == "/" else self._file[group_path]
+            )
+        return self._working_root
 
     @file.setter
     def file(self, new_file: h5py.File | None) -> None:
         self._file = new_file
+        self._working_root = None
 
     def _parse_path(self) -> tuple[pathlib.Path, str]:
         """Split :attr:`filepath` into the filesystem path and an interior group path.
@@ -56,7 +61,14 @@ class HasH5FileContext:
         the (file path, interior group path) pair. The interior group path is
         always returned with a leading ``"/"``; ``"/"`` itself indicates no
         interior path (the bag is rooted at the file root).
+
+        Cached on first call: :attr:`filepath` is treated as fixed for the
+        lifetime of the bag, and the parse is hot enough during packing that
+        recomputing each access measurably costs stack frames (pathlib's
+        ``relative_to`` is recursive on Python 3.12).
         """
+        if self._parsed_path is not None:
+            return self._parsed_path
         full = self.filepath.absolute()
         candidate = full
         while True:
@@ -64,10 +76,15 @@ class HasH5FileContext:
                 interior_rel = full.relative_to(candidate)
                 interior = str(interior_rel)
                 if interior in (".", ""):
-                    return candidate, "/"
-                return candidate, "/" + interior.replace("\\", "/")
+                    self._parsed_path = (candidate, "/")
+                    return self._parsed_path
+                self._parsed_path = (
+                    candidate, "/" + interior.replace("\\", "/")
+                )
+                return self._parsed_path
             if candidate.parent == candidate:
-                return self.filepath, "/"
+                self._parsed_path = (self.filepath, "/")
+                return self._parsed_path
             candidate = candidate.parent
 
     @property
@@ -147,6 +164,7 @@ class HasH5FileContext:
         if self._file is not None:
             self._file.close()
             self._file = None
+            self._working_root = None
 
     def __del__(self) -> None:
         self.close()
