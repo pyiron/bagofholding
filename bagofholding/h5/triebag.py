@@ -126,9 +126,10 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
                 return None
             self._context_depth = 1
             try:
-                return self._unpack_bag_info()
+                info = self._unpack_bag_info()
             finally:
                 self._context_depth = 0
+            return info if info.qualname is not None else None
         finally:
             self.close()
 

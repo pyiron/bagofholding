@@ -1,6 +1,7 @@
 import abc
 import contextlib
 import os
+import pathlib
 import tempfile
 import unittest
 
@@ -377,6 +378,59 @@ class AbstractTestNamespace:
                     msg="Reading from a missing interior group should raise",
                 ):
                     self.bag_class()(f"{file_path}/absent").load()
+
+        def test_top_level_open_on_multibag_file(self):
+            """A file-root open on a file holding only interior bags must not
+            mis-detect a bag where none lives.
+            """
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                self.bag_class().save(Parent(), f"{file_path}/inside")
+
+                # No bag at the file root: instantiation should succeed cleanly
+                # without falsely tripping BagMismatchError on empty attrs.
+                root_bag = self.bag_class()(file_path)
+                self.assertFalse(
+                    hasattr(root_bag, "bag_info"),
+                    msg="No bag_info should be loaded when no bag lives at the path",
+                )
+                # But the interior bag still loads as expected.
+                self.assertEqual(
+                    Parent(),
+                    self.bag_class()(f"{file_path}/inside").load(),
+                )
+
+        def test_path_parsing_properties(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "data.h5")
+                self.bag_class().save(Parent(), file_path)
+
+                top = self.bag_class()(file_path)
+                self.assertFalse(top.is_subpath)
+                self.assertEqual("/", top.h5_group_path)
+                self.assertEqual(pathlib.Path(file_path), top.h5_file_path)
+
+                interior = self.bag_class()(f"{file_path}/sub/group")
+                self.assertTrue(interior.is_subpath)
+                self.assertEqual("/sub/group", interior.h5_group_path)
+                self.assertEqual(pathlib.Path(file_path), interior.h5_file_path)
+
+        def test_hdf5_extension_is_recognized(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "store.hdf5")
+                obj_a = Parent()
+                obj_b = Recursing(2)
+                self.bag_class().save(obj_a, f"{file_path}/a")
+                self.bag_class().save(obj_b, f"{file_path}/b")
+                self.assertEqual(obj_a, self.bag_class()(f"{file_path}/a").load())
+                self.assertEqual(obj_b, self.bag_class()(f"{file_path}/b").load())
+
+        def test_top_level_overwrite_existing_false(self):
+            self.bag_class().save(Parent(), self.save_name)
+            with self.assertRaises(FileExistsError):
+                self.bag_class().save(
+                    Recursing(2), self.save_name, overwrite_existing=False
+                )
 
         def test_custom_file_extension(self):
             CustomExtBag = type(
