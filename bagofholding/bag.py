@@ -152,23 +152,26 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     ) -> None:
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
-        if self._target_exists():
-            self.bag_info = self._unpack_bag_info()
-            if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
+        info = self._load_existing_bag_info()
+        if info is not None:
+            self.bag_info = info
+            if not self.validate_bag_info(info, self.get_bag_info()):
                 raise BagMismatchError(
                     f"The bag class {self.__class__} does not match the bag saved at "
                     f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
                     f"is {self.bag_info}"
                 )
 
-    def _target_exists(self) -> bool:
-        """Hook for checking whether a saved bag is already present at the target.
+    def _load_existing_bag_info(self) -> BagInfo | None:
+        """Return the saved :class:`BagInfo` at the target, or ``None`` if absent.
 
-        By default, checks whether ``filepath`` is an existing file. Subclasses
-        can override to recognize more granular targets (e.g., a group inside
-        an HDF5 file).
+        Subclasses can override to recognize more granular targets (e.g., a
+        group inside an HDF5 file) and to fold the existence check and the
+        unpack into a single file open.
         """
-        return os.path.isfile(self.filepath)
+        if not os.path.isfile(self.filepath):
+            return None
+        return self._unpack_bag_info()
 
     @abc.abstractmethod
     def _pack_field(self, path: str, key: str, value: str) -> None: ...

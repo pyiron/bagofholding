@@ -11,11 +11,7 @@ from bagofholding.bag import Bag, BagInfo
 from bagofholding.content import BespokeItem, has_surrogates
 from bagofholding.exceptions import NotAGroupError
 from bagofholding.h5.content import Array, ArrayPacker, ArrayType, int_overflows
-from bagofholding.h5.context import (
-    HasH5FileContext,
-    h5_prepare_save_target,
-    h5_target_exists,
-)
+from bagofholding.h5.context import HasH5FileContext
 from bagofholding.h5.dtypes import H5PY_DTYPE_WHITELIST
 from bagofholding.metadata import Metadata, VersionScrapingMap, VersionValidatorType
 
@@ -55,14 +51,31 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
         self._context_depth = 0
         super().__init__(filepath)
 
-    def _target_exists(self) -> bool:
-        return h5_target_exists(self.filepath, self.file_extensions)
+    def _load_existing_bag_info(self) -> BagInfo | None:
+        file_path, group_path = self._parse_path()
+        if not file_path.is_file():
+            return None
+        self._file = h5py.File(file_path, "r", libver=self.libver_str)
+        try:
+            if group_path != "/" and group_path not in self._file:
+                return None
+            self._context_depth = 1
+            try:
+                return self._unpack_bag_info()
+            finally:
+                self._context_depth = 0
+        finally:
+            self.close()
 
     @classmethod
     def _prepare_save_target(
         cls, filepath: str | pathlib.Path, overwrite_existing: bool
     ) -> None:
-        h5_prepare_save_target(filepath, overwrite_existing, cls.file_extensions)
+        inst = cls.__new__(cls)
+        inst._file = None
+        inst._context_depth = 0
+        inst.filepath = pathlib.Path(filepath)
+        inst._clear_existing_target(overwrite_existing)
 
     def _write(self) -> None:
         self.close()

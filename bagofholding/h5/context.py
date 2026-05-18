@@ -10,69 +10,6 @@ import h5py
 from bagofholding.exceptions import FileAlreadyOpenError, FileNotOpenError
 
 
-def _parse_h5_path(
-    filepath: str | pathlib.Path, file_extensions: tuple[str, ...]
-) -> tuple[pathlib.Path, str]:
-    """Split a path into (filesystem path, interior HDF5 group path)."""
-    full = pathlib.Path(filepath).absolute()
-    candidate = full
-    while True:
-        if candidate.suffix in file_extensions or candidate.is_file():
-            interior_rel = full.relative_to(candidate)
-            interior = str(interior_rel)
-            if interior in (".", ""):
-                return candidate, "/"
-            return candidate, "/" + interior.replace("\\", "/")
-        if candidate.parent == candidate:
-            return pathlib.Path(filepath), "/"
-        candidate = candidate.parent
-
-
-def h5_target_exists(
-    filepath: str | pathlib.Path, file_extensions: tuple[str, ...]
-) -> bool:
-    """Whether a bag is stored at the given (possibly interior) path."""
-    file_path, group_path = _parse_h5_path(filepath, file_extensions)
-    if group_path == "/":
-        return os.path.isfile(filepath)
-    if not file_path.is_file():
-        return False
-    with h5py.File(file_path, "r") as f:
-        return group_path in f
-
-
-def h5_prepare_save_target(
-    filepath: str | pathlib.Path,
-    overwrite_existing: bool,
-    file_extensions: tuple[str, ...],
-) -> None:
-    """Clear an existing target before writing a bag.
-
-    For top-level paths, this removes the file (or raises). For interior
-    paths, this removes the target group inside the file (or raises) and
-    leaves the rest of the file untouched.
-    """
-    file_path, group_path = _parse_h5_path(filepath, file_extensions)
-    if group_path == "/":
-        if not os.path.exists(filepath):
-            return
-        if overwrite_existing and os.path.isfile(filepath):
-            os.remove(filepath)
-            return
-        raise FileExistsError(f"{filepath} already exists or is not a file.")
-    if not file_path.is_file():
-        return
-    with h5py.File(file_path, "a") as f:
-        if group_path not in f:
-            return
-        if overwrite_existing:
-            del f[group_path]
-            return
-        raise FileExistsError(
-            f"Group {group_path!r} already exists in {file_path}."
-        )
-
-
 class HasH5FileContext:
     """
     A mixin class for context management with an :class:`h5py.File` object.
@@ -120,7 +57,18 @@ class HasH5FileContext:
         always returned with a leading ``"/"``; ``"/"`` itself indicates no
         interior path (the bag is rooted at the file root).
         """
-        return _parse_h5_path(self.filepath, self.file_extensions)
+        full = self.filepath.absolute()
+        candidate = full
+        while True:
+            if candidate.suffix in self.file_extensions or candidate.is_file():
+                interior_rel = full.relative_to(candidate)
+                interior = str(interior_rel)
+                if interior in (".", ""):
+                    return candidate, "/"
+                return candidate, "/" + interior.replace("\\", "/")
+            if candidate.parent == candidate:
+                return self.filepath, "/"
+            candidate = candidate.parent
 
     @property
     def h5_file_path(self) -> pathlib.Path:
@@ -150,10 +98,46 @@ class HasH5FileContext:
         if group_path in self._file:
             return self._file[group_path]
         if mode == "r":
-            raise KeyError(
-                f"Group {group_path!r} not found in {file_path}"
-            )
+            raise KeyError(f"Group {group_path!r} not found in {file_path}")
         return self._file.create_group(group_path)
+
+    def _clear_existing_target(self, overwrite_existing: bool) -> None:
+        """Delete any saved bag at :attr:`filepath` before a fresh write.
+
+        For top-level paths this removes the file; for interior paths it
+        removes only the target group, leaving the rest of the file intact.
+        Reuses :attr:`_file` if already open.
+        """
+        file_path, group_path = self._parse_path()
+        if group_path == "/":
+            if not os.path.exists(self.filepath):
+                return
+            if overwrite_existing and os.path.isfile(self.filepath):
+                os.remove(self.filepath)
+                return
+            raise FileExistsError(
+                f"{self.filepath} already exists or is not a file."
+            )
+        if self._file is not None:
+            self._clear_existing_group(self._file, group_path, overwrite_existing)
+            return
+        if not file_path.is_file():
+            return
+        with h5py.File(file_path, "a") as f:
+            self._clear_existing_group(f, group_path, overwrite_existing)
+
+    @staticmethod
+    def _clear_existing_group(
+        f: h5py.File, group_path: str, overwrite_existing: bool
+    ) -> None:
+        if group_path not in f:
+            return
+        if overwrite_existing:
+            del f[group_path]
+            return
+        raise FileExistsError(
+            f"Group {group_path!r} already exists in {f.filename}."
+        )
 
     def __exit__(
         self,
