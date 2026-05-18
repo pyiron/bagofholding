@@ -88,7 +88,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         self._unpacked_nonmetadata_paths: list[str] | None = None
         self._path_to_index: dict[str, int] | None = None
         self._unpacked_trie: pygtrie.StringTrie | None = None
-        super().__init__(filepath)
+        super().__init__(filepath, *args, **kwargs)
         self._packed_trie: pygtrie.StringTrie = pygtrie.StringTrie()
         self._packed: tuple[
             list[str],
@@ -134,19 +134,18 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             self.close()
 
     @classmethod
-    def _prepare_save_target(
+    def _new_for_save(
         cls, filepath: str | pathlib.Path, overwrite_existing: bool
-    ) -> None:
-        inst = cls.__new__(cls)
-        inst._file = None
-        inst._context_depth = 0
-        inst.filepath = pathlib.Path(filepath)
-        inst._clear_existing_target(overwrite_existing)
+    ) -> Self:
+        bag = cls(filepath, _skip_load=True)
+        bag._open_for_write(overwrite_existing)
+        return bag
 
     def _write(self) -> None:
         str_type = h5py.string_dtype(encoding="utf-8")
 
-        self.open("a" if self.is_subpath else "w")
+        if self._file is None:
+            self.open("a" if self.is_subpath else "w")
         segments, parents, values = decompose_stringtrie(
             self._packed_trie, null_value=(-1, -1)
         )

@@ -49,7 +49,7 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
     ) -> None:
         self._file = None
         self._context_depth = 0
-        super().__init__(filepath)
+        super().__init__(filepath, *args, **kwargs)
 
     def _load_existing_bag_info(self) -> BagInfo | None:
         file_path, group_path = self._parse_path()
@@ -69,21 +69,15 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
             self.close()
 
     @classmethod
-    def _prepare_save_target(
+    def _new_for_save(
         cls, filepath: str | pathlib.Path, overwrite_existing: bool
-    ) -> None:
-        inst = cls.__new__(cls)
-        inst._file = None
-        inst._context_depth = 0
-        inst.filepath = pathlib.Path(filepath)
-        inst._clear_existing_target(overwrite_existing)
+    ) -> Self:
+        bag = cls(filepath, _skip_load=True)
+        bag._open_for_write(overwrite_existing)
+        return bag
 
     def _write(self) -> None:
         self.close()
-
-    def _pack_bag_info(self) -> None:
-        self.open("a" if self.is_subpath else "w")
-        super()._pack_bag_info()
 
     def _unpack_bag_info(self) -> BagInfo:
         with self:

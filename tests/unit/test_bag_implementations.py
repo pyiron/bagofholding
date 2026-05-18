@@ -4,6 +4,7 @@ import os
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 import numpy as np
 from hypothesis import HealthCheck, given, settings
@@ -424,6 +425,68 @@ class AbstractTestNamespace:
                 self.bag_class().save(obj_b, f"{file_path}/b")
                 self.assertEqual(obj_a, self.bag_class()(f"{file_path}/a").load())
                 self.assertEqual(obj_b, self.bag_class()(f"{file_path}/b").load())
+
+        def _count_file_opens(self, action):
+            """Run ``action`` and return the number of times h5py.File was opened."""
+            import h5py as _h5py
+            real_File = _h5py.File
+            counter = mock.MagicMock(side_effect=real_File)
+            with mock.patch.object(_h5py, "File", counter):
+                action()
+            return counter.call_count
+
+        def test_save_opens_file_once_for_new_top_level(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "fresh.h5")
+                opens = self._count_file_opens(
+                    lambda: self.bag_class().save(Parent(), file_path)
+                )
+                self.assertEqual(
+                    1, opens,
+                    msg="Saving a new top-level bag should open the file exactly once",
+                )
+
+        def test_save_opens_file_once_for_overwrite_top_level(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "fresh.h5")
+                self.bag_class().save(Parent(), file_path)
+                opens = self._count_file_opens(
+                    lambda: self.bag_class().save(Recursing(2), file_path)
+                )
+                self.assertEqual(
+                    1, opens,
+                    msg="Overwriting a top-level bag should open the file exactly once",
+                )
+
+        def test_save_opens_file_once_for_new_interior(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                # Pre-create the file with a peer bag so the second save sees an existing file.
+                self.bag_class().save(Parent(), f"{file_path}/peer")
+                opens = self._count_file_opens(
+                    lambda: self.bag_class().save(
+                        Recursing(2), f"{file_path}/fresh"
+                    )
+                )
+                self.assertEqual(
+                    1, opens,
+                    msg="Adding a new interior bag should open the file exactly once",
+                )
+
+        def test_save_opens_file_once_for_overwrite_interior(self):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "multi.h5")
+                self.bag_class().save(Parent(), f"{file_path}/spot")
+                self.bag_class().save(Parent(), f"{file_path}/peer")
+                opens = self._count_file_opens(
+                    lambda: self.bag_class().save(
+                        Recursing(2), f"{file_path}/spot"
+                    )
+                )
+                self.assertEqual(
+                    1, opens,
+                    msg="Overwriting an interior bag should open the file exactly once",
+                )
 
         def test_top_level_overwrite_existing_false(self):
             self.bag_class().save(Parent(), self.save_name)

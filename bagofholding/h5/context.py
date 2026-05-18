@@ -101,43 +101,37 @@ class HasH5FileContext:
             raise KeyError(f"Group {group_path!r} not found in {file_path}")
         return self._file.create_group(group_path)
 
-    def _clear_existing_target(self, overwrite_existing: bool) -> None:
-        """Delete any saved bag at :attr:`filepath` before a fresh write.
+    def _open_for_write(self, overwrite_existing: bool) -> None:
+        """Open the underlying file and prepare the target group for a fresh write.
 
-        For top-level paths this removes the file; for interior paths it
-        removes only the target group, leaving the rest of the file intact.
-        Reuses :attr:`_file` if already open.
+        Combines validating the target, clearing existing data, and opening
+        the file into a single :func:`h5py.File` call so a save touches the
+        file only once.
         """
         file_path, group_path = self._parse_path()
         if group_path == "/":
-            if not os.path.exists(self.filepath):
-                return
-            if overwrite_existing and os.path.isfile(self.filepath):
-                os.remove(self.filepath)
-                return
-            raise FileExistsError(
-                f"{self.filepath} already exists or is not a file."
-            )
-        if self._file is not None:
-            self._clear_existing_group(self._file, group_path, overwrite_existing)
+            if os.path.exists(self.filepath):
+                if overwrite_existing and os.path.isfile(self.filepath):
+                    os.remove(self.filepath)
+                else:
+                    raise FileExistsError(
+                        f"{self.filepath} already exists or is not a file."
+                    )
+            self._file = h5py.File(file_path, "w", libver=self.libver_str)
             return
-        if not file_path.is_file():
-            return
-        with h5py.File(file_path, "a") as f:
-            self._clear_existing_group(f, group_path, overwrite_existing)
-
-    @staticmethod
-    def _clear_existing_group(
-        f: h5py.File, group_path: str, overwrite_existing: bool
-    ) -> None:
-        if group_path not in f:
-            return
-        if overwrite_existing:
-            del f[group_path]
-            return
-        raise FileExistsError(
-            f"Group {group_path!r} already exists in {f.filename}."
-        )
+        self._file = h5py.File(file_path, "a", libver=self.libver_str)
+        try:
+            if group_path in self._file:
+                if overwrite_existing:
+                    del self._file[group_path]
+                else:
+                    raise FileExistsError(
+                        f"Group {group_path!r} already exists in {file_path}."
+                    )
+            self._file.create_group(group_path)
+        except BaseException:
+            self.close()
+            raise
 
     def __exit__(
         self,

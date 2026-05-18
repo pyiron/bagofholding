@@ -111,8 +111,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
             overwrite_existing (bool): Whether to overwrite an existing bag at the
                 target location. (Default is True.)
         """
-        cls._prepare_save_target(filepath, overwrite_existing)
-        bag = cls(filepath)
+        bag = cls._new_for_save(filepath, overwrite_existing)
         bag._pack_bag_info()
         pack(
             obj,
@@ -126,6 +125,19 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
             _pickle_protocol=_pickle_protocol,
         )
         bag._write()
+
+    @classmethod
+    def _new_for_save(
+        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+    ) -> Self:
+        """Hook: build a bag instance ready to be packed into.
+
+        Default implementation clears the target via :meth:`_prepare_save_target`
+        and then constructs the bag normally. Subclasses can override to share
+        an open file handle between clearing and packing.
+        """
+        cls._prepare_save_target(filepath, overwrite_existing)
+        return cls(filepath)
 
     @classmethod
     def _prepare_save_target(
@@ -148,10 +160,16 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         return str(get_version(cls.__module__, {}))
 
     def __init__(
-        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
+        self,
+        filepath: str | pathlib.Path,
+        *args: object,
+        _skip_load: bool = False,
+        **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
+        if _skip_load:
+            return
         info = self._load_existing_bag_info()
         if info is not None:
             self.bag_info = info
