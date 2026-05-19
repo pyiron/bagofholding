@@ -11,7 +11,7 @@ on:
 
 jobs:
   pyiron:
-    uses: pyiron/actions/.github/workflows/hatch-release.yml@actions-4.0.12
+    uses: pyiron/actions/.github/workflows/hatch-release.yml@actions-4.2.1
     secrets: inherit
     with:
       semantic-upper-bound: 'minor'
