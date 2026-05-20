@@ -78,9 +78,7 @@ class HasH5FileContext:
                 if interior in (".", ""):
                     self._parsed_path = (candidate, "/")
                     return self._parsed_path
-                self._parsed_path = (
-                    candidate, "/" + interior.replace("\\", "/")
-                )
+                self._parsed_path = (candidate, "/" + interior.replace("\\", "/"))
                 return self._parsed_path
             if candidate.parent == candidate:
                 self._parsed_path = (self.filepath, "/")

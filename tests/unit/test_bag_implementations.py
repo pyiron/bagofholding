@@ -352,9 +352,7 @@ class AbstractTestNamespace:
                         f"{file_path}/spot",
                         overwrite_existing=False,
                     )
-                self.assertEqual(
-                    Parent(), self.bag_class()(f"{file_path}/spot").load()
-                )
+                self.assertEqual(Parent(), self.bag_class()(f"{file_path}/spot").load())
 
                 # overwrite=True replaces just the targeted group
                 self.bag_class().save(
@@ -429,6 +427,7 @@ class AbstractTestNamespace:
         def _count_file_opens(self, action):
             """Run ``action`` and return the number of times h5py.File was opened."""
             import h5py as _h5py
+
             real_File = _h5py.File
             counter = mock.MagicMock(side_effect=real_File)
             with mock.patch.object(_h5py, "File", counter):
@@ -442,7 +441,8 @@ class AbstractTestNamespace:
                     lambda: self.bag_class().save(Parent(), file_path)
                 )
                 self.assertEqual(
-                    1, opens,
+                    1,
+                    opens,
                     msg="Saving a new top-level bag should open the file exactly once",
                 )
 
@@ -454,7 +454,8 @@ class AbstractTestNamespace:
                     lambda: self.bag_class().save(Recursing(2), file_path)
                 )
                 self.assertEqual(
-                    1, opens,
+                    1,
+                    opens,
                     msg="Overwriting a top-level bag should open the file exactly once",
                 )
 
@@ -464,12 +465,11 @@ class AbstractTestNamespace:
                 # Pre-create the file with a peer bag so the second save sees an existing file.
                 self.bag_class().save(Parent(), f"{file_path}/peer")
                 opens = self._count_file_opens(
-                    lambda: self.bag_class().save(
-                        Recursing(2), f"{file_path}/fresh"
-                    )
+                    lambda: self.bag_class().save(Recursing(2), f"{file_path}/fresh")
                 )
                 self.assertEqual(
-                    1, opens,
+                    1,
+                    opens,
                     msg="Adding a new interior bag should open the file exactly once",
                 )
 
@@ -479,12 +479,11 @@ class AbstractTestNamespace:
                 self.bag_class().save(Parent(), f"{file_path}/spot")
                 self.bag_class().save(Parent(), f"{file_path}/peer")
                 opens = self._count_file_opens(
-                    lambda: self.bag_class().save(
-                        Recursing(2), f"{file_path}/spot"
-                    )
+                    lambda: self.bag_class().save(Recursing(2), f"{file_path}/spot")
                 )
                 self.assertEqual(
-                    1, opens,
+                    1,
+                    opens,
                     msg="Overwriting an interior bag should open the file exactly once",
                 )
 
