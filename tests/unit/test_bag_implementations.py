@@ -494,6 +494,30 @@ class AbstractTestNamespace:
                     Recursing(2), self.save_name, overwrite_existing=False
                 )
 
+        def test_load_nonexistent_file(self):
+            """Instantiating against a missing file is fine; loading then fails."""
+            with tempfile.TemporaryDirectory() as tmpdir:
+                missing = os.path.join(tmpdir, "missing.h5")
+                bag_ = self.bag_class()(missing)
+                self.assertFalse(
+                    hasattr(bag_, "bag_info"),
+                    msg="No bag_info should be loaded when the file is missing",
+                )
+                with self.assertRaises(
+                    (FileNotFoundError, OSError),
+                    msg="Loading from a missing file should raise",
+                ):
+                    bag_.load()
+
+        def test_save_to_non_file_location(self):
+            """Saving where the target path is a directory (not a file) fails cleanly."""
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with self.assertRaises(
+                    FileExistsError,
+                    msg="Saving into a directory path should raise FileExistsError",
+                ):
+                    self.bag_class().save(Parent(), tmpdir)
+
         def test_custom_file_extension(self):
             CustomExtBag = type(
                 "CustomExtBag",
