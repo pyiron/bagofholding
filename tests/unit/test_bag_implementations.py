@@ -518,6 +518,17 @@ class AbstractTestNamespace:
                 ):
                     self.bag_class().save(Parent(), tmpdir)
 
+        def test_open_creates_missing_interior_group(self):
+            """`open` in a write mode creates a missing interior group."""
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "data.h5")
+                bag_ = self.bag_class()(f"{file_path}/fresh")
+                try:
+                    group = bag_.open("a")
+                    self.assertEqual("/fresh", group.name)
+                finally:
+                    bag_.close()
+
         def test_custom_file_extension(self):
             CustomExtBag = type(
                 "CustomExtBag",
