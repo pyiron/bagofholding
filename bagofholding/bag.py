@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-import os.path
 import pathlib
 import pickle
 from collections.abc import Iterator, Mapping
@@ -127,33 +126,16 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         bag._write()
 
     @classmethod
+    @abc.abstractmethod
     def _new_for_save(
         cls, filepath: str | pathlib.Path, overwrite_existing: bool
     ) -> Self:
         """Hook: build a bag instance ready to be packed into.
 
-        Default implementation clears the target via :meth:`_prepare_save_target`
-        and then constructs the bag normally. Subclasses can override to share
-        an open file handle between clearing and packing.
+        Implementations are responsible for clearing or validating the target
+        at ``filepath`` (honoring ``overwrite_existing``) and returning an
+        instance whose backing store is prepared for a fresh write.
         """
-        cls._prepare_save_target(filepath, overwrite_existing)
-        return cls(filepath)
-
-    @classmethod
-    def _prepare_save_target(
-        cls, filepath: str | pathlib.Path, overwrite_existing: bool
-    ) -> None:
-        """Hook for clearing an existing target before a save.
-
-        By default, deletes an existing file at ``filepath`` (when allowed),
-        or raises :class:`FileExistsError` otherwise. Subclasses can override
-        to support more granular targets (e.g., a group inside a file).
-        """
-        if os.path.exists(filepath):
-            if overwrite_existing and os.path.isfile(filepath):
-                os.remove(filepath)
-            else:
-                raise FileExistsError(f"{filepath} already exists or is not a file.")
 
     @classmethod
     def get_version(cls) -> str:
@@ -180,16 +162,14 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                     f"is {self.bag_info}"
                 )
 
+    @abc.abstractmethod
     def _load_existing_bag_info(self) -> BagInfo | None:
         """Return the saved :class:`BagInfo` at the target, or ``None`` if absent.
 
-        Subclasses can override to recognize more granular targets (e.g., a
-        group inside an HDF5 file) and to fold the existence check and the
-        unpack into a single file open.
+        Implementations should recognize the backing store's notion of a
+        target (e.g., a file, or a group inside an HDF5 file) and fold the
+        existence check and the unpack into a single read.
         """
-        if not os.path.isfile(self.filepath):
-            return None
-        return self._unpack_bag_info()
 
     @abc.abstractmethod
     def _pack_field(self, path: str, key: str, value: str) -> None: ...
