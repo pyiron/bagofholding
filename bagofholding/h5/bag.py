@@ -49,14 +49,37 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
     ) -> None:
         self._file = None
         self._context_depth = 0
-        super().__init__(filepath)
+        self._parsed_path = None
+        self._working_root = None
+        super().__init__(filepath, *args, **kwargs)
+
+    def _load_existing_bag_info(self) -> BagInfo | None:
+        file_path, group_path = self._parse_path()
+        if not file_path.is_file():
+            return None
+        self._file = h5py.File(file_path, "r", libver=self.libver_str)
+        try:
+            if group_path != "/" and group_path not in self._file:
+                return None
+            self._context_depth = 1
+            try:
+                info = self._unpack_bag_info()
+            finally:
+                self._context_depth = 0
+            return info if info.qualname is not None else None
+        finally:
+            self.close()
+
+    @classmethod
+    def _new_for_save(
+        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+    ) -> Self:
+        bag = cls(filepath, _skip_load=True)
+        bag._open_for_write(overwrite_existing)
+        return bag
 
     def _write(self) -> None:
         self.close()
-
-    def _pack_bag_info(self) -> None:
-        self.open("w")
-        super()._pack_bag_info()
 
     def _unpack_bag_info(self) -> BagInfo:
         with self:
@@ -94,12 +117,15 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
             self.open("r")
         return self
 
+    def _resolve(self, path: str) -> h5py.Group | h5py.Dataset:
+        return self.file if path in ("/", "") else self.file[path]
+
     def _pack_field(self, path: str, key: str, value: str) -> None:
-        self.file[path].attrs[key] = value
+        self._resolve(path).attrs[key] = value
 
     def _unpack_field(self, path: str, key: str) -> str | None:
         try:
-            return self.maybe_decode(self.file[path].attrs[key])
+            return self.maybe_decode(self._resolve(path).attrs[key])
         except KeyError:
             return None
 

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-import os.path
 import pathlib
 import pickle
 from collections.abc import Iterator, Mapping
@@ -108,13 +107,10 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 dictionary mapping module names to a callable that takes this name and
                 returns a version (or None). The default callable imports the module
                 string and looks for a `__version__` attribute.
+            overwrite_existing (bool): Whether to overwrite an existing bag at the
+                target location. (Default is True.)
         """
-        if os.path.exists(filepath):
-            if overwrite_existing and os.path.isfile(filepath):
-                os.remove(filepath)
-            else:
-                raise FileExistsError(f"{filepath} already exists or is not a file.")
-        bag = cls(filepath)
+        bag = cls._new_for_save(filepath, overwrite_existing)
         bag._pack_bag_info()
         pack(
             obj,
@@ -130,22 +126,50 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         bag._write()
 
     @classmethod
+    @abc.abstractmethod
+    def _new_for_save(
+        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+    ) -> Self:
+        """Hook: build a bag instance ready to be packed into.
+
+        Implementations are responsible for clearing or validating the target
+        at ``filepath`` (honoring ``overwrite_existing``) and returning an
+        instance whose backing store is prepared for a fresh write.
+        """
+
+    @classmethod
     def get_version(cls) -> str:
         return str(get_version(cls.__module__, {}))
 
     def __init__(
-        self, filepath: str | pathlib.Path, *args: object, **kwargs: Any
+        self,
+        filepath: str | pathlib.Path,
+        *args: object,
+        _skip_load: bool = False,
+        **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
-        if os.path.isfile(self.filepath):
-            self.bag_info = self._unpack_bag_info()
-            if not self.validate_bag_info(self.bag_info, self.get_bag_info()):
+        if _skip_load:
+            return
+        info = self._load_existing_bag_info()
+        if info is not None:
+            self.bag_info = info
+            if not self.validate_bag_info(info, self.get_bag_info()):
                 raise BagMismatchError(
                     f"The bag class {self.__class__} does not match the bag saved at "
                     f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
                     f"is {self.bag_info}"
                 )
+
+    @abc.abstractmethod
+    def _load_existing_bag_info(self) -> BagInfo | None:
+        """Return the saved :class:`BagInfo` at the target, or ``None`` if absent.
+
+        Implementations should recognize the backing store's notion of a
+        target (e.g., a file, or a group inside an HDF5 file) and fold the
+        existence check and the unpack into a single read.
+        """
 
     @abc.abstractmethod
     def _pack_field(self, path: str, key: str, value: str) -> None: ...

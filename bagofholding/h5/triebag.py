@@ -82,13 +82,15 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
     ) -> None:
         self._file = None
         self._context_depth = 0
+        self._parsed_path = None
+        self._working_root = None
         self._unpacked_paths: StringArrayType | None = None
         self._unpacked_type_index: IntArrayType | None = None
         self._unpacked_position_index: IntArrayType | None = None
         self._unpacked_nonmetadata_paths: list[str] | None = None
         self._path_to_index: dict[str, int] | None = None
         self._unpacked_trie: pygtrie.StringTrie | None = None
-        super().__init__(filepath)
+        super().__init__(filepath, *args, **kwargs)
         self._packed_trie: pygtrie.StringTrie = pygtrie.StringTrie()
         self._packed: tuple[
             list[str],
@@ -116,10 +118,36 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
                 )
         return self._unpacked_trie
 
+    def _load_existing_bag_info(self) -> BagInfo | None:
+        file_path, group_path = self._parse_path()
+        if not file_path.is_file():
+            return None
+        self._file = h5py.File(file_path, "r", libver=self.libver_str)
+        try:
+            if group_path != "/" and group_path not in self._file:
+                return None
+            self._context_depth = 1
+            try:
+                info = self._unpack_bag_info()
+            finally:
+                self._context_depth = 0
+            return info if info.qualname is not None else None
+        finally:
+            self.close()
+
+    @classmethod
+    def _new_for_save(
+        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+    ) -> Self:
+        bag = cls(filepath, _skip_load=True)
+        bag._open_for_write(overwrite_existing)
+        return bag
+
     def _write(self) -> None:
         str_type = h5py.string_dtype(encoding="utf-8")
 
-        self.open("w")
+        if self._file is None:
+            self.open("a" if self.is_subpath else "w")
         segments, parents, values = decompose_stringtrie(
             self._packed_trie, null_value=(-1, -1)
         )
