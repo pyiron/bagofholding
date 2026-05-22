@@ -570,12 +570,14 @@ class AbstractTestNamespace:
 
         def test_save_to_non_file_location(self):
             """Saving where the target path is a directory (not a file) fails cleanly."""
-            with tempfile.TemporaryDirectory() as tmpdir:
-                with self.assertRaises(
+            with (
+                tempfile.TemporaryDirectory() as tmpdir,
+                self.assertRaises(
                     FileExistsError,
                     msg="Saving into a directory path should raise FileExistsError",
-                ):
-                    self.bag_class().save(Parent(), tmpdir)
+                ),
+            ):
+                self.bag_class().save(Parent(), tmpdir)
 
         def test_open_creates_missing_interior_group(self):
             """`open` in a write mode creates a missing interior group."""
