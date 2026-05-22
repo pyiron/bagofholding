@@ -136,6 +136,7 @@ class HasH5FileContext:
             return
         self._file = h5py.File(file_path, "a", libver=self.libver_str)
         try:
+            self._reject_save_under_existing_bag(group_path)
             if group_path in self._file:
                 if overwrite_existing:
                     del self._file[group_path]
@@ -147,6 +148,32 @@ class HasH5FileContext:
         except BaseException:
             self.close()
             raise
+
+    def _reject_save_under_existing_bag(self, group_path: str) -> None:
+        """Refuse to save into a group that sits below an existing bag.
+
+        Walks the ancestors of ``group_path`` inside the open file and raises
+        if any of them is itself the root of a stored bag (detected by the
+        presence of a ``qualname`` attribute, which every BagInfo writes).
+        Nesting bags would let the outer bag observe the inner bag's payload
+        through its own metadata, which is not a coherent state.
+        """
+        assert self._file is not None
+        parts = [p for p in group_path.strip("/").split("/") if p]
+        cur = ""
+        for part in parts[:-1]:
+            cur += "/" + part
+            if cur not in self._file:
+                continue
+            group = self._file[cur]
+            # H5Bag writes its bag info as group attributes; TrieH5Bag instead
+            # writes it inside a `trie_segments` dataset under the group. Either
+            # marker means the group is already the root of a stored bag.
+            if "qualname" in group.attrs or "trie_segments" in group:
+                raise FileExistsError(
+                    f"Cannot save a bag at {group_path!r}: an existing bag "
+                    f"already lives at the ancestor group {cur!r}."
+                )
 
     def __exit__(
         self,
