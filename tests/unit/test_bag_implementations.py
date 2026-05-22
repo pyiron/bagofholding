@@ -368,6 +368,65 @@ class AbstractTestNamespace:
                     msg="Overwriting one bag must not disturb its peers",
                 )
 
+        def test_save_above_existing_bag_overwrites_descendants(self):
+            """Saving a new bag at an ancestor of an existing bag wipes the
+            descendant when overwriting is allowed, and refuses otherwise."""
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "nested.h5")
+                self.bag_class().save(Parent(), f"{file_path}/sub/inner")
+
+                with self.assertRaises(
+                    FileExistsError,
+                    msg="overwrite_existing=False must refuse to clobber the ancestor",
+                ):
+                    self.bag_class().save(
+                        Recursing(2),
+                        f"{file_path}/sub",
+                        overwrite_existing=False,
+                    )
+                self.assertEqual(
+                    Parent(),
+                    self.bag_class()(f"{file_path}/sub/inner").load(),
+                    msg="The inner bag must survive a refused save",
+                )
+
+                self.bag_class().save(Recursing(2), f"{file_path}/sub")
+                self.assertEqual(
+                    Recursing(2),
+                    self.bag_class()(f"{file_path}/sub").load(),
+                )
+                with self.assertRaises(
+                    KeyError,
+                    msg="The inner bag's group must be gone after overwriting its ancestor",
+                ):
+                    self.bag_class()(f"{file_path}/sub/inner").load()
+
+        def test_save_below_existing_bag_is_rejected(self):
+            """A bag cannot live inside another bag -- the outer bag's metadata
+            would otherwise reach into the inner bag's storage."""
+            with tempfile.TemporaryDirectory() as tmpdir:
+                file_path = os.path.join(tmpdir, "nested.h5")
+                self.bag_class().save(Parent(), f"{file_path}/sub")
+
+                for overwrite in (True, False):
+                    with self.assertRaises(
+                        FileExistsError,
+                        msg=(
+                            "Saving below an existing bag must be rejected "
+                            f"regardless of overwrite_existing={overwrite}"
+                        ),
+                    ):
+                        self.bag_class().save(
+                            Recursing(2),
+                            f"{file_path}/sub/inner",
+                            overwrite_existing=overwrite,
+                        )
+                self.assertEqual(
+                    Parent(),
+                    self.bag_class()(f"{file_path}/sub").load(),
+                    msg="The outer bag must be untouched by the rejected saves",
+                )
+
         def test_interior_path_missing_group_for_read(self):
             with tempfile.TemporaryDirectory() as tmpdir:
                 file_path = os.path.join(tmpdir, "multi.h5")
