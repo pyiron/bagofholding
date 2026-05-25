@@ -50,10 +50,10 @@ Repository = "https://github.com/pyiron/bagofholding"
 [project.optional-dependencies]
 widget = [
     "ipytree==0.2.2",
-    "traitlets==5.14.3",
+    "traitlets==5.15.0",
 ]
 dev = [
-    "hypothesis==6.151.11",
+    "hypothesis==6.152.8",
 ]
 
 [tool.hatch.build]
