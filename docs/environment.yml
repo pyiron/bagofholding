@@ -14,4 +14,3 @@ dependencies:
 - numpy =2.4.6
 - pygtrie =2.5.0
 - pyiron_snippets =1.2.1
-- python >=3.11,<3.15
