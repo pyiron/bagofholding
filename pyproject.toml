@@ -28,7 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "bidict==0.23.1",
+    "bidict==0.24.1",
     "h5py==3.16.0",
     "numpy==2.4.6",
     "pygtrie==2.5.0",
