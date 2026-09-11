@@ -20,6 +20,7 @@ jobs:
       extra-python-paths: tests
       python-version-alt1: '3.12'
       python-version-alt2: '3.14'
+      python-version-alt3: 'exclude'
       python-version: '3.13'
       do-codecov: true
       do-codacy: false
