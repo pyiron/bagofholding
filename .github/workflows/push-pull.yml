@@ -18,7 +18,7 @@ jobs:
       alternate-tests-dir: tests/unit
       alternate-tests-python-version: '3.11'
       extra-python-paths: tests
-      python-version-alt1: '3.11'
+      python-version-alt1: 'exclude'  # Only test 3.11 on lower bounds -- latest deps drop it
       python-version-alt2: '3.12'
       python-version: '3.13'
       python-version-alt3: '3.14'
