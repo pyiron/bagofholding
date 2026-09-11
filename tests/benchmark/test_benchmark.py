@@ -4,6 +4,7 @@ import os
 import pickle
 import platform
 import subprocess
+import sys
 import time
 import unittest
 from typing import ClassVar, Generic, TypeVar
@@ -38,8 +39,19 @@ class TestBenchmark(unittest.TestCase):
             cls._prev_env[k] = os.environ.get(k)
             os.environ[k] = v
 
+        cls._prev_recursion_limit = sys.getrecursionlimit()
+        sys.setrecursionlimit(max(cls._prev_recursion_limit, 1_500))
+        # Packing content costs multiple python frames per level of object nesting
+        # That means that for objects with state nested hundreds of layers deep, it is
+        # possible to hit the python interpreter's recursion error limit without
+        # actually having gotten ourselves into a real recursion limit.
+        # We could "solve" this by testing with a shallower test object, but in the
+        # spirit of tests-as-backup-docs, we leave the fix here and continue running
+        # with very deep objects.
+
     @classmethod
     def tearDownClass(cls):
+        sys.setrecursionlimit(cls._prev_recursion_limit)
         for k, v in cls._prev_env.items():
             if v is None:
                 os.environ.pop(k, None)
