@@ -9,5 +9,5 @@ dependencies:
 - pygtrie =2.5.0
 - pyiron_snippets =1.5.0
 - ipytree =0.2.2
-- traitlets =5.15.0
+- traitlets =5.16.1
 - python =3.13
