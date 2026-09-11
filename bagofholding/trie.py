@@ -1,14 +1,11 @@
 import random
-from typing import TypeVar, cast
+from typing import cast
 
 import numpy as np
 import pygtrie
 
-ValueType = TypeVar("ValueType")  # python <3.12 compatibility
-# def not_allowed_to_have_inline[FunctionGenerics](in_python=3.12):
 
-
-def decompose_stringtrie(
+def decompose_stringtrie[ValueType](
     trie: pygtrie.StringTrie, null_value: ValueType
 ) -> tuple[list[str], list[int], list[ValueType]]:
     """
@@ -66,7 +63,7 @@ def decompose_stringtrie(
     return segments, parents, values
 
 
-def reconstruct_stringtrie(
+def reconstruct_stringtrie[ValueType](
     segments: list[str],
     parents: list[int],
     values: list[ValueType],
