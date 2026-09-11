@@ -1,8 +1,8 @@
 import sys
 import unittest
 
-import bidict
 import numpy as np
+import pyiron_snippets
 
 from bagofholding import EnvironmentMismatchError
 from bagofholding.metadata import (
@@ -74,20 +74,22 @@ class TestMetadata(unittest.TestCase):
         )
 
         self.assertEqual(
-            bidict.__version__,
-            get_version("bidict", {}),
+            pyiron_snippets.__version__,
+            get_version("pyiron_snippets", {}),
             msg="This is the fundamental behaviour of the default",
         )
 
         self.assertEqual(
             some_version_scraper("foo"),
-            get_version("bidict", {"bidict": some_version_scraper}),
+            get_version("pyiron_snippets", {"pyiron_snippets": some_version_scraper}),
             msg="Users can override how versions are scraped for a particular module",
         )
 
         self.assertEqual(
-            bidict.__version__,
-            get_version("bidict", {"not_bidict": some_version_scraper}),
+            pyiron_snippets.__version__,
+            get_version(
+                "pyiron_snippets", {"not_pyiron_snippets": some_version_scraper}
+            ),
             msg="Modules shouldn't care about other modules' overrides",
         )
 

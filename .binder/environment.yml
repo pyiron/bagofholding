@@ -1,13 +1,13 @@
 channels:
 - conda-forge
 dependencies:
-- bidict =0.23.1
+- bidict =0.24.1
 - h5py =3.16.0
-- hatchling =1.30.1
+- hatchling =1.32.0
 - hatch-vcs =0.5.0
-- numpy =2.4.6
+- numpy =2.5.3
 - pygtrie =2.5.0
-- pyiron_snippets =1.2.1
+- pyiron_snippets =1.5.0
 - ipytree =0.2.2
-- traitlets =5.15.0
+- traitlets =5.16.1
 - python =3.13
