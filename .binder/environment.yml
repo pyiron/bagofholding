@@ -5,7 +5,7 @@ dependencies:
 - h5py =3.16.0
 - hatchling =1.30.1
 - hatch-vcs =0.5.0
-- numpy =2.4.6
+- numpy =2.5.3
 - pygtrie =2.5.0
 - pyiron_snippets =1.2.1
 - ipytree =0.2.2
