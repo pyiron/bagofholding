@@ -1,8 +1,8 @@
 import sys
 import unittest
 
-import pyiron_snippets
 import numpy as np
+import pyiron_snippets
 
 from bagofholding import EnvironmentMismatchError
 from bagofholding.metadata import (
