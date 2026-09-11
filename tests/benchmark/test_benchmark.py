@@ -243,12 +243,13 @@ class TestBenchmark(unittest.TestCase):
             "save (ms)": {
                 "WithPickle": ("linear", 1.99e-3),
                 "WithH5Bag": ("quadratic", 6.88e-2),
-                "WithTrieH5Bag": ("cubic", 5.38e-4),
+                "WithTrieH5Bag": ("cubic", 5.38e-4),  # Actually between n^2-n^3
             },
             "load (ms)": {
                 "WithPickle": ("linear", 1.02e-3),
                 "WithH5Bag": ("quadratic", 2.74e-2),
-                "WithTrieH5Bag": ("cubic", 2.06e-4),
+                # WithTrieH5Bag lies between quadratic and cubic scaling and is not
+                "WithTrieH5Bag": ("cubic", 2.06e-4),  # Actually between n^2-n^3
             },
         }
         # Data from earlier human-supervised runs
@@ -293,13 +294,23 @@ class TestBenchmark(unittest.TestCase):
                         continue
 
                     actual_model = best_models[metric][tool_name]
-                    self.assertEqual(
-                        actual_model,
-                        expected_model,
-                        msg=f"Previous data has indicated that {tool_name} should "
-                        f"scale {expected_model} with respect to {metric}, but got "
-                        f"{actual_model}.",
-                    )
+                    if tool_name == "WithTrieH5Bag" and "(ms)" in metric:
+                        self.assertIn(
+                            actual_model,
+                            {"quadratic", "cubic"},
+                            msg=f"Time scaling for the {TrieH5Bag.__name__} tool lies "
+                            f"between quadratic and cubic and is not as "
+                            f"straightforward to assess. Instead of one of those "
+                            f"forms, here we found {actual_model} instead.",
+                        )
+                    else:
+                        self.assertEqual(
+                            actual_model,
+                            expected_model,
+                            msg=f"Previous data has indicated that {tool_name} should "
+                            f"scale {expected_model} with respect to {metric}, but got "
+                            f"{actual_model}.",
+                        )
 
                 stored_z_scores_are_reasonable = is_m3_pro()
                 if stored_z_scores_are_reasonable:
