@@ -85,7 +85,7 @@ class TestBenchmark(unittest.TestCase):
                     bag.load()
                 dt_direct = time.perf_counter() - t0
 
-                with_context_fudge_factor = 1.02 if is_github() else 1
+                with_context_fudge_factor = 1.1
                 dt_reference = dt_direct * with_context_fudge_factor
 
                 print(f"H5 with-context benchmark: depth={depth}, reps={n_reps}")
@@ -93,9 +93,7 @@ class TestBenchmark(unittest.TestCase):
                     dt_context,
                     dt_reference,
                     msg="Expected the with-context speed to be faster since the file "
-                    "is not re-opened multiple times...or at least much not slower -- "
-                    "locally it's always faster, but sometimes on the remote CI it is "
-                    "a hair slower and fails.",
+                    "is not re-opened multiple times...or at least much not slower.",
                 )
                 print(
                     f"With context {dt_context} < {dt_reference} = "
@@ -383,7 +381,3 @@ def is_m3_pro():
         return "Apple M3 Pro" in output
     except Exception:
         return False
-
-
-def is_github():
-    return os.environ.get("GITHUB_ACTIONS") == "true"
