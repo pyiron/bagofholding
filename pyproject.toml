@@ -2,7 +2,7 @@
 requires = [
     "bidict",
     "h5py",
-    "hatchling==1.32.0",
+    "hatchling==1.32.3",
     "hatch-vcs==0.5.0",
     "numpy",
     "pygtrie",
