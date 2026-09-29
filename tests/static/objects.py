@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import SupportsIndex
+from typing import Any, SupportsIndex
 
 import numpy as np
 from pyiron_snippets.singleton import Singleton
@@ -11,6 +11,10 @@ from pyiron_snippets.singleton import Singleton
 class SomeData:
     foo: str = "foo"
     bar: int = 42
+
+
+class SubList(list[Any]):
+    pass
 
 
 class CustomReduce:
