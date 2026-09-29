@@ -19,6 +19,7 @@ from static.objects import (
     Parent,
     Recursing,
     SomeData,
+    SubList,
     is_a_lambda,
 )
 
@@ -192,6 +193,7 @@ class AbstractTestNamespace:
                     SomeData(),  # a dataclass
                     Parent(),  # An object with an internally cyclic relationship
                     DotDict({"forty-two": 42}),  # Inheriting from a built-in class
+                    SubList([1, 2, 3]),  # Built-in subclass with an item iterator
                     NestedParent.NestedChild(),  # Requiring qualname
                     Recursing(2),
                     # Arrays of str and bytes types get special treatment

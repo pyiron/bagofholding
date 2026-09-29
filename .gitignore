@@ -1,9 +1,12 @@
 *.pyc
 .DS_Store
 .coverage
+.pre-commit-config.yaml
 nohup.out
 pyiron.log
+.claude/
 .idea/
+.vscode/
 inspectionProfiles/
 _build/
 apidoc/

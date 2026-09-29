@@ -443,6 +443,15 @@ class Reducible(ReflexiveGroup[object]):
         )
         packer.create_group(path)
         packer.pack_metadata(cls._get_metadata(obj, packing), path)
+        if len(reduced_value) >= 4 and reduced_value[3] is not None:
+            # Materialize the item iterator: e.g. a list subclass's iterator reduces
+            # to a reference back to obj itself, which unpacks as the not-yet-filled
+            # instance and so yields no items
+            reduced_value = (
+                *reduced_value[:3],
+                list(cast(ListItemsType, reduced_value[3])),
+                *reduced_value[4:],
+            )
         for subpath, value in zip(cls.reduction_fields, reduced_value, strict=False):
             pack(
                 value,
