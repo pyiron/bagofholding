@@ -196,16 +196,22 @@ class AbstractTestNamespace:
             self._save_with_bag_version("1.2.0")
             self._open_floored("1.2.3", "1.2.0", bag_version_validator="semantic-major")
 
+        def test_bag_version_floor_ignores_own_version(self):
+            # E.g. an untagged install reporting a fallback version below the floor
+            self._save_with_bag_version("1.1.9")
+            self._open_floored("1.1.9", "1.2.0")
+
         def test_bag_version_floor_needs_parseable_version(self):
+            def accept_all(current, stored):
+                return True
+
             self._save_with_bag_version("not-a-version")
-            with self.assertRaises(BagMismatchError):
-                self._open_floored(
-                    "not-a-version", "1.2.0", bag_version_validator="exact"
-                )
+            with self.assertRaisesRegex(BagMismatchError, "1.2.0"):
+                self._open_floored("1.2.3", "1.2.0", bag_version_validator=accept_all)
 
             self._save_with_bag_version(None)
-            with self.assertRaises(BagMismatchError):
-                self._open_floored(None, "1.2.0", bag_version_validator="exact")
+            with self.assertRaisesRegex(BagMismatchError, "1.2.0"):
+                self._open_floored("1.2.3", "1.2.0", bag_version_validator=accept_all)
 
         def test_bag_info_non_version_fields_always_checked(self):
             self.bag_class().save(42, self.save_name)

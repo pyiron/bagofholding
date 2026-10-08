@@ -78,6 +78,15 @@ def current_version() -> packaging_version.Version:
     return packaging_version.Version(bagofholding.__version__)
 
 
+def is_fallback_version(version: packaging_version.Version) -> bool:
+    """
+    Whether the version is a placeholder rather than derived from a release tag:
+    `0.0.0+unknown` when not installed, or e.g. `0.1.dev1+g<sha>` when installed
+    from a checkout without tags (such as a shallow CI clone).
+    """
+    return version.local == "unknown" or len(version.release) < 3
+
+
 def missing_series_message(raw_version: str) -> str:
     return (
         f"bagofholding is now {raw_version} -- generate compat artefacts for this "
@@ -99,6 +108,10 @@ class TestSeriesHelpers(unittest.TestCase):
         self.assertEqual("semantic-minor", expected_default(v("0.9.9")))
         self.assertEqual("semantic-major", expected_default(v("1.0.0")))
         self.assertIn("0.0.0+unknown", missing_series_message("0.0.0+unknown"))
+        self.assertTrue(is_fallback_version(v("0.0.0+unknown")))
+        self.assertTrue(is_fallback_version(v("0.1.dev1+gabc")))
+        self.assertFalse(is_fallback_version(v("0.1.15.dev10+g412e88a7a")))
+        self.assertFalse(is_fallback_version(v("0.1.9")))
 
 
 class TestCompat(unittest.TestCase):
@@ -106,6 +119,20 @@ class TestCompat(unittest.TestCase):
     def setUpClass(cls):
         cls.artefacts = discover_artefacts()
         cls.current = current_version()
+        cls.fallback = is_fallback_version(cls.current)
+        # Without a real version, judge series by the newest compat module, and
+        # open bags without version checks (the format is still exercised)
+        cls.series_reference = (
+            module_version(compat_module_names()[-1]) if cls.fallback else cls.current
+        )
+        cls.open_kwargs = {"bag_version_validator": "none"} if cls.fallback else {}
+
+    def _skip_if_fallback(self):
+        if self.fallback:
+            self.skipTest(
+                f"bagofholding version {bagofholding.__version__} is not derived "
+                f"from a release tag; version tripwires need a tagged install"
+            )
 
     def test_artefacts_present(self):
         self.assertTrue(self.artefacts, msg=f"No artefacts found in {ARTEFACT_DIR}")
@@ -127,12 +154,14 @@ class TestCompat(unittest.TestCase):
                     )
 
     def test_current_series_has_artefacts(self):
+        self._skip_if_fallback()
         self.assertTrue(
             any(in_series(a.saved_version(), self.current) for a in self.artefacts),
             msg=missing_series_message(bagofholding.__version__),
         )
 
     def test_default_validator_matches_maturity(self):
+        self._skip_if_fallback()
         default = (
             inspect.signature(bag.Bag.__init__)
             .parameters["bag_version_validator"]
@@ -141,11 +170,13 @@ class TestCompat(unittest.TestCase):
         self.assertEqual(expected_default(self.current), default)
 
     def test_in_series_artefacts_load(self):
+        loaded_any = False
         for artefact in self.artefacts:
-            if not in_series(artefact.saved_version(), self.current):
+            if not in_series(artefact.saved_version(), self.series_reference):
                 continue
+            loaded_any = True
             with self.subTest(artefact.path.name):
-                loaded = artefact.bag_class(artefact.path).load(
+                loaded = artefact.bag_class(artefact.path, **self.open_kwargs).load(
                     version_validator="none"
                 )
                 expected = artefact.build()
@@ -153,6 +184,7 @@ class TestCompat(unittest.TestCase):
                 for key, obj in expected.items():
                     with self.subTest(key=key):
                         assertions.assert_roundtrip_equal(self, obj, loaded[key])
+        self.assertTrue(loaded_any, msg="No artefact was in series to load")
 
     def test_artefacts_rejected_out_of_series(self):
         for artefact in self.artefacts:
