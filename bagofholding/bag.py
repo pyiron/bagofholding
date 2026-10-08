@@ -25,6 +25,7 @@ from typing import (
 )
 
 import bidict
+from packaging import version as packaging_version
 from pyiron_snippets import import_alarm
 
 from bagofholding.content import MAX_PICKLE_PROTOCOL, BespokeItem, Packer, pack, unpack
@@ -66,6 +67,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
 
     bag_info: BagInfo
     storage_root: ClassVar[str] = "object"
+    min_compatible_version: ClassVar[str | None] = None
+    """The oldest bagofholding version whose saved bags this class can read."""
     filepath: pathlib.Path
 
     @classmethod
@@ -194,6 +197,13 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         info = self._load_existing_bag_info()
         if info is not None:
             self.bag_info = info
+            if bag_version_validator != "none" and not self._meets_version_floor(info):
+                raise BagMismatchError(
+                    f"The bag saved at {filepath} has bagofholding version "
+                    f"{info.version}, but {self.__class__.__name__} can only read bags "
+                    f"saved with version {self.min_compatible_version} or later. Use "
+                    f'bag_version_validator="none" to attempt loading anyway.'
+                )
             if not self.validate_bag_info(
                 info, self.get_bag_info(), bag_version_validator
             ):
@@ -218,6 +228,30 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
 
     @abc.abstractmethod
     def _unpack_field(self, path: str, key: str) -> str | None: ...
+
+    @classmethod
+    def _meets_version_floor(cls, bag_info: BagInfo) -> bool:
+        """
+        Whether saved bag info is at least :attr:`min_compatible_version`.
+
+        The floor is a version of the module declaring it, so it is only applied to
+        bags saved by that module; subclasses elsewhere record their own versions.
+        """
+        floor_owner = next(
+            c for c in cls.__mro__ if "min_compatible_version" in c.__dict__
+        )
+        if cls.min_compatible_version is None or (
+            bag_info.module != floor_owner.__module__
+        ):
+            return True
+        if bag_info.version is None:
+            return False
+        try:
+            return packaging_version.Version(
+                bag_info.version
+            ) >= packaging_version.Version(cls.min_compatible_version)
+        except packaging_version.InvalidVersion:
+            return False
 
     @staticmethod
     def validate_bag_info(

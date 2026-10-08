@@ -156,13 +156,56 @@ class AbstractTestNamespace:
             self._save_with_bag_version("not-a-version")
             with self.assertRaises(BagMismatchError):
                 self._open_with_bag_version("1.2.3")
-            self._open_with_bag_version("not-a-version")
+            self._open_floored("not-a-version", None)
 
         def test_bag_version_missing(self):
             self._save_with_bag_version(None)
-            self._open_with_bag_version(None)
+            self._open_floored(None, None)
             with self.assertRaises(BagMismatchError):
                 self._open_with_bag_version("1.2.3")
+
+        def _open_floored(self, version: str | None, floor: str | None, **kwargs):
+            floored = type(
+                self.bag_class().__name__,
+                (versioned_bag_class(self.bag_class(), version),),
+                {
+                    "min_compatible_version": floor,
+                    # Floors apply to bags saved by the declaring module
+                    "__module__": self.bag_class().__module__,
+                },
+            )
+            return floored(self.save_name, **kwargs)
+
+        def test_bag_version_floor_ignores_other_modules(self):
+            self._save_with_bag_version("1.1.9")
+            elsewhere = type(
+                self.bag_class().__name__,
+                (versioned_bag_class(self.bag_class(), "1.2.3"),),
+                {"min_compatible_version": "1.2.0", "__module__": "elsewhere"},
+            )
+            elsewhere(self.save_name, bag_version_validator="semantic-major")
+
+        def test_bag_version_floor(self):
+            self._save_with_bag_version("1.1.9")
+            with self.assertRaisesRegex(BagMismatchError, "1.2.0"):
+                self._open_floored(
+                    "1.2.3", "1.2.0", bag_version_validator="semantic-major"
+                )
+            self._open_floored("1.2.3", "1.2.0", bag_version_validator="none")
+
+            self._save_with_bag_version("1.2.0")
+            self._open_floored("1.2.3", "1.2.0", bag_version_validator="semantic-major")
+
+        def test_bag_version_floor_needs_parseable_version(self):
+            self._save_with_bag_version("not-a-version")
+            with self.assertRaises(BagMismatchError):
+                self._open_floored(
+                    "not-a-version", "1.2.0", bag_version_validator="exact"
+                )
+
+            self._save_with_bag_version(None)
+            with self.assertRaises(BagMismatchError):
+                self._open_floored(None, "1.2.0", bag_version_validator="exact")
 
         def test_bag_info_non_version_fields_always_checked(self):
             self.bag_class().save(42, self.save_name)
@@ -787,6 +830,16 @@ class AbstractTestNamespace:
                     self.assertTrue(np.array_equal(a, b))
             else:
                 self.assertEqual(a, b)
+
+
+class TestCompatibilityFloors(unittest.TestCase):
+    def test_floors(self):
+        self.assertIsNone(bagofholding.h5.bag.H5Bag.min_compatible_version)
+        self.assertEqual(
+            "0.1.9",
+            bagofholding.h5.triebag.TrieH5Bag.min_compatible_version,
+            msg="TrieH5Bag type codes were renumbered in 0.1.9",
+        )
 
 
 class TestH5BagBagImplementation(AbstractTestNamespace.TestBagImplementation):

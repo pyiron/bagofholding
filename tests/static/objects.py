@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 from typing import Any
 
-from static.compat import v0_1_0
+from static.compat import v0_1_9
 from static.compat.v0_1_0 import DRAGON as DRAGON
 from static.compat.v0_1_0 import Child as Child
 from static.compat.v0_1_0 import CustomReduce as CustomReduce
@@ -18,14 +18,22 @@ from static.compat.v0_1_0 import SubCustomReduce as SubCustomReduce
 from static.compat.v0_1_0 import SubList as SubList
 
 
-def _post_v0_1_0_cases() -> dict[str, Any]:
-    """Cases newer than the 0.1.0 compat set (not frozen)."""
-    return {}
+def _post_compat_cases() -> dict[str, Any]:
+    """Cases no probed release handles for every bag class (not frozen)."""
+    return {
+        "dict_empty_key": {"": 42},
+        "global_nonetype": type(None),
+        "global_ellipsis_type": type(...),
+        "global_notimplemented_type": type(NotImplemented),
+        "global_ellipsis": ...,
+        "global_notimplemented": NotImplemented,
+        "builtin_subclass": SubList([1, 2, 3]),
+    }
 
 
 def build_cases() -> dict[str, Any]:
     """All named round-trip cases: frozen compat sets plus newer ones."""
-    return {**v0_1_0.build(), **_post_v0_1_0_cases()}
+    return {**v0_1_9.build(), **_post_compat_cases()}
 
 
 is_a_lambda = lambda x: isinstance(x, int)  # noqa: E731
