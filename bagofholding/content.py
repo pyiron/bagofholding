@@ -261,6 +261,14 @@ class Global(Item[GlobalType, Any, Packer]):
             raise StringNotImportableError(
                 f"Local functions are not re-importable, can't pack {obj}"
             )
+        elif value.startswith("builtins."):
+            # Other modules might become importable before loading, but builtins never
+            try:
+                retrieve.import_from_string(value)
+            except ImportError as e:
+                raise StringNotImportableError(
+                    f"{value} is not re-importable, can't pack {obj}"
+                ) from e
         packer.pack_string(value, path)
 
     @classmethod

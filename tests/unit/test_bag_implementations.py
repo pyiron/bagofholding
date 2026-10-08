@@ -645,6 +645,23 @@ class AbstractTestNamespace:
             with self.assertRaises(StringNotImportableError):
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
 
+        def test_early_failure_for_unimportable_builtin_type(self):
+            with self.assertRaises(StringNotImportableError):
+                self.bag_class().save(types.FunctionType, self.save_name)
+
+        def test_unimportable_non_builtin_global_still_saves(self):
+            class NotYetImportable:
+                pass
+
+            # E.g. a class users intend to re-execute locally before loading
+            NotYetImportable.__module__ = "__main__"
+            NotYetImportable.__qualname__ = "NotYetImportable"
+            self.bag_class().save(NotYetImportable, self.save_name)
+            self.assertEqual(
+                "__main__",
+                self.bag_class()(self.save_name)["object"].module,
+            )
+
         @settings(suppress_health_check=[HealthCheck.differing_executors])
         @given(
             data=st.recursive(
