@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import dataclasses
 from typing import Any, SupportsIndex
 
@@ -163,3 +164,11 @@ class Recursing:
 
 
 is_a_lambda = lambda x: isinstance(x, int)  # noqa: E731
+
+
+def make_namedtuple_class() -> type:
+    """
+    A class factory: the resulting class has a module and qualname, but is not actually
+    importable from there.
+    """
+    return collections.namedtuple("FactoryMade", "x")

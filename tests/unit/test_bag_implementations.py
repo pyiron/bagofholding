@@ -22,6 +22,7 @@ from static.objects import (
     SomeData,
     SubList,
     is_a_lambda,
+    make_namedtuple_class,
 )
 
 import bagofholding.bag as bag
@@ -649,18 +650,29 @@ class AbstractTestNamespace:
             with self.assertRaises(StringNotImportableError):
                 self.bag_class().save(types.FunctionType, self.save_name)
 
-        def test_unimportable_non_builtin_global_still_saves(self):
-            class NotYetImportable:
-                pass
+        def test_require_importable(self):
+            FactoryMade = make_namedtuple_class()
 
-            # E.g. a class users intend to re-execute locally before loading
-            NotYetImportable.__module__ = "__main__"
-            NotYetImportable.__qualname__ = "NotYetImportable"
-            self.bag_class().save(NotYetImportable, self.save_name)
-            self.assertEqual(
-                "__main__",
-                self.bag_class()(self.save_name)["object"].module,
-            )
+            with self.subTest("Importable objects are fine"):
+                self.bag_class().save([c.pack, np.all, DRAGON], self.save_name)
+
+            for label, obj in [
+                ("Global", FactoryMade),
+                ("Reducible", FactoryMade(42)),
+                ("Dict keys", {FactoryMade: 42}),
+                ("Dict values", {42: FactoryMade}),
+                ("StrKeyDict", {"forty-two": FactoryMade}),
+                ("Union", int | FactoryMade),
+                ("Indexable", [FactoryMade]),
+            ]:
+                with self.subTest(label):
+                    with self.assertRaises(
+                        StringNotImportableError, msg="Should be strict by default"
+                    ):
+                        self.bag_class().save(obj, self.save_name)
+                    # E.g. for browse-only use, or if users will re-execute code to
+                    # make the object importable before loading
+                    self.bag_class().save(obj, self.save_name, require_importable=False)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
         @given(

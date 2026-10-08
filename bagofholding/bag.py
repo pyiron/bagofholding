@@ -88,6 +88,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         version_scraping: VersionScrapingMap | None = None,
         _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
         overwrite_existing: bool = True,
+        require_importable: bool = True,
     ) -> None:
         """
         Save a python object to file.
@@ -109,6 +110,16 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 string and looks for a `__version__` attribute.
             overwrite_existing (bool): Whether to overwrite an existing bag at the
                 target location. (Default is True.)
+            require_importable (bool): Whether to fail at save time if any stored
+                global (class, function, etc.) cannot be re-imported from its module
+                and qualified name, as `pickle` does. This catches, e.g., classes made
+                by factories (`collections.namedtuple`, `dataclasses.make_dataclass`,
+                `type`) or defined in modules that were never registered in
+                `sys.modules`. (Default is True. Set it False to deliberately store
+                objects that can be browsed but not (yet) loaded, e.g. if you will
+                re-execute code to make them importable before loading.) Objects in
+                `__main__` are importable at save time but not in a fresh
+                interpreter; use `forbidden_modules` to guard against that.
         """
         bag = cls._new_for_save(filepath, overwrite_existing)
         bag._pack_bag_info()
@@ -121,6 +132,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
             require_versions,
             forbidden_modules,
             version_scraping,
+            require_importable=require_importable,
             _pickle_protocol=_pickle_protocol,
         )
         bag._write()

@@ -109,6 +109,7 @@ class PackingArguments:
     require_versions: bool
     forbidden_modules: list[str] | tuple[str, ...]
     version_scraping: VersionScrapingMap | None
+    require_importable: bool
     _pickle_protocol: SupportsIndex
 
 
@@ -244,7 +245,23 @@ class Global(Item[GlobalType, Any, Packer]):
     _rich_metadata = True
 
     @classmethod
+    def pack(
+        cls,
+        obj: GlobalType,
+        packer: Packer,
+        path: str,
+        packing: PackingArguments,
+    ) -> None:
+        if packing.require_importable:
+            cls._validate_importable(cls._get_import_string(obj), obj)
+        super().pack(obj, packer, path, packing)
+
+    @classmethod
     def _pack_item(cls, obj: GlobalType, packer: Packer, path: str) -> None:
+        packer.pack_string(cls._get_import_string(obj), path)
+
+    @classmethod
+    def _get_import_string(cls, obj: GlobalType) -> str:
         value: str
         if obj in SPECIAL_GLOBALS:
             value = SPECIAL_GLOBALS[obj]
@@ -263,13 +280,17 @@ class Global(Item[GlobalType, Any, Packer]):
             )
         elif value.startswith("builtins."):
             # Other modules might become importable before loading, but builtins never
-            try:
-                retrieve.import_from_string(value)
-            except ImportError as e:
-                raise StringNotImportableError(
-                    f"{value} is not re-importable, can't pack {obj}"
-                ) from e
-        packer.pack_string(value, path)
+            cls._validate_importable(value, obj)
+        return value
+
+    @staticmethod
+    def _validate_importable(import_string: str, obj: GlobalType) -> None:
+        try:
+            retrieve.import_from_string(import_string)
+        except ImportError as e:
+            raise StringNotImportableError(
+                f"{import_string} is not re-importable, can't pack {obj}"
+            ) from e
 
     @classmethod
     def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> Any:
@@ -482,6 +503,7 @@ class Reducible(ReflexiveGroup[object]):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -601,6 +623,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
             packing.require_versions,
             packing.forbidden_modules,
             packing.version_scraping,
+            require_importable=packing.require_importable,
             _pickle_protocol=packing._pickle_protocol,
         )
         pack(
@@ -612,6 +635,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
             packing.require_versions,
             packing.forbidden_modules,
             packing.version_scraping,
+            require_importable=packing.require_importable,
             _pickle_protocol=packing._pickle_protocol,
         )
 
@@ -665,6 +689,7 @@ class StrKeyDict(BuiltinGroup[dict[str, Any]]):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -708,6 +733,7 @@ class Union(BuiltinGroup[types.UnionType]):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -769,6 +795,7 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -813,6 +840,7 @@ def pack(
     require_versions: bool,
     forbidden_modules: list[str] | tuple[str, ...],
     version_scraping: VersionScrapingMap | None,
+    require_importable: bool = True,
     _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
 ) -> None:
     if _pickle_protocol not in (4, 3, 2, 1, 0):
@@ -826,6 +854,7 @@ def pack(
         require_versions=require_versions,
         forbidden_modules=forbidden_modules,
         version_scraping=version_scraping,
+        require_importable=require_importable,
         _pickle_protocol=_pickle_protocol,
     )
 
