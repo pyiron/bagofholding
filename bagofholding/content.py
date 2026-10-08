@@ -252,8 +252,10 @@ class Global(Item[GlobalType, Any, Packer]):
         path: str,
         packing: PackingArguments,
     ) -> None:
-        if packing.require_importable:
-            cls._validate_importable(cls._get_import_string(obj), obj)
+        if packing.require_importable and not isinstance(obj, str):
+            # Strings come from reductions, and are validated against the reduced
+            # object by `pack`
+            cls.validate_reimportable(cls._get_import_string(obj), obj)
         super().pack(obj, packer, path, packing)
 
     @classmethod
@@ -280,17 +282,25 @@ class Global(Item[GlobalType, Any, Packer]):
             )
         elif value.startswith("builtins."):
             # Other modules might become importable before loading, but builtins never
-            cls._validate_importable(value, obj)
+            cls._import(value, obj)
         return value
 
     @staticmethod
-    def _validate_importable(import_string: str, obj: GlobalType) -> None:
+    def _import(import_string: str, obj: object) -> Any:
         try:
-            retrieve.import_from_string(import_string)
+            return retrieve.import_from_string(import_string)
         except ImportError as e:
             raise StringNotImportableError(
                 f"{import_string} is not re-importable, can't pack {obj}"
             ) from e
+
+    @classmethod
+    def validate_reimportable(cls, import_string: str, obj: object) -> None:
+        if cls._import(import_string, obj) is not obj:
+            raise StringNotImportableError(
+                f"{import_string} imports a different object than {obj}, can't pack "
+                f"it"
+            )
 
     @classmethod
     def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> Any:
@@ -890,12 +900,10 @@ def pack(
 
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
-        Global.pack(
-            retrieve.get_importable_string_from_string_reduction(rv, obj),
-            packer,
-            path,
-            packing_args,
-        )
+        import_string = retrieve.get_importable_string_from_string_reduction(rv, obj)
+        if require_importable:
+            Global.validate_reimportable(import_string, obj)
+        Global.pack(import_string, packer, path, packing_args)
         return
     else:
         Reducible.pack(obj, packer, path, packing_args, rv=rv)

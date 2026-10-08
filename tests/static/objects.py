@@ -172,3 +172,25 @@ def make_namedtuple_class() -> type:
     importable from there.
     """
     return collections.namedtuple("FactoryMade", "x")
+
+
+# Mimic re-running a definition (e.g. a notebook cell) after the original is in use
+class Redefined:
+    pass
+
+
+STALE_CLASS = Redefined
+
+
+class Redefined:  # type: ignore[no-redef]  # noqa: F811
+    pass
+
+
+class Sentinel:
+    def __reduce__(self):
+        return "SENTINEL"
+
+
+SENTINEL = Sentinel()
+STALE_SENTINEL = SENTINEL
+SENTINEL = Sentinel()

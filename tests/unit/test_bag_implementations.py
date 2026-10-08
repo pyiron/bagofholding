@@ -14,6 +14,8 @@ from hypothesis.extra import numpy as np_st
 from pyiron_snippets.dotdict import DotDict
 from static.objects import (
     DRAGON,
+    STALE_CLASS,
+    STALE_SENTINEL,
     CustomReduce,
     ExReducta,
     NestedParent,
@@ -672,6 +674,20 @@ class AbstractTestNamespace:
                         self.bag_class().save(obj, self.save_name)
                     # E.g. for browse-only use, or if users will re-execute code to
                     # make the object importable before loading
+                    self.bag_class().save(obj, self.save_name, require_importable=False)
+
+        def test_require_importable_identity(self):
+            for label, obj in [
+                ("Global", STALE_CLASS),
+                ("Reducible", STALE_CLASS()),
+                ("String reduction", STALE_SENTINEL),
+            ]:
+                with self.subTest(label):
+                    with self.assertRaises(
+                        StringNotImportableError,
+                        msg="The import path leads to a different object",
+                    ):
+                        self.bag_class().save(obj, self.save_name)
                     self.bag_class().save(obj, self.save_name, require_importable=False)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
