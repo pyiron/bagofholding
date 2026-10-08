@@ -17,6 +17,10 @@ Recipe for a released version X.Y.Z (no git operations needed):
 
 Only generate for bag classes whose `min_compatible_version` is at most X.Y.Z.
 
+For cases not handled by any release yet, create a module for the *next*
+release and generate from a dev build of this checkout (e.g. 0.1.15.dev3 may
+generate v0_1_15); see `static.compat` for when such modules freeze.
+
 The compat module is imported from this checkout's `tests/` so that the
 historical library pickles today's (frozen) definitions. Never run in CI.
 """
@@ -36,6 +40,17 @@ def expected_version(module_name: str) -> str:
     return module_name.removeprefix("v").replace("_", ".")
 
 
+def can_generate(installed_version: str, module_name: str) -> bool:
+    """
+    Whether the installed bagofholding may generate artefacts for a compat module:
+    either it is exactly that release, or a dev build leading up to it (for
+    modules whose version is not yet released). A plain string check, since
+    historical environments may not have `packaging`.
+    """
+    target = expected_version(module_name)
+    return installed_version == target or installed_version.startswith(f"{target}.dev")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Generate load-compatibility artefacts."
@@ -52,7 +67,7 @@ def main(argv: list[str] | None = None) -> None:
     sys.path.insert(0, str(TESTS_DIR))
     import bagofholding
 
-    if bagofholding.__version__ != expected_version(args.module):
+    if not can_generate(bagofholding.__version__, args.module):
         raise SystemExit(
             f"Installed bagofholding is {bagofholding.__version__}, but "
             f"{args.module} must be generated with {expected_version(args.module)}"
