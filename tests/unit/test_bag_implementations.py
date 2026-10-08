@@ -13,18 +13,15 @@ import numpy as np
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as np_st
-from pyiron_snippets.dotdict import DotDict
+from static import assertions
 from static.objects import (
     DRAGON,
     STALE_CLASS,
     STALE_SENTINEL,
-    CustomReduce,
-    ExReducta,
-    NestedParent,
     Parent,
     Recursing,
     SomeData,
-    SubList,
+    build_cases,
     is_a_lambda,
     make_namedtuple_class,
 )
@@ -42,10 +39,6 @@ from bagofholding import (
     PickleProtocolError,
     StringNotImportableError,
 )
-
-
-class MyTestStr(str):
-    pass
 
 
 def always_42(module_name: str = "not even used") -> str:
@@ -202,103 +195,82 @@ class AbstractTestNamespace:
             )
 
         def test_cases(self):
-            sub_union = str | bytes
-            union_type = int | float | sub_union
-
-            simple_items = [
-                ("42", c.Str),
-                (complex(4.0, 2.0), c.Complex),
-                (True, c.Bool),
-                (42, c.Long),
-                (42.0, c.Float),
-                (bytes("some plain old bytes", encoding="utf8"), c.Bytes),
-                (b"\x00", c.Bytes),  # h5py leverages the null character, so we need to
-                # ensure we treat our bytes specially
-                (b"", c.Bytes),  # h5py can give size complaints about zero-length
-                # bytes, so test our the special handling there
-                (bytearray([42]), c.Bytearray),
-                (h5c._INT64_MIN - 1, c.Long),
-                (h5c._UINT64_MAX + 1, c.Long),
-            ]
-            complex_items = [
-                (np.linspace(0, 1, 3), h5c.Array),
-                # (, h5c.Array)
-            ]
-            simple_groups_ex_reducible = [
-                ({42: 42.0}, c.Dict),
-                ({"forty-two": 42}, c.StrKeyDict),
-                ({"forty/two": 42}, c.Dict),
-                ({"": 42}, c.Dict),
-                ({MyTestStr("forty/two"): 42}, c.Dict),
-                (union_type, c.Union),
-                ((42,), c.Tuple),
-                ([42.0], c.List),
-                ({"42"}, c.Set),
-                (frozenset({42}), c.FrozenSet),
-                ({"0": bytearray(b"\x00"), "1": bytearray(b"")}, c.StrKeyDict),
-                ({"0": 282574505116416}, c.StrKeyDict),  # Just a big int
-                ({"Ă": None}, c.Dict),
-                ({"/": None}, c.Dict),
-                ({"0/": None}, c.Dict),
-                ({"0/0": None}, c.Dict),
-                ({"_0": None}, c.StrKeyDict),
-                ({"\ud800": None}, c.Dict),
-            ]
-            global_content = [
-                (obj, c.Global)
-                for obj in [
-                    int,  # type
-                    self.bag_class(),  # type
-                    all,  # built-in function -- types.BuiltinFunctionType
-                    np.array,  # built-in function array -- types.BuiltinFunctionType
-                    c.pack,  # function -- types.FunctionType
-                    np.all,  # function -- types.FunctionType
-                    self.bag_class()._unpack_bag_info,  # function -- types.FunctionType
-                    DRAGON,  # Singleton
-                    type(None),  # Not importable from its __module__ (builtins)
-                    type(...),
-                    type(NotImplemented),
-                    ...,  # Builtin singletons reducing to a bare string
-                    NotImplemented,
-                ]
-            ]
-            reducible_content = [
-                (obj, c.Reducible)
-                for obj in [
-                    CustomReduce(10, ["iter1", "iter2"]),  # Custom __reduce__
-                    ExReducta(1),  # __reduce_ex__ pickle API
-                    SomeData(),  # a dataclass
-                    Parent(),  # An object with an internally cyclic relationship
-                    DotDict({"forty-two": 42}),  # Inheriting from a built-in class
-                    SubList([1, 2, 3]),  # Built-in subclass with an item iterator
-                    NestedParent.NestedChild(),  # Requiring qualname
-                    Recursing(2),
-                    # Arrays of str and bytes types get special treatment
-                    np.array([""], dtype="<U1"),  # string
-                    np.array([b""], dtype="|S1"),  # byte
-                    np.array([b"a", b"abc"], dtype="|S3"),  # different lengths
-                ]
+            expected_content_types = {
+                "str": c.Str,
+                "complex": c.Complex,
+                "bool": c.Bool,
+                "int": c.Long,
+                "float": c.Float,
+                "bytes": c.Bytes,
+                "bytes_null": c.Bytes,
+                "bytes_empty": c.Bytes,
+                "bytearray": c.Bytearray,
+                "int_below_int64": c.Long,
+                "int_above_uint64": c.Long,
+                "ndarray_float": h5c.Array,
+                "dict_int_key": c.Dict,
+                "dict_str_key": c.StrKeyDict,
+                "dict_slash_key": c.Dict,
+                "dict_empty_key": c.Dict,
+                "dict_str_subclass_key": c.Dict,
+                "union": c.Union,
+                "tuple": c.Tuple,
+                "list": c.List,
+                "set": c.Set,
+                "frozenset": c.FrozenSet,
+                "dict_bytearrays": c.StrKeyDict,
+                "dict_big_int": c.StrKeyDict,
+                "dict_nonascii_key": c.Dict,
+                "dict_root_slash_key": c.Dict,
+                "dict_trailing_slash_key": c.Dict,
+                "dict_inner_slash_key": c.Dict,
+                "dict_underscore_key": c.StrKeyDict,
+                "dict_surrogate_key": c.Dict,
+                "global_type": c.Global,
+                "global_builtin_function": c.Global,
+                "global_numpy_builtin_function": c.Global,
+                "global_numpy_function": c.Global,
+                "global_singleton": c.Global,
+                "global_nonetype": c.Global,
+                "global_ellipsis_type": c.Global,
+                "global_notimplemented_type": c.Global,
+                "global_ellipsis": c.Global,
+                "global_notimplemented": c.Global,
+                "custom_reduce": c.Reducible,
+                "reduce_ex": c.Reducible,
+                "dataclass": c.Reducible,
+                "cyclic": c.Reducible,
+                "dotdict": c.Reducible,
+                "builtin_subclass": c.Reducible,
+                "nested_class_instance": c.Reducible,
+                "recursing": c.Reducible,
+                "ndarray_str": c.Reducible,
+                "ndarray_bytes": c.Reducible,
+                "ndarray_bytes_ragged": c.Reducible,
+            }
+            cases = build_cases()
+            self.assertEqual(
+                set(cases),
+                set(expected_content_types),
+                msg="Every shared case needs an expected content type",
+            )
+            bag_internal_globals = [
+                self.bag_class(),
+                c.pack,
+                self.bag_class()._unpack_bag_info,
             ]
 
-            for obj, content_type in (
-                simple_items
-                + complex_items
-                + simple_groups_ex_reducible
-                + global_content
-                + reducible_content
-            ):
-                with self.subTest(str(obj)):
+            for name, obj, content_type in [
+                (name, cases[name], ctype)
+                for name, ctype in expected_content_types.items()
+            ] + [(str(obj), obj, c.Global) for obj in bag_internal_globals]:
+                with self.subTest(name):
                     self.bag_class().save(obj, self.save_name)
                     bag = self.bag_class()(self.save_name)
                     self.assertEqual(
                         content_type.__name__, bag["object"].content_type.split(".")[-1]
                     )
-                    reloaded = bag.load()
-                    self.assertIs(type(obj), type(reloaded))
-                    self.assertTrue(
-                        np.all(obj == reloaded),
-                        msg=f"Mismatch between {obj} and reloaded {reloaded}",
-                    )
+                    assertions.assert_roundtrip_equal(self, obj, bag.load())
                     os.remove(self.save_name)
 
         def test_versions_required(self):
