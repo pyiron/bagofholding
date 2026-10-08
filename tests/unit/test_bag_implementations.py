@@ -3,6 +3,7 @@ import contextlib
 import os
 import pathlib
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -183,6 +184,11 @@ class AbstractTestNamespace:
                     np.all,  # function -- types.FunctionType
                     self.bag_class()._unpack_bag_info,  # function -- types.FunctionType
                     DRAGON,  # Singleton
+                    type(None),  # Not importable from its __module__ (builtins)
+                    type(...),
+                    type(NotImplemented),
+                    ...,  # Builtin singletons reducing to a bare string
+                    NotImplemented,
                 ]
             ]
             reducible_content = [

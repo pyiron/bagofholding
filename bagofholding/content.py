@@ -229,6 +229,16 @@ class Reference(Item[str, Any, Packer]):
 
 GlobalType: TypeAlias = type[type] | types.FunctionType | str
 
+# Builtins whose `__module__` and `__qualname__` (or string reduction) do not give an
+# importable path
+SPECIAL_GLOBALS: dict[object, str] = {
+    type(None): "types.NoneType",
+    type(...): "types.EllipsisType",
+    type(NotImplemented): "types.NotImplementedType",
+    ...: "builtins.Ellipsis",
+    NotImplemented: "builtins.NotImplemented",
+}
+
 
 class Global(Item[GlobalType, Any, Packer]):
     _rich_metadata = True
@@ -236,7 +246,9 @@ class Global(Item[GlobalType, Any, Packer]):
     @classmethod
     def _pack_item(cls, obj: GlobalType, packer: Packer, path: str) -> None:
         value: str
-        if isinstance(obj, str):
+        if obj in SPECIAL_GLOBALS:
+            value = SPECIAL_GLOBALS[obj]
+        elif isinstance(obj, str):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
@@ -860,6 +872,8 @@ KNOWN_ITEM_MAP: dict[
     types.FunctionType: Global,
     type(all): Global,
     type(None): NoneItem,
+    types.EllipsisType: Global,
+    types.NotImplementedType: Global,
     bool: Bool,
     int: Long,
     float: Float,
