@@ -1,12 +1,7 @@
 [build-system]
 requires = [
-    "bidict",
-    "h5py",
     "hatchling==1.32.4",
     "hatch-vcs==0.5.0",
-    "numpy",
-    "pygtrie",
-    "pyiron_snippets",
 ]
 build-backend = "hatchling.build"
 
