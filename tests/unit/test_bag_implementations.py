@@ -1,5 +1,6 @@
 import abc
 import contextlib
+import dataclasses
 import os
 import pathlib
 import tempfile
@@ -59,6 +60,16 @@ def get_modified_bag_info(cls: type[bag.Bag]) -> bag.BagInfo:
     )
 
 
+def versioned_bag_class(base: type[bag.Bag], version: str | None) -> type[bag.Bag]:
+    """A subclass reporting `base`'s exact bag info, except for the version."""
+    info = dataclasses.replace(base.get_bag_info(), version=version)
+    return type(
+        base.__name__,
+        (base,),
+        {"get_bag_info": classmethod(lambda cls: info)},
+    )
+
+
 def numpy_array_strategy():
     return np_st.arrays(
         dtype=st.sampled_from(bagofholding.h5.dtypes.H5PY_DTYPE_WHITELIST),
@@ -87,6 +98,8 @@ class AbstractTestNamespace:
         A generic bag test which should pass for all implementations of Bag.
         """
 
+        save_name: str
+
         @classmethod
         @abc.abstractmethod
         def bag_class(cls) -> type[bag.Bag]: ...
@@ -112,6 +125,60 @@ class AbstractTestNamespace:
                     (self.bag_class(),),
                     {"get_bag_info": classmethod(get_modified_bag_info)},
                 )(self.save_name)
+
+        def _save_with_bag_version(self, version: str | None) -> None:
+            versioned_bag_class(self.bag_class(), version).save(42, self.save_name)
+
+        def _open_with_bag_version(self, version: str | None, **kwargs):
+            return versioned_bag_class(self.bag_class(), version)(
+                self.save_name, **kwargs
+            )
+
+        def test_bag_version_default_is_semantic_minor(self):
+            self._save_with_bag_version("1.2.3")
+            self._open_with_bag_version("1.2.4")
+            self._open_with_bag_version("1.2.4.dev1+gabc")
+            with self.assertRaises(BagMismatchError):
+                self._open_with_bag_version("1.3.0")
+
+        def test_bag_version_validator_keywords(self):
+            self._save_with_bag_version("1.2.3")
+            with self.assertRaises(BagMismatchError):
+                self._open_with_bag_version("1.2.4", bag_version_validator="exact")
+            self._open_with_bag_version("1.2.3", bag_version_validator="exact")
+            self._open_with_bag_version("1.9.0", bag_version_validator="semantic-major")
+            self._open_with_bag_version("9.9.9", bag_version_validator="none")
+
+        def test_bag_version_validator_callable(self):
+            self._save_with_bag_version("1.2.3")
+            self._open_with_bag_version(
+                "9.9.9", bag_version_validator=lambda current, stored: True
+            )
+            with self.assertRaises(BagMismatchError):
+                self._open_with_bag_version(
+                    "1.2.3", bag_version_validator=lambda current, stored: False
+                )
+
+        def test_bag_version_unparseable(self):
+            self._save_with_bag_version("not-a-version")
+            with self.assertRaises(BagMismatchError):
+                self._open_with_bag_version("1.2.3")
+            self._open_with_bag_version("not-a-version")
+
+        def test_bag_version_missing(self):
+            self._save_with_bag_version(None)
+            self._open_with_bag_version(None)
+            with self.assertRaises(BagMismatchError):
+                self._open_with_bag_version("1.2.3")
+
+        def test_bag_info_non_version_fields_always_checked(self):
+            self.bag_class().save(42, self.save_name)
+            with self.assertRaises(BagMismatchError):
+                type(
+                    "BagSubclass",
+                    (self.bag_class(),),
+                    {"get_bag_info": classmethod(get_modified_bag_info)},
+                )(self.save_name, bag_version_validator="none")
 
         def test_version_checking(self):
             obj = np.polynomial.Polynomial([1, 2, 3])

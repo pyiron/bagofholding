@@ -36,6 +36,7 @@ from bagofholding.metadata import (
     VersionScrapingMap,
     VersionValidatorType,
     get_version,
+    versions_match,
 )
 
 try:
@@ -171,9 +172,21 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         self,
         filepath: str | pathlib.Path,
         *args: object,
+        bag_version_validator: VersionValidatorType = "semantic-minor",
         _skip_load: bool = False,
         **kwargs: Any,
     ) -> None:
+        """
+        Open a bag at a path.
+
+        Args:
+            filepath (str | pathlib.Path): Where the bag lives (or will live).
+            bag_version_validator (VersionValidatorType): How strictly the
+                bagofholding version saved in an existing bag must match the
+                current one; see :func:`bagofholding.metadata.versions_match`. All
+                other bag info (class, module, and implementation-specific fields)
+                must always match exactly. (Default is "semantic-minor".)
+        """
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
         if _skip_load:
@@ -181,11 +194,14 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         info = self._load_existing_bag_info()
         if info is not None:
             self.bag_info = info
-            if not self.validate_bag_info(info, self.get_bag_info()):
+            if not self.validate_bag_info(
+                info, self.get_bag_info(), bag_version_validator
+            ):
                 raise BagMismatchError(
                     f"The bag class {self.__class__} does not match the bag saved at "
-                    f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
-                    f"is {self.bag_info}"
+                    f"{filepath} under bag version validator {bag_version_validator}; "
+                    f"class info is {self.get_bag_info()}, but the info saved is "
+                    f"{self.bag_info}"
                 )
 
     @abc.abstractmethod
@@ -204,8 +220,18 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     def _unpack_field(self, path: str, key: str) -> str | None: ...
 
     @staticmethod
-    def validate_bag_info(bag_info: BagInfo, reference: BagInfo) -> bool:
-        return bag_info == reference
+    def validate_bag_info(
+        bag_info: BagInfo,
+        reference: BagInfo,
+        version_validator: VersionValidatorType = "exact",
+    ) -> bool:
+        if dataclasses.replace(bag_info, version=None) != dataclasses.replace(
+            reference, version=None
+        ):
+            return False
+        if bag_info.version is None or reference.version is None:
+            return bag_info.version == reference.version
+        return versions_match(reference.version, bag_info.version, version_validator)
 
     def load(
         self,
