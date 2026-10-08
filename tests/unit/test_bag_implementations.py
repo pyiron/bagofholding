@@ -5,6 +5,7 @@ import pathlib
 import tempfile
 import types
 import unittest
+import warnings
 from unittest import mock
 
 import numpy as np
@@ -674,7 +675,10 @@ class AbstractTestNamespace:
                         self.bag_class().save(obj, self.save_name)
                     # E.g. for browse-only use, or if users will re-execute code to
                     # make the object importable before loading
-                    self.bag_class().save(obj, self.save_name, require_importable=False)
+                    with self.assertWarns(DeprecationWarning):
+                        self.bag_class().save(
+                            obj, self.save_name, require_importable=False
+                        )
 
         def test_require_importable_identity(self):
             for label, obj in [
@@ -688,7 +692,25 @@ class AbstractTestNamespace:
                         msg="The import path leads to a different object",
                     ):
                         self.bag_class().save(obj, self.save_name)
-                    self.bag_class().save(obj, self.save_name, require_importable=False)
+                    with self.assertWarns(DeprecationWarning):
+                        self.bag_class().save(
+                            obj, self.save_name, require_importable=False
+                        )
+
+        def test_require_importable_deprecated(self):
+            for value in [True, False]:
+                with (
+                    self.subTest(value),
+                    self.assertWarns(
+                        DeprecationWarning,
+                        msg="Any explicit value will break when the kwarg is removed",
+                    ),
+                ):
+                    self.bag_class().save(42, self.save_name, require_importable=value)
+
+            with self.subTest("Default"), warnings.catch_warnings():
+                warnings.simplefilter("error", DeprecationWarning)
+                self.bag_class().save(42, self.save_name)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
         @given(
