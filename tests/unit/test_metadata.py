@@ -3,15 +3,16 @@ import unittest
 
 import numpy as np
 import pyiron_snippets
+from packaging import version as packaging_version
 
 from bagofholding import EnvironmentMismatchError
 from bagofholding.metadata import (
     Metadata,
-    _decompose_semver,
     get_module,
     get_qualname,
     get_version,
     validate_version,
+    versions_match,
 )
 
 
@@ -20,11 +21,10 @@ def some_version_scraper(module_name: str) -> str | None:
 
 
 def _modify_numpy_version(index: int) -> str:
-    semver = _decompose_semver(np.__version__)
-    if semver is None:
-        raise ValueError("Expected semantic version for numpy.")
+    v = packaging_version.Version(np.__version__)
+    release = (v.major, v.minor, v.micro)
     return ".".join(
-        "9999999999" if i == index else str(x) for i, x in enumerate(semver)
+        "9999999999" if i == index else str(x) for i, x in enumerate(release)
     )
 
 
@@ -158,6 +158,19 @@ class TestMetadata(unittest.TestCase):
                 validator="exact",
                 version_scraping={np.__name__: numpy_modify_patch},
             )
+        self.assertIsNone(
+            validate_version(
+                numpy_metadata,
+                validator="semantic-patch",
+                version_scraping={np.__name__: numpy_unmodified},
+            )
+        )
+        with self.assertRaises(EnvironmentMismatchError):
+            validate_version(
+                numpy_metadata,
+                validator="semantic-patch",
+                version_scraping={np.__name__: numpy_modify_patch},
+            )
         with self.assertRaises(EnvironmentMismatchError):
             validate_version(
                 numpy_metadata,
@@ -223,3 +236,57 @@ class TestMetadata(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             validate_version(non_semantic_metadata, validator="not-a-valid-keyword")
+
+
+class TestVersionsMatch(unittest.TestCase):
+    def test_exact(self):
+        self.assertTrue(versions_match("0.1.3", "0.1.3", "exact"))
+        self.assertFalse(
+            versions_match("0.1.3.dev1", "0.1.3", "exact"),
+            msg="exact must stay literal and not strip dev segments",
+        )
+        self.assertFalse(versions_match("1.2", "1.2.0", "exact"))
+
+    def test_semantic_patch(self):
+        self.assertTrue(versions_match("0.1.3.dev1", "0.1.3", "semantic-patch"))
+        self.assertTrue(versions_match("0.1.3+local", "0.1.3rc1", "semantic-patch"))
+        self.assertFalse(versions_match("0.1.4", "0.1.3", "semantic-patch"))
+
+    def test_semantic_minor(self):
+        self.assertTrue(
+            versions_match("0.1.11.dev2+gd4bafdeb1", "0.1.0", "semantic-minor")
+        )
+        self.assertTrue(versions_match("2.3.0rc1", "2.3.1", "semantic-minor"))
+        self.assertTrue(versions_match("1.2", "1.2.0", "semantic-minor"))
+        self.assertFalse(versions_match("0.2.0", "0.1.0", "semantic-minor"))
+
+    def test_semantic_major(self):
+        self.assertTrue(versions_match("1.9.0", "1.0.0", "semantic-major"))
+        self.assertTrue(versions_match("1", "1.5.2", "semantic-major"))
+        self.assertFalse(versions_match("2.0.0", "1.0.0", "semantic-major"))
+
+    def test_invalid_versions_fall_back_to_exact(self):
+        for validator in ("semantic-patch", "semantic-minor", "semantic-major"):
+            with self.subTest(validator):
+                self.assertTrue(
+                    versions_match("not.a.version", "not.a.version", validator)
+                )
+                self.assertFalse(versions_match("not.a.version", "1.0.0", validator))
+                self.assertFalse(versions_match("1.0.0", "not.a.version", validator))
+
+    def test_none(self):
+        self.assertTrue(versions_match("1.0.0", "garbage", "none"))
+
+    def test_callable_receives_current_then_stored(self):
+        received: list[tuple[str, str]] = []
+
+        def record(current: str, stored: str) -> bool:
+            received.append((current, stored))
+            return False
+
+        self.assertFalse(versions_match("current", "stored", record))
+        self.assertEqual([("current", "stored")], received)
+
+    def test_unknown_keyword_raises(self):
+        with self.assertRaises(ValueError):
+            versions_match("1.0.0", "1.0.0", "not-a-valid-keyword")
