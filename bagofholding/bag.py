@@ -236,6 +236,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
 
         The floor is a version of the module declaring it, so it is only applied to
         bags saved by that module; subclasses elsewhere record their own versions.
+        Bags saved by the very same version always pass, since e.g. an untagged
+        install may report a fallback version that sorts below the floor.
         """
         floor_owner = next(
             c for c in cls.__mro__ if "min_compatible_version" in c.__dict__
@@ -243,6 +245,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         if cls.min_compatible_version is None or (
             bag_info.module != floor_owner.__module__
         ):
+            return True
+        if bag_info.version == cls.get_bag_info().version:
             return True
         if bag_info.version is None:
             return False
