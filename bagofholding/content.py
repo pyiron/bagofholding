@@ -109,6 +109,7 @@ class PackingArguments:
     require_versions: bool
     forbidden_modules: list[str] | tuple[str, ...]
     version_scraping: VersionScrapingMap | None
+    require_importable: bool
     _pickle_protocol: SupportsIndex
 
 
@@ -229,14 +230,44 @@ class Reference(Item[str, Any, Packer]):
 
 GlobalType: TypeAlias = type[type] | types.FunctionType | str
 
+# Builtins whose `__module__` and `__qualname__` (or string reduction) do not give an
+# importable path
+SPECIAL_GLOBALS: dict[object, str] = {
+    type(None): "types.NoneType",
+    type(...): "types.EllipsisType",
+    type(NotImplemented): "types.NotImplementedType",
+    ...: "builtins.Ellipsis",
+    NotImplemented: "builtins.NotImplemented",
+}
+
 
 class Global(Item[GlobalType, Any, Packer]):
     _rich_metadata = True
 
     @classmethod
+    def pack(
+        cls,
+        obj: GlobalType,
+        packer: Packer,
+        path: str,
+        packing: PackingArguments,
+    ) -> None:
+        if packing.require_importable and not isinstance(obj, str):
+            # Strings come from reductions, and are validated against the reduced
+            # object by `pack`
+            cls.validate_reimportable(cls._get_import_string(obj), obj)
+        super().pack(obj, packer, path, packing)
+
+    @classmethod
     def _pack_item(cls, obj: GlobalType, packer: Packer, path: str) -> None:
+        packer.pack_string(cls._get_import_string(obj), path)
+
+    @classmethod
+    def _get_import_string(cls, obj: GlobalType) -> str:
         value: str
-        if isinstance(obj, str):
+        if obj in SPECIAL_GLOBALS:
+            value = SPECIAL_GLOBALS[obj]
+        elif isinstance(obj, str):
             value = "builtins." + obj if "." not in obj else obj
         else:
             value = obj.__module__ + "." + obj.__qualname__
@@ -249,7 +280,27 @@ class Global(Item[GlobalType, Any, Packer]):
             raise StringNotImportableError(
                 f"Local functions are not re-importable, can't pack {obj}"
             )
-        packer.pack_string(value, path)
+        elif value.startswith("builtins."):
+            # Other modules might become importable before loading, but builtins never
+            cls._import(value, obj)
+        return value
+
+    @staticmethod
+    def _import(import_string: str, obj: object) -> Any:
+        try:
+            return retrieve.import_from_string(import_string)
+        except ImportError as e:
+            raise StringNotImportableError(
+                f"{import_string} is not re-importable, can't pack {obj}"
+            ) from e
+
+    @classmethod
+    def validate_reimportable(cls, import_string: str, obj: object) -> None:
+        if cls._import(import_string, obj) is not obj:
+            raise StringNotImportableError(
+                f"{import_string} imports a different object than {obj}, can't pack "
+                f"it"
+            )
 
     @classmethod
     def unpack(cls, packer: Packer, path: str, unpacking: UnpackingArguments) -> Any:
@@ -462,6 +513,7 @@ class Reducible(ReflexiveGroup[object]):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -581,6 +633,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
             packing.require_versions,
             packing.forbidden_modules,
             packing.version_scraping,
+            require_importable=packing.require_importable,
             _pickle_protocol=packing._pickle_protocol,
         )
         pack(
@@ -592,6 +645,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
             packing.require_versions,
             packing.forbidden_modules,
             packing.version_scraping,
+            require_importable=packing.require_importable,
             _pickle_protocol=packing._pickle_protocol,
         )
 
@@ -645,6 +699,7 @@ class StrKeyDict(BuiltinGroup[dict[str, Any]]):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -688,6 +743,7 @@ class Union(BuiltinGroup[types.UnionType]):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -749,6 +805,7 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
                 packing.require_versions,
                 packing.forbidden_modules,
                 packing.version_scraping,
+                require_importable=packing.require_importable,
                 _pickle_protocol=packing._pickle_protocol,
             )
 
@@ -793,6 +850,7 @@ def pack(
     require_versions: bool,
     forbidden_modules: list[str] | tuple[str, ...],
     version_scraping: VersionScrapingMap | None,
+    require_importable: bool = True,
     _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
 ) -> None:
     if _pickle_protocol not in (4, 3, 2, 1, 0):
@@ -806,6 +864,7 @@ def pack(
         require_versions=require_versions,
         forbidden_modules=forbidden_modules,
         version_scraping=version_scraping,
+        require_importable=require_importable,
         _pickle_protocol=_pickle_protocol,
     )
 
@@ -841,12 +900,10 @@ def pack(
 
     rv = obj.__reduce_ex__(_pickle_protocol)
     if isinstance(rv, str):
-        Global.pack(
-            retrieve.get_importable_string_from_string_reduction(rv, obj),
-            packer,
-            path,
-            packing_args,
-        )
+        import_string = retrieve.get_importable_string_from_string_reduction(rv, obj)
+        if require_importable:
+            Global.validate_reimportable(import_string, obj)
+        Global.pack(import_string, packer, path, packing_args)
         return
     else:
         Reducible.pack(obj, packer, path, packing_args, rv=rv)
@@ -860,6 +917,8 @@ KNOWN_ITEM_MAP: dict[
     types.FunctionType: Global,
     type(all): Global,
     type(None): NoneItem,
+    types.EllipsisType: Global,
+    types.NotImplementedType: Global,
     bool: Bool,
     int: Long,
     float: Float,

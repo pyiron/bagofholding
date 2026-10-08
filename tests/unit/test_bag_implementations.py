@@ -3,7 +3,9 @@ import contextlib
 import os
 import pathlib
 import tempfile
+import types
 import unittest
+import warnings
 from unittest import mock
 
 import numpy as np
@@ -13,6 +15,8 @@ from hypothesis.extra import numpy as np_st
 from pyiron_snippets.dotdict import DotDict
 from static.objects import (
     DRAGON,
+    STALE_CLASS,
+    STALE_SENTINEL,
     CustomReduce,
     ExReducta,
     NestedParent,
@@ -21,6 +25,7 @@ from static.objects import (
     SomeData,
     SubList,
     is_a_lambda,
+    make_namedtuple_class,
 )
 
 import bagofholding.bag as bag
@@ -183,6 +188,11 @@ class AbstractTestNamespace:
                     np.all,  # function -- types.FunctionType
                     self.bag_class()._unpack_bag_info,  # function -- types.FunctionType
                     DRAGON,  # Singleton
+                    type(None),  # Not importable from its __module__ (builtins)
+                    type(...),
+                    type(NotImplemented),
+                    ...,  # Builtin singletons reducing to a bare string
+                    NotImplemented,
                 ]
             ]
             reducible_content = [
@@ -638,6 +648,69 @@ class AbstractTestNamespace:
 
             with self.assertRaises(StringNotImportableError):
                 self.bag_class().save(this_cannot_be_reimported, self.save_name)
+
+        def test_early_failure_for_unimportable_builtin_type(self):
+            with self.assertRaises(StringNotImportableError):
+                self.bag_class().save(types.FunctionType, self.save_name)
+
+        def test_require_importable(self):
+            FactoryMade = make_namedtuple_class()
+
+            with self.subTest("Importable objects are fine"):
+                self.bag_class().save([c.pack, np.all, DRAGON], self.save_name)
+
+            for label, obj in [
+                ("Global", FactoryMade),
+                ("Reducible", FactoryMade(42)),
+                ("Dict keys", {FactoryMade: 42}),
+                ("Dict values", {42: FactoryMade}),
+                ("StrKeyDict", {"forty-two": FactoryMade}),
+                ("Union", int | FactoryMade),
+                ("Indexable", [FactoryMade]),
+            ]:
+                with self.subTest(label):
+                    with self.assertRaises(
+                        StringNotImportableError, msg="Should be strict by default"
+                    ):
+                        self.bag_class().save(obj, self.save_name)
+                    # E.g. for browse-only use, or if users will re-execute code to
+                    # make the object importable before loading
+                    with self.assertWarns(DeprecationWarning):
+                        self.bag_class().save(
+                            obj, self.save_name, require_importable=False
+                        )
+
+        def test_require_importable_identity(self):
+            for label, obj in [
+                ("Global", STALE_CLASS),
+                ("Reducible", STALE_CLASS()),
+                ("String reduction", STALE_SENTINEL),
+            ]:
+                with self.subTest(label):
+                    with self.assertRaises(
+                        StringNotImportableError,
+                        msg="The import path leads to a different object",
+                    ):
+                        self.bag_class().save(obj, self.save_name)
+                    with self.assertWarns(DeprecationWarning):
+                        self.bag_class().save(
+                            obj, self.save_name, require_importable=False
+                        )
+
+        def test_require_importable_deprecated(self):
+            for value in [True, False]:
+                with (
+                    self.subTest(value),
+                    self.assertWarns(
+                        DeprecationWarning,
+                        msg="Any explicit value will break when the kwarg is removed",
+                    ),
+                ):
+                    self.bag_class().save(42, self.save_name, require_importable=value)
+
+            with self.subTest("Default"), warnings.catch_warnings():
+                warnings.simplefilter("error", DeprecationWarning)
+                self.bag_class().save(42, self.save_name)
 
         @settings(suppress_health_check=[HealthCheck.differing_executors])
         @given(

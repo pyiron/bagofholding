@@ -15,6 +15,7 @@ import abc
 import dataclasses
 import pathlib
 import pickle
+import warnings
 from collections.abc import Iterator, Mapping
 from typing import (
     Any,
@@ -88,6 +89,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         version_scraping: VersionScrapingMap | None = None,
         _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
         overwrite_existing: bool = True,
+        require_importable: bool | None = None,
     ) -> None:
         """
         Save a python object to file.
@@ -109,7 +111,30 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 string and looks for a `__version__` attribute.
             overwrite_existing (bool): Whether to overwrite an existing bag at the
                 target location. (Default is True.)
+            require_importable (bool | None): DEPRECATED, and will be removed in a
+                future version, after which the check will always run, as in `pickle`.
+                Whether to fail at save time if any stored global (class, function,
+                etc.) cannot be re-imported from its module and qualified name as the
+                very same object. This catches, e.g., classes made by factories
+                (`collections.namedtuple`, `dataclasses.make_dataclass`, `type`),
+                defined in modules that were never registered in `sys.modules`, or
+                stale after their definition was re-run (e.g. re-executing a notebook
+                cell). (Default is None, which behaves as True. Set it False to
+                deliberately store objects that can be browsed but not (yet) loaded,
+                e.g. if you will re-execute code to make them importable before
+                loading.) Objects in `__main__` are importable at save time but not in
+                a fresh interpreter; use `forbidden_modules` to guard against that.
         """
+        if require_importable is None:
+            require_importable = True
+        else:
+            warnings.warn(
+                "`require_importable` is deprecated and will be removed in a future "
+                "version. To be `pickle`-compliant, saving will then always require "
+                "stored globals to be re-importable as the same object.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         bag = cls._new_for_save(filepath, overwrite_existing)
         bag._pack_bag_info()
         pack(
@@ -121,6 +146,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
             require_versions,
             forbidden_modules,
             version_scraping,
+            require_importable=require_importable,
             _pickle_protocol=_pickle_protocol,
         )
         bag._write()
