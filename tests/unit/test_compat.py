@@ -4,8 +4,10 @@ import importlib
 import inspect
 import pathlib
 import pkgutil
+import types
 import unittest
 from typing import Any
+from unittest import mock
 
 from packaging import version as packaging_version
 from static import assertions, compat
@@ -45,10 +47,14 @@ def discover_artefacts() -> list[Artefact]:
 
 
 def compat_module_names() -> list[str]:
+    """Compat module names, oldest version first."""
     return sorted(
-        info.name
-        for info in pkgutil.iter_modules(compat.__path__)
-        if info.name[0] == "v"
+        (
+            info.name
+            for info in pkgutil.iter_modules(compat.__path__)
+            if info.name[0] == "v"
+        ),
+        key=module_version,
     )
 
 
@@ -112,6 +118,18 @@ class TestSeriesHelpers(unittest.TestCase):
         self.assertTrue(is_fallback_version(v("0.1.dev1+gabc")))
         self.assertFalse(is_fallback_version(v("0.1.15.dev10+g412e88a7a")))
         self.assertFalse(is_fallback_version(v("0.1.9")))
+
+
+class TestCompatModuleNames(unittest.TestCase):
+    def test_sorted_by_version(self):
+        fake = [
+            types.SimpleNamespace(name=n)
+            for n in ("v0_10_0", "v0_1_9", "v0_1_15", "v0_2_0", "not_a_compat_module")
+        ]
+        with mock.patch.object(pkgutil, "iter_modules", return_value=fake):
+            self.assertEqual(
+                ["v0_1_9", "v0_1_15", "v0_2_0", "v0_10_0"], compat_module_names()
+            )
 
 
 class TestCompat(unittest.TestCase):
