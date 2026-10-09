@@ -18,7 +18,6 @@ from static.objects import (
     DRAGON,
     STALE_CLASS,
     STALE_SENTINEL,
-    Holder,
     Parent,
     Recursing,
     SomeData,
@@ -297,6 +296,12 @@ class AbstractTestNamespace:
                 "ndarray_str": c.Reducible,
                 "ndarray_bytes": c.Reducible,
                 "ndarray_bytes_ragged": c.Reducible,
+                "cycle_list_self": c.Reducible,
+                "cycle_list": c.Reducible,
+                "cycle_dict": c.Reducible,
+                "cycle_str_key_dict": c.Reducible,
+                "cycle_set": c.Reducible,
+                "cycle_bound_builtin_method": c.Reducible,
             }
             cases = build_cases()
             self.assertEqual(
@@ -741,59 +746,6 @@ class AbstractTestNamespace:
         def test_early_failure_for_unimportable_builtin_type(self):
             with self.assertRaises(StringNotImportableError):
                 self.bag_class().save(types.FunctionType, self.save_name)
-
-        def test_bound_builtin_method(self):
-            # E.g. matplotlib artists hold their parent's `list.remove`
-            items = [1, 2]
-            self.bag_class().save((items, items.append), self.save_name)
-            reloaded_items, reloaded_append = self.bag_class()(self.save_name).load()
-            reloaded_append(3)
-            self.assertEqual(
-                [1, 2, 3],
-                reloaded_items,
-                msg="The method should stay bound to the (reloaded) list instance",
-            )
-
-        def test_cycles_through_mutable_builtin_containers(self):
-            def held_by(container, holder):
-                holder.parent = container
-                return holder
-
-            list_self = []
-            list_self.append(list_self)
-            list_via_object = []
-            list_via_object.append(held_by(list_via_object, Holder()))
-            dict_via_object = {}
-            dict_via_object[0] = held_by(dict_via_object, Holder())
-            str_key_dict_via_object = {}
-            str_key_dict_via_object["k"] = held_by(str_key_dict_via_object, Holder())
-            set_via_object = set()
-            set_via_object.add(held_by(set_via_object, Holder()))
-            list_via_method = []
-            method_holder = Holder()
-            method_holder.remove = list_via_method.remove
-            list_via_method.append(method_holder)
-
-            for label, obj, get_back_reference in [
-                ("list self", list_self, lambda r: r[0]),
-                ("list via object", list_via_object, lambda r: r[0].parent),
-                ("dict via object", dict_via_object, lambda r: r[0].parent),
-                (
-                    "str-key dict via object",
-                    str_key_dict_via_object,
-                    lambda r: r["k"].parent,
-                ),
-                ("set via object", set_via_object, lambda r: next(iter(r)).parent),
-                ("list via method", list_via_method, lambda r: r[0].remove.__self__),
-            ]:
-                with self.subTest(label):
-                    self.bag_class().save(obj, self.save_name)
-                    reloaded = self.bag_class()(self.save_name).load()
-                    self.assertIs(
-                        reloaded,
-                        get_back_reference(reloaded),
-                        msg="Cycles should resolve to the reloaded container itself",
-                    )
 
         def test_require_importable(self):
             FactoryMade = make_namedtuple_class()
