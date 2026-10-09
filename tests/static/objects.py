@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 from typing import Any
 
-from static.compat import v0_1_15
+from static.compat import v0_1_16
 from static.compat.v0_1_0 import DRAGON as DRAGON
 from static.compat.v0_1_0 import Child as Child
 from static.compat.v0_1_0 import CustomReduce as CustomReduce
@@ -20,7 +20,7 @@ from static.compat.v0_1_0 import SubList as SubList
 
 def build_cases() -> dict[str, Any]:
     """All named round-trip cases, i.e. those of the newest compat module."""
-    cases: dict[str, Any] = v0_1_15.build()
+    cases: dict[str, Any] = v0_1_16.build()
     return cases
 
 

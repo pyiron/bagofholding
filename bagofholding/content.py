@@ -539,6 +539,10 @@ class Reducible(ReflexiveGroup[object]):
                 version_scraping=unpacking.version_scraping,
             ),
         )
+        from_memo = unpacking.memo.get(path, NotData)
+        if from_memo is not NotData:
+            # The args cycled back to this object, which was then fully unpacked
+            return from_memo
         obj: object = constructor(*constructor_args)
         unpacking.memo[path] = obj
         rv = (constructor, constructor_args) + tuple(
@@ -653,7 +657,10 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
     def unpack(
         cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> dict[Any, Any]:
-        return dict(
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: dict[Any, Any] = {}
+        unpacking.memo[path] = obj
+        obj.update(
             zip(
                 cast(
                     tuple[Any],
@@ -678,6 +685,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
                 strict=True,
             )
         )
+        return obj
 
 
 class StrKeyDict(BuiltinGroup[dict[str, Any]]):
@@ -707,16 +715,18 @@ class StrKeyDict(BuiltinGroup[dict[str, Any]]):
     def unpack(
         cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> dict[str, Any]:
-        return {
-            k: unpack(
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: dict[str, Any] = {}
+        unpacking.memo[path] = obj
+        for k in packer.open_group(path):
+            obj[k] = unpack(
                 packer,
                 packer.join(path, k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in packer.open_group(path)
-        }
+        return obj
 
 
 class Union(BuiltinGroup[types.UnionType]):
@@ -813,7 +823,13 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
     def unpack(
         cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> IndexableType:
-        return cls.recast(
+        return cls.recast(cls._unpack_items(packer, path, unpacking))
+
+    @staticmethod
+    def _unpack_items(
+        packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> Iterator[Any]:
+        return (
             unpack(
                 packer,
                 packer.join(path, f"i{i}"),
@@ -832,9 +848,29 @@ class Tuple(Indexable[tuple[Any, ...]]):
 class List(Indexable[list[Any]]):
     recast = list
 
+    @classmethod
+    def unpack(
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> list[Any]:
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: list[Any] = []
+        unpacking.memo[path] = obj
+        obj.extend(cls._unpack_items(packer, path, unpacking))
+        return obj
+
 
 class Set(Indexable[set[Any]]):
     recast = set
+
+    @classmethod
+    def unpack(
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> set[Any]:
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: set[Any] = set()
+        unpacking.memo[path] = obj
+        obj.update(cls._unpack_items(packer, path, unpacking))
+        return obj
 
 
 class FrozenSet(Indexable[frozenset[Any]]):
@@ -870,7 +906,7 @@ def pack(
 
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
-    if simple_class is not None:
+    if simple_class is not None and not is_bound_builtin_method(obj):
         simple_class.pack(
             obj,
             packer,
@@ -951,6 +987,16 @@ def has_surrogates(s: str) -> bool:
         return True
 
 
+def is_bound_builtin_method(obj: object) -> bool:
+    """
+    Builtin methods bound to an instance (e.g. `[].append`) aren't importable; like
+    `pickle`, we let them reduce to `getattr(instance, name)` instead.
+    """
+    return isinstance(obj, types.BuiltinMethodType) and not (
+        obj.__self__ is None or isinstance(obj.__self__, types.ModuleType)
+    )
+
+
 def get_group_content_class(obj: object) -> type[Group[Any, Any]] | None:
     t = type(obj)
     if t is dict and all(
@@ -985,7 +1031,7 @@ def unpack(
                 version_scraping=version_scraping,
             ),
         )
-        if path not in memo:
-            memo[path] = value
-        return value
+        # Objects built only after their contents (e.g. tuples) can be unpacked again
+        # when the contents cycle back to them; like `pickle`, keep the first build
+        return memo.setdefault(path, value)
     return memo_value

@@ -296,6 +296,15 @@ class AbstractTestNamespace:
                 "ndarray_str": c.Reducible,
                 "ndarray_bytes": c.Reducible,
                 "ndarray_bytes_ragged": c.Reducible,
+                "cycle_list_self": c.Reducible,
+                "cycle_list": c.Reducible,
+                "cycle_dict": c.Reducible,
+                "cycle_str_key_dict": c.Reducible,
+                "cycle_set": c.Reducible,
+                "cycle_bound_builtin_method": c.Reducible,
+                "cycle_tuple": c.Reducible,
+                "cycle_frozenset": c.Reducible,
+                "cycle_constructor_args": c.Reducible,
             }
             cases = build_cases()
             self.assertEqual(
