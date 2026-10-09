@@ -26,7 +26,7 @@ dependencies = [
     "bidict==0.24.1",
     "h5py==3.16.0",
     "numpy==2.5.3",
-    "packaging==26.0",
+    "packaging==26.3",
     "pygtrie==2.6.2",
     "pyiron_snippets==1.5.0",
 ]
