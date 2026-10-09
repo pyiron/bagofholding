@@ -870,7 +870,7 @@ def pack(
 
     t = type if isinstance(obj, type) else type(obj)
     simple_class = KNOWN_ITEM_MAP.get(t)
-    if simple_class is not None:
+    if simple_class is not None and not is_bound_builtin_method(obj):
         simple_class.pack(
             obj,
             packer,
@@ -949,6 +949,16 @@ def has_surrogates(s: str) -> bool:
         return False
     except UnicodeEncodeError:
         return True
+
+
+def is_bound_builtin_method(obj: object) -> bool:
+    """
+    Builtin methods bound to an instance (e.g. `[].append`) aren't importable; like
+    `pickle`, we let them reduce to `getattr(instance, name)` instead.
+    """
+    return isinstance(obj, types.BuiltinMethodType) and not (
+        obj.__self__ is None or isinstance(obj.__self__, types.ModuleType)
+    )
 
 
 def get_group_content_class(obj: object) -> type[Group[Any, Any]] | None:

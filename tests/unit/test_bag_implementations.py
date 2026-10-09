@@ -741,6 +741,18 @@ class AbstractTestNamespace:
             with self.assertRaises(StringNotImportableError):
                 self.bag_class().save(types.FunctionType, self.save_name)
 
+        def test_bound_builtin_method(self):
+            # E.g. matplotlib artists hold their parent's `list.remove`
+            items = [1, 2]
+            self.bag_class().save((items, items.append), self.save_name)
+            reloaded_items, reloaded_append = self.bag_class()(self.save_name).load()
+            reloaded_append(3)
+            self.assertEqual(
+                [1, 2, 3],
+                reloaded_items,
+                msg="The method should stay bound to the (reloaded) list instance",
+            )
+
         def test_require_importable(self):
             FactoryMade = make_namedtuple_class()
 
