@@ -539,6 +539,10 @@ class Reducible(ReflexiveGroup[object]):
                 version_scraping=unpacking.version_scraping,
             ),
         )
+        from_memo = unpacking.memo.get(path, NotData)
+        if from_memo is not NotData:
+            # The args cycled back to this object, which was then fully unpacked
+            return from_memo
         obj: object = constructor(*constructor_args)
         unpacking.memo[path] = obj
         rv = (constructor, constructor_args) + tuple(
@@ -1027,7 +1031,7 @@ def unpack(
                 version_scraping=version_scraping,
             ),
         )
-        if path not in memo:
-            memo[path] = value
-        return value
+        # Objects built only after their contents (e.g. tuples) can be unpacked again
+        # when the contents cycle back to them; like `pickle`, keep the first build
+        return memo.setdefault(path, value)
     return memo_value

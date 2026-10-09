@@ -96,6 +96,46 @@ class BoundBuiltinMethodCycle(_Cycle):
         return self.container[0].remove.__self__
 
 
+class TupleCycle(_Cycle):
+    """Tuples can't hold themselves directly, but can via a mutable item."""
+
+    def __init__(self) -> None:
+        self.container: tuple[list[Any]] = ([],)
+        self.container[0].append(self.container)
+
+    def back_reference(self) -> Any:
+        return self.container[0][0]
+
+
+class FrozenSetCycle(_Cycle):
+    def __init__(self) -> None:
+        holder = Holder()
+        self.container: frozenset[Any] = frozenset([holder])
+        holder.parent = self.container  # type: ignore[attr-defined]
+
+    def back_reference(self) -> Any:
+        return next(iter(self.container)).parent
+
+
+class ConstructorArgsCycle(_Cycle):
+    """Reduces to constructor args which reach back to the object itself."""
+
+    def __init__(self, items: list[Any] | None = None) -> None:
+        if items is None:
+            items = [self]
+        self.items = items
+
+    def __reduce__(self) -> tuple[type[ConstructorArgsCycle], tuple[list[Any]]]:
+        return type(self), (self.items,)
+
+    @property
+    def container(self) -> ConstructorArgsCycle:
+        return self
+
+    def back_reference(self) -> Any:
+        return self.items[0]
+
+
 def build() -> dict[str, Any]:
     return {
         **v0_1_15.build(),
@@ -105,4 +145,7 @@ def build() -> dict[str, Any]:
         "cycle_str_key_dict": StrKeyDictCycle(),
         "cycle_set": SetCycle(),
         "cycle_bound_builtin_method": BoundBuiltinMethodCycle(),
+        "cycle_tuple": TupleCycle(),
+        "cycle_frozenset": FrozenSetCycle(),
+        "cycle_constructor_args": ConstructorArgsCycle(),
     }
