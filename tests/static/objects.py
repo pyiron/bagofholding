@@ -55,3 +55,7 @@ class Sentinel:
 SENTINEL = Sentinel()
 STALE_SENTINEL = SENTINEL
 SENTINEL = Sentinel()
+
+
+class Holder:
+    """A plain, hashable attribute holder for building reference cycles."""

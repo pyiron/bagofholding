@@ -18,6 +18,7 @@ from static.objects import (
     DRAGON,
     STALE_CLASS,
     STALE_SENTINEL,
+    Holder,
     Parent,
     Recursing,
     SomeData,
@@ -752,6 +753,47 @@ class AbstractTestNamespace:
                 reloaded_items,
                 msg="The method should stay bound to the (reloaded) list instance",
             )
+
+        def test_cycles_through_mutable_builtin_containers(self):
+            def held_by(container, holder):
+                holder.parent = container
+                return holder
+
+            list_self = []
+            list_self.append(list_self)
+            list_via_object = []
+            list_via_object.append(held_by(list_via_object, Holder()))
+            dict_via_object = {}
+            dict_via_object[0] = held_by(dict_via_object, Holder())
+            str_key_dict_via_object = {}
+            str_key_dict_via_object["k"] = held_by(str_key_dict_via_object, Holder())
+            set_via_object = set()
+            set_via_object.add(held_by(set_via_object, Holder()))
+            list_via_method = []
+            method_holder = Holder()
+            method_holder.remove = list_via_method.remove
+            list_via_method.append(method_holder)
+
+            for label, obj, get_back_reference in [
+                ("list self", list_self, lambda r: r[0]),
+                ("list via object", list_via_object, lambda r: r[0].parent),
+                ("dict via object", dict_via_object, lambda r: r[0].parent),
+                (
+                    "str-key dict via object",
+                    str_key_dict_via_object,
+                    lambda r: r["k"].parent,
+                ),
+                ("set via object", set_via_object, lambda r: next(iter(r)).parent),
+                ("list via method", list_via_method, lambda r: r[0].remove.__self__),
+            ]:
+                with self.subTest(label):
+                    self.bag_class().save(obj, self.save_name)
+                    reloaded = self.bag_class()(self.save_name).load()
+                    self.assertIs(
+                        reloaded,
+                        get_back_reference(reloaded),
+                        msg="Cycles should resolve to the reloaded container itself",
+                    )
 
         def test_require_importable(self):
             FactoryMade = make_namedtuple_class()

@@ -653,7 +653,10 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
     def unpack(
         cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> dict[Any, Any]:
-        return dict(
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: dict[Any, Any] = {}
+        unpacking.memo[path] = obj
+        obj.update(
             zip(
                 cast(
                     tuple[Any],
@@ -678,6 +681,7 @@ class Dict(BuiltinGroup[dict[Any, Any]]):
                 strict=True,
             )
         )
+        return obj
 
 
 class StrKeyDict(BuiltinGroup[dict[str, Any]]):
@@ -707,16 +711,18 @@ class StrKeyDict(BuiltinGroup[dict[str, Any]]):
     def unpack(
         cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> dict[str, Any]:
-        return {
-            k: unpack(
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: dict[str, Any] = {}
+        unpacking.memo[path] = obj
+        for k in packer.open_group(path):
+            obj[k] = unpack(
                 packer,
                 packer.join(path, k),
                 unpacking.memo,
                 version_validator=unpacking.version_validator,
                 version_scraping=unpacking.version_scraping,
             )
-            for k in packer.open_group(path)
-        }
+        return obj
 
 
 class Union(BuiltinGroup[types.UnionType]):
@@ -813,7 +819,13 @@ class Indexable(BuiltinGroup[IndexableType], Generic[IndexableType], abc.ABC):
     def unpack(
         cls, packer: Packer, path: str, unpacking: UnpackingArguments
     ) -> IndexableType:
-        return cls.recast(
+        return cls.recast(cls._unpack_items(packer, path, unpacking))
+
+    @staticmethod
+    def _unpack_items(
+        packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> Iterator[Any]:
+        return (
             unpack(
                 packer,
                 packer.join(path, f"i{i}"),
@@ -832,9 +844,29 @@ class Tuple(Indexable[tuple[Any, ...]]):
 class List(Indexable[list[Any]]):
     recast = list
 
+    @classmethod
+    def unpack(
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> list[Any]:
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: list[Any] = []
+        unpacking.memo[path] = obj
+        obj.extend(cls._unpack_items(packer, path, unpacking))
+        return obj
+
 
 class Set(Indexable[set[Any]]):
     recast = set
+
+    @classmethod
+    def unpack(
+        cls, packer: Packer, path: str, unpacking: UnpackingArguments
+    ) -> set[Any]:
+        # Memoize before filling, so cyclic references resolve to this instance
+        obj: set[Any] = set()
+        unpacking.memo[path] = obj
+        obj.update(cls._unpack_items(packer, path, unpacking))
+        return obj
 
 
 class FrozenSet(Indexable[frozenset[Any]]):
