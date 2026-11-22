@@ -1,12 +1,7 @@
 [build-system]
 requires = [
-    "bidict",
-    "h5py",
-    "hatchling==1.29.0",
+    "hatchling==1.32.4",
     "hatch-vcs==0.5.0",
-    "numpy",
-    "pygtrie",
-    "pyiron_snippets",
 ]
 build-backend = "hatchling.build"
 
@@ -28,11 +23,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "bidict==0.23.1",
-    "h5py==3.15.1",
-    "numpy==2.4.3",
-    "pygtrie==2.5.0",
-    "pyiron_snippets==1.2.1",
+    "bidict==0.24.1",
+    "h5py==3.16.0",
+    "numpy==2.5.3",
+    "packaging==26.3",
+    "pygtrie==2.6.2",
+    "pyiron_snippets==1.5.0",
 ]
 dynamic = [ "version",]
 authors = [
@@ -50,10 +46,10 @@ Repository = "https://github.com/pyiron/bagofholding"
 [project.optional-dependencies]
 widget = [
     "ipytree==0.2.2",
-    "traitlets==5.14.3",
+    "traitlets==5.16.1",
 ]
 dev = [
-    "hypothesis==6.151.9",
+    "hypothesis==6.168.3",
 ]
 
 [tool.hatch.build]

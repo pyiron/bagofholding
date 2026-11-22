@@ -7,11 +7,11 @@ dependencies:
 - sphinx-gallery
 - sphinx-rtd-theme
 - versioneer
-- bidict =0.23.1
-- h5py =3.15.1
-- hatchling =1.29.0
+- bidict =0.24.1
+- h5py =3.16.0
+- hatchling =1.32.4
 - hatch-vcs =0.5.0
-- numpy =2.4.3
-- pygtrie =2.5.0
-- pyiron_snippets =1.2.1
-- python >=3.11,<3.15
+- numpy =2.5.3
+- packaging =26.3
+- pygtrie =2.6.2
+- pyiron_snippets =1.5.0

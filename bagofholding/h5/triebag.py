@@ -37,6 +37,8 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
     """
 
     _content_key: ClassVar[str] = "content_type"
+    # Type codes were renumbered in 0.1.9
+    min_compatible_version: ClassVar[str | None] = "0.1.9"
 
     _paths_key: ClassVar[str] = "paths"
     _type_index_key: ClassVar[str] = "type_index"

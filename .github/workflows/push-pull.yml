@@ -9,16 +9,16 @@ on:
 
 jobs:
   pyiron:
-    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.0.12
+    uses: pyiron/actions/.github/workflows/push-pull.yml@actions-4.2.1
     secrets: inherit
     with:
-      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml
+      notebooks-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml .ci_support/environment-binder.yml
       tests-env-files: .ci_support/environment.yml .ci_support/environment-widget.yml .ci_support/environment-dev.yml
       alternate-tests-env-files: .ci_support/lower_bound.yml
       alternate-tests-dir: tests/unit
       alternate-tests-python-version: '3.11'
       extra-python-paths: tests
-      python-version-alt1: '3.11'
+      python-version-alt1: 'exclude'  # Only test 3.11 on lower bounds -- latest deps drop it
       python-version-alt2: '3.12'
       python-version: '3.13'
       python-version-alt3: '3.14'
@@ -26,5 +26,6 @@ jobs:
       do-codacy: false
       do-coveralls: false
       do-mypy: true
+      mypy-env-files: .ci_support/environment.yml
       coverage-test-dir: tests/unit tests/integration
       do-benchmark-tests: ${{ github.event_name == 'pull_request' }}

@@ -15,6 +15,7 @@ import abc
 import dataclasses
 import pathlib
 import pickle
+import warnings
 from collections.abc import Iterator, Mapping
 from typing import (
     Any,
@@ -24,6 +25,7 @@ from typing import (
 )
 
 import bidict
+from packaging import version as packaging_version
 from pyiron_snippets import import_alarm
 
 from bagofholding.content import MAX_PICKLE_PROTOCOL, BespokeItem, Packer, pack, unpack
@@ -35,6 +37,7 @@ from bagofholding.metadata import (
     VersionScrapingMap,
     VersionValidatorType,
     get_version,
+    versions_match,
 )
 
 try:
@@ -64,6 +67,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
 
     bag_info: BagInfo
     storage_root: ClassVar[str] = "object"
+    min_compatible_version: ClassVar[str | None] = None
+    """The oldest bagofholding version whose saved bags this class can read."""
     filepath: pathlib.Path
 
     @classmethod
@@ -88,6 +93,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         version_scraping: VersionScrapingMap | None = None,
         _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
         overwrite_existing: bool = True,
+        require_importable: bool | None = None,
     ) -> None:
         """
         Save a python object to file.
@@ -109,7 +115,30 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 string and looks for a `__version__` attribute.
             overwrite_existing (bool): Whether to overwrite an existing bag at the
                 target location. (Default is True.)
+            require_importable (bool | None): DEPRECATED, and will be removed in a
+                future version, after which the check will always run, as in `pickle`.
+                Whether to fail at save time if any stored global (class, function,
+                etc.) cannot be re-imported from its module and qualified name as the
+                very same object. This catches, e.g., classes made by factories
+                (`collections.namedtuple`, `dataclasses.make_dataclass`, `type`),
+                defined in modules that were never registered in `sys.modules`, or
+                stale after their definition was re-run (e.g. re-executing a notebook
+                cell). (Default is None, which behaves as True. Set it False to
+                deliberately store objects that can be browsed but not (yet) loaded,
+                e.g. if you will re-execute code to make them importable before
+                loading.) Objects in `__main__` are importable at save time but not in
+                a fresh interpreter; use `forbidden_modules` to guard against that.
         """
+        if require_importable is None:
+            require_importable = True
+        else:
+            warnings.warn(
+                "`require_importable` is deprecated and will be removed in a future "
+                "version. To be `pickle`-compliant, saving will then always require "
+                "stored globals to be re-importable as the same object.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         bag = cls._new_for_save(filepath, overwrite_existing)
         bag._pack_bag_info()
         pack(
@@ -121,6 +150,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
             require_versions,
             forbidden_modules,
             version_scraping,
+            require_importable=require_importable,
             _pickle_protocol=_pickle_protocol,
         )
         bag._write()
@@ -145,9 +175,21 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         self,
         filepath: str | pathlib.Path,
         *args: object,
+        bag_version_validator: VersionValidatorType = "semantic-minor",
         _skip_load: bool = False,
         **kwargs: Any,
     ) -> None:
+        """
+        Open a bag at a path.
+
+        Args:
+            filepath (str | pathlib.Path): Where the bag lives (or will live).
+            bag_version_validator (VersionValidatorType): How strictly the
+                bagofholding version saved in an existing bag must match the
+                current one; see :func:`bagofholding.metadata.versions_match`. All
+                other bag info (class, module, and implementation-specific fields)
+                must always match exactly. (Default is "semantic-minor".)
+        """
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
         if _skip_load:
@@ -155,11 +197,21 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         info = self._load_existing_bag_info()
         if info is not None:
             self.bag_info = info
-            if not self.validate_bag_info(info, self.get_bag_info()):
+            if bag_version_validator != "none" and not self._meets_version_floor(info):
+                raise BagMismatchError(
+                    f"The bag saved at {filepath} has bagofholding version "
+                    f"{info.version}, but {self.__class__.__name__} can only read bags "
+                    f"saved with version {self.min_compatible_version} or later. Use "
+                    f'bag_version_validator="none" to attempt loading anyway.'
+                )
+            if not self.validate_bag_info(
+                info, self.get_bag_info(), bag_version_validator
+            ):
                 raise BagMismatchError(
                     f"The bag class {self.__class__} does not match the bag saved at "
-                    f"{filepath}; class info is {self.get_bag_info()}, but the info saved "
-                    f"is {self.bag_info}"
+                    f"{filepath} under bag version validator {bag_version_validator}; "
+                    f"class info is {self.get_bag_info()}, but the info saved is "
+                    f"{self.bag_info}"
                 )
 
     @abc.abstractmethod
@@ -177,9 +229,47 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     @abc.abstractmethod
     def _unpack_field(self, path: str, key: str) -> str | None: ...
 
+    @classmethod
+    def _meets_version_floor(cls, bag_info: BagInfo) -> bool:
+        """
+        Whether saved bag info is at least :attr:`min_compatible_version`.
+
+        The floor is a version of the module declaring it, so it is only applied to
+        bags saved by that module; subclasses elsewhere record their own versions.
+        Bags saved by the very same version always pass, since e.g. an untagged
+        install may report a fallback version that sorts below the floor.
+        """
+        floor_owner = next(
+            c for c in cls.__mro__ if "min_compatible_version" in c.__dict__
+        )
+        if cls.min_compatible_version is None or (
+            bag_info.module != floor_owner.__module__
+        ):
+            return True
+        if bag_info.version == cls.get_bag_info().version:
+            return True
+        if bag_info.version is None:
+            return False
+        try:
+            return packaging_version.Version(
+                bag_info.version
+            ) >= packaging_version.Version(cls.min_compatible_version)
+        except packaging_version.InvalidVersion:
+            return False
+
     @staticmethod
-    def validate_bag_info(bag_info: BagInfo, reference: BagInfo) -> bool:
-        return bag_info == reference
+    def validate_bag_info(
+        bag_info: BagInfo,
+        reference: BagInfo,
+        version_validator: VersionValidatorType = "exact",
+    ) -> bool:
+        if dataclasses.replace(bag_info, version=None) != dataclasses.replace(
+            reference, version=None
+        ):
+            return False
+        if bag_info.version is None or reference.version is None:
+            return bag_info.version == reference.version
+        return versions_match(reference.version, bag_info.version, version_validator)
 
     def load(
         self,

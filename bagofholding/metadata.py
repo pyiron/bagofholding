@@ -5,11 +5,12 @@ Tools for extracting and logging information about python objects.
 from __future__ import annotations
 
 import dataclasses
-import re
 from collections.abc import Callable, ItemsView
 from importlib import import_module
 from sys import version_info
 from typing import Any, Literal, TypeAlias
+
+from packaging import version as packaging_version
 
 from bagofholding.exceptions import EnvironmentMismatchError
 
@@ -97,9 +98,62 @@ def _scrape_version_attribute(module_name: str) -> str | None:
 
 
 VersionValidatorType: TypeAlias = (
-    Literal["exact", "semantic-minor", "semantic-major", "none"]
+    Literal["exact", "semantic-patch", "semantic-minor", "semantic-major", "none"]
     | Callable[[str, str], bool]
 )
+
+_SEMANTIC_DEPTHS: dict[str, int] = {
+    "semantic-patch": 3,
+    "semantic-minor": 2,
+    "semantic-major": 1,
+}
+
+
+def versions_match(current: str, stored: str, validator: VersionValidatorType) -> bool:
+    """
+    Compare a current version string against a stored reference.
+
+    Args:
+        current (str): The version in the current environment.
+        stored (str): The version recorded at save time.
+        validator (VersionValidatorType): "exact" (literal string equality),
+            "semantic-patch"/"semantic-minor"/"semantic-major" (PEP 440 versions
+            match in their major.minor.micro / major.minor / major release
+            components, ignoring pre-, post-, dev- and local segments; versions
+            that cannot be parsed must match exactly), "none" (always matches), or
+            a callable taking `(current, stored)` and returning a bool.
+
+    Returns:
+        (bool): Whether the versions match under the validator.
+
+    Raises:
+        ValueError: If the validator is an unrecognized keyword.
+    """
+    if validator == "none":
+        return True
+    if validator == "exact":
+        return current == stored
+    if isinstance(validator, str):
+        if validator not in _SEMANTIC_DEPTHS:
+            raise ValueError(
+                f"Unrecognized validator keyword {validator} -- please supply "
+                f"{VersionValidatorType}"
+            )
+        return _semantic_match(current, stored, _SEMANTIC_DEPTHS[validator])
+    return validator(current, stored)
+
+
+def _semantic_match(current: str, stored: str, depth: int) -> bool:
+    try:
+        current_release = _release(packaging_version.Version(current))
+        stored_release = _release(packaging_version.Version(stored))
+    except packaging_version.InvalidVersion:
+        return current == stored
+    return current_release[:depth] == stored_release[:depth]
+
+
+def _release(version: packaging_version.Version) -> tuple[int, int, int]:
+    return version.major, version.minor, version.micro
 
 
 def validate_version(
@@ -113,14 +167,8 @@ def validate_version(
 
     Args:
         metadata (Metadata): The metadata to validate.
-        validator ("exact" | Callable[[str, str], bool]): A recognized keyword or a
-            callable that takes the current and metadata versions as strings and
-            returns a boolean to indicate whether the current version matches the
-            metadata reference. Keywords are "exact" (versions must be identical),
-            "semantic-minor" (semantic versions (X.Y.Z where all are integers) match
-            in the first two digits; all non-semantic versions must match exactly),
-            "semantic-major" (semantic versions match in the first digit), and "none"
-            (don't compare the versions at all).
+        validator (VersionValidatorType): A recognized keyword or a callable;
+            see :func:`versions_match` for semantics.
         version_scraping (dict[str, Callable[[str], str]] | None): An optional
             dictionary mapping module names to a callable that takes this name and
             returns a version (or None). The default callable imports the module
@@ -143,55 +191,10 @@ def validate_version(
                 f"in the metadata that could not be found in the current environment."
             ) from e
 
-        version_validator: VersionValidatorType
-        if validator == "exact":
-            version_validator = _versions_are_equal
-        elif validator == "semantic-minor":
-            version_validator = _versions_match_semantic_minor
-        elif validator == "semantic-major":
-            version_validator = _versions_match_semantic_major
-        else:
-            version_validator = validator
-
-        if isinstance(version_validator, str):
-            if version_validator == "none":
-                return
-            else:
-                raise ValueError(
-                    f"Unrecognized validator keyword {version_validator} -- please supply {VersionValidatorType}"
-                )
-        elif version_validator(current_version, metadata.version):
+        if versions_match(current_version, metadata.version, validator):
             return
         raise EnvironmentMismatchError(
             f"{metadata.module} is stored with version {metadata.version}, "
             f"but the current environment has {current_version}. This does not pass "
-            f"validation criterion: {version_validator}"
+            f"validation criterion: {validator}"
         )
-
-
-def _versions_are_equal(version: str, reference: str) -> bool:
-    return version == reference
-
-
-def _decompose_semver(version: str) -> tuple[int, int, int] | None:
-    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
-    if match:
-        major, minor, patch = match.groups()
-        return int(major), int(minor), int(patch)
-    return None
-
-
-def _versions_match_semantic_minor(version: str, reference: str) -> bool:
-    v_parts = _decompose_semver(version)
-    r_parts = _decompose_semver(reference)
-    if v_parts and r_parts:
-        return v_parts[:2] == r_parts[:2]
-    return version == reference
-
-
-def _versions_match_semantic_major(version: str, reference: str) -> bool:
-    v_parts = _decompose_semver(version)
-    r_parts = _decompose_semver(reference)
-    if v_parts and r_parts:
-        return v_parts[0] == r_parts[0]
-    return version == reference
