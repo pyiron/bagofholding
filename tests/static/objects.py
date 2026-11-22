@@ -159,3 +159,30 @@ class Recursing:
 
 
 is_a_lambda = lambda x: isinstance(x, int)  # noqa: E731
+
+
+class Slotted:
+    __slots__ = ("a", "b", "unset")
+
+    def __init__(self, a=1, b="two"):
+        self.a = a
+        self.b = b
+
+    def __eq__(self, other):
+        return (
+            other.__class__ == self.__class__
+            and other.a == self.a
+            and other.b == self.b
+            and hasattr(other, "unset") == hasattr(self, "unset")
+        )
+
+
+class SlottedWithDict(Slotted):
+    """Subclass without ``__slots__``, so instances have both slots and a dict."""
+
+    def __init__(self, a=3, b="four"):
+        super().__init__(a, b)
+        self.extra = [5]
+
+    def __eq__(self, other):
+        return super().__eq__(other) and other.extra == self.extra

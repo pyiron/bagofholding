@@ -18,6 +18,8 @@ from static.objects import (
     NestedParent,
     Parent,
     Recursing,
+    Slotted,
+    SlottedWithDict,
     SomeData,
     is_a_lambda,
 )
@@ -188,6 +190,8 @@ class AbstractTestNamespace:
                     DotDict({"forty-two": 42}),  # Inheriting from a built-in class
                     NestedParent.NestedChild(),  # Requiring qualname
                     Recursing(2),
+                    Slotted(),  # __slots__ only, no __dict__
+                    SlottedWithDict(),  # __slots__ and __dict__
                     # Arrays of str and bytes types get special treatment
                     np.array([""], dtype="<U1"),  # string
                     np.array([b""], dtype="|S1"),  # byte
