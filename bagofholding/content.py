@@ -425,6 +425,11 @@ def _default_setstate(obj: object, state: object) -> None:
     The state is either a dict for :attr:`__dict__`, or -- for classes with
     :attr:`__slots__` -- a ``(dict_state, slots_state)`` tuple where either element
     may be ``None``.
+
+    The pickle docs for :meth:`object.__reduce__` only mention the dict case; the
+    tuple case is documented under :meth:`object.__getstate__`, and implemented in
+    ``pickle._Unpickler.load_build`` (``Lib/pickle.py``) and ``load_build`` in
+    ``Modules/_pickle.c``, which this mirrors.
     """
     slot_state: dict[str, Any] | None = None
     if isinstance(state, tuple) and len(state) == 2:
