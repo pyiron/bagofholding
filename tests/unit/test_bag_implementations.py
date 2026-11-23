@@ -305,6 +305,8 @@ class AbstractTestNamespace:
                 "cycle_tuple": c.Reducible,
                 "cycle_frozenset": c.Reducible,
                 "cycle_constructor_args": c.Reducible,
+                "slotted": c.Reducible,
+                "slotted_with_dict": c.Reducible,
             }
             cases = build_cases()
             self.assertEqual(

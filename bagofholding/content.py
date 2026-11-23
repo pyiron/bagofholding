@@ -469,6 +469,29 @@ ReduceReturnType: TypeAlias = (
 PickleHint: TypeAlias = str | tuple[Any, ...]
 
 
+def _default_setstate(obj: object, state: object) -> None:
+    """
+    Restore state on an object without :meth:`__setstate__`, following pickle.
+
+    The state is either a dict for :attr:`__dict__`, or -- for classes with
+    :attr:`__slots__` -- a ``(dict_state, slots_state)`` tuple where either element
+    may be ``None``.
+
+    The pickle docs for :meth:`object.__reduce__` only mention the dict case; the
+    tuple case is documented under :meth:`object.__getstate__`, and implemented in
+    ``pickle._Unpickler.load_build`` (``Lib/pickle.py``) and ``load_build`` in
+    ``Modules/_pickle.c``, which this mirrors.
+    """
+    slot_state: dict[str, Any] | None = None
+    if isinstance(state, tuple) and len(state) == 2:
+        state, slot_state = state
+    if state:
+        obj.__dict__.update(cast(dict[Any, Any], state))
+    if slot_state:
+        for k, v in slot_state.items():
+            setattr(obj, k, v)
+
+
 class Reducible(ReflexiveGroup[object]):
     _rich_metadata = True
     reduction_fields: ClassVar[tuple[str, str, str, str, str, str]] = (
@@ -562,8 +585,7 @@ class Reducible(ReflexiveGroup[object]):
             elif hasattr(obj, "__setstate__"):
                 obj.__setstate__(rv[2])
             else:
-                # "If the object has no such method then, the value must be a dictionary"
-                obj.__dict__.update(cast(dict[Any, Any], rv[2]))
+                _default_setstate(obj, rv[2])
         if n_items >= 4 and rv[3] is not None:
             if hasattr(obj, "append"):
                 for item in cast(ListItemsType, rv[3]):
