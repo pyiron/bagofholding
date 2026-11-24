@@ -67,7 +67,7 @@ class AbstractTestNamespace:
             self.assertEqual(42, self.bag_class()(self.save_name).load())
 
         def test_stored_unknown_code_rejected(self):
-            for code in ("v220", "v200"):
+            for code in ("v220", "v240"):
                 with self.subTest(code=code):
                     self._save_with_stored_libver(code)
                     with self.assertRaisesRegex(
@@ -154,7 +154,7 @@ class AbstractTestNamespace:
 
         def test_default_save_stores_max_libver(self):
             self.bag_class().save(42, self.save_name)
-            self.assertEqual("v114", self._stored(self.save_name))
+            self.assertEqual(self.bag_class().max_libver, self._stored(self.save_name))
 
         def test_explicit_libver_stored_and_loads(self):
             self.bag_class().save(42, self.save_name, libver="v110")
@@ -162,7 +162,7 @@ class AbstractTestNamespace:
             self.assertEqual(42, self.bag_class()(self.save_name).load())
 
         def test_invalid_libver_rejected_before_writing(self):
-            for code in ("latest", "earliest", "v200", "v116"):
+            for code in ("latest", "earliest", "v220", "v116"):
                 with self.subTest(code=code):
                     with self.assertRaises(ValueError):
                         self.bag_class().save(42, self.save_name, libver=code)
@@ -197,7 +197,7 @@ class AbstractTestNamespace:
             self.bag_class().save(1, f"{name}/a", libver="v108")
             self.bag_class().save(2, f"{name}/b")
             self.assertEqual("v108", self._stored(f"{name}/a"))
-            self.assertEqual("v114", self._stored(f"{name}/b"))
+            self.assertEqual(self.bag_class().max_libver, self._stored(f"{name}/b"))
             self.assertEqual(1, self.bag_class()(f"{name}/a").load())
             self.assertEqual(2, self.bag_class()(f"{name}/b").load())
 

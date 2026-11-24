@@ -21,7 +21,7 @@ class HasH5FileContext:
     extensions is controlled by :attr:`file_extensions`.
     """
 
-    max_libver: ClassVar[str] = "v114"
+    max_libver: ClassVar[str] = "v200"
     file_extensions: ClassVar[tuple[str, ...]] = (".h5", ".hdf5")
 
     filepath: pathlib.Path
