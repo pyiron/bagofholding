@@ -306,11 +306,13 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
 
     def _unpack_field(self, path: str, key: str) -> str | None:
         try:
-            return self.maybe_decode(
-                cast(str, self._read_pathlike(self._field_to_path(path, key)))
-            )
+            self._read_trie(self._field_to_path(path, key))
         except KeyError:
-            return None
+            return None  # Genuinely absent from the trie
+        # Past here, HDF5 open/read failures are real errors and propagate
+        return self.maybe_decode(
+            cast(str, self._read_pathlike(self._field_to_path(path, key)))
+        )
 
     def _read_pathlike(self, path: str) -> H5Scalar:
         # A real path or one with the field delimiter to find a metadata field

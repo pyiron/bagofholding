@@ -228,6 +228,27 @@ class TestTrieH5BagLibverLoad(AbstractTestNamespace.TestLibverLoad):
     def bag_class(cls):
         return bagofholding.h5.triebag.TrieH5Bag
 
+    def test_trieh5bag_unpack_field_missing_vs_unreadable(self):
+        self.bag_class().save(42, self.save_name)
+        loaded = self.bag_class()(self.save_name)
+        with loaded:
+            self.assertIsNone(loaded._unpack_field("/", "no_such_field"))
+            self.assertIsNone(loaded._unpack_field("/no_such_path", "qualname"))
+            with (
+                mock.patch.object(
+                    loaded,
+                    "_read_trie",
+                    return_value=(0, 0),
+                ),
+                mock.patch.object(
+                    loaded,
+                    "_read_pathlike",
+                    side_effect=KeyError("Unable to synchronously open object"),
+                ),
+                self.assertRaises(KeyError),
+            ):
+                loaded._unpack_field("/", "qualname")
+
 
 class TestH5BagLibverSave(AbstractTestNamespace.TestLibverSave):
     @classmethod
