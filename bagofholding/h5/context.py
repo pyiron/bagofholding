@@ -22,6 +22,7 @@ class HasH5FileContext:
     """
 
     libver_str: ClassVar[str] = "latest"
+    max_libver: ClassVar[str] = "v114"
     file_extensions: ClassVar[tuple[str, ...]] = (".h5", ".hdf5")
 
     filepath: pathlib.Path
@@ -107,7 +108,10 @@ class HasH5FileContext:
         if self._file is not None:
             raise FileAlreadyOpenError(f"The bag at {self.filepath} is already open")
         file_path, group_path = self._parse_path()
-        self._file = h5py.File(file_path, mode, libver=self.libver_str)
+        if mode == "r":
+            self._file = h5py.File(file_path, mode)
+        else:
+            self._file = h5py.File(file_path, mode, libver=self.libver_str)
         if group_path == "/":
             return self._file
         if group_path in self._file:

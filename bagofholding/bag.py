@@ -188,7 +188,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 bagofholding version saved in an existing bag must match the
                 current one; see :func:`bagofholding.metadata.versions_match`. All
                 other bag info (class, module, and implementation-specific fields)
-                must always match exactly. (Default is "semantic-minor".)
+                must always match exactly. "none" also skips the HDF5 format-code
+                check of the H5 bags. (Default is "semantic-minor".)
         """
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
@@ -213,6 +214,16 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                     f"class info is {self.get_bag_info()}, but the info saved is "
                     f"{self.bag_info}"
                 )
+            self._validate_loaded_bag_info(info, bag_version_validator)
+
+    def _validate_loaded_bag_info(
+        self, info: BagInfo, bag_version_validator: VersionValidatorType
+    ) -> None:
+        """Hook: extra validation of saved bag info after the generic checks pass.
+
+        The base implementation does nothing. Subclasses should raise
+        :class:`BagMismatchError` (or similar) if the saved info is unusable.
+        """
 
     @abc.abstractmethod
     def _load_existing_bag_info(self) -> BagInfo | None:
