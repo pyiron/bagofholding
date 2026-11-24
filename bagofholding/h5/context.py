@@ -32,6 +32,11 @@ class HasH5FileContext:
     _write_libver: str
 
     @property
+    def _write_libver_bounds(self) -> tuple[str, str]:
+        """Both libver bounds, since h5py treats a single string as only the floor."""
+        return (self._write_libver, self._write_libver)
+
+    @property
     def file(self) -> h5py.Group:
         """The bag's working root group.
 
@@ -111,7 +116,7 @@ class HasH5FileContext:
         if mode == "r":
             self._file = h5py.File(file_path, mode)
         else:
-            self._file = h5py.File(file_path, mode, libver=self._write_libver)
+            self._file = h5py.File(file_path, mode, libver=self._write_libver_bounds)
         if group_path == "/":
             return self._file
         if group_path in self._file:
@@ -136,9 +141,9 @@ class HasH5FileContext:
                     raise FileExistsError(
                         f"{self.filepath} already exists or is not a file."
                     )
-            self._file = h5py.File(file_path, "w", libver=self._write_libver)
+            self._file = h5py.File(file_path, "w", libver=self._write_libver_bounds)
             return
-        self._file = h5py.File(file_path, "a", libver=self._write_libver)
+        self._file = h5py.File(file_path, "a", libver=self._write_libver_bounds)
         try:
             self._reject_save_under_existing_bag(group_path)
             if group_path in self._file:

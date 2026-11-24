@@ -37,10 +37,12 @@ class AbstractTestNamespace:
                 with contextlib.suppress(FileNotFoundError):
                     os.remove(path)
 
-        def _save_with_stored_libver(self, code: str | None) -> None:
+        def _save_with_stored_libver(
+            self, code: str | None, **info_overrides: Any
+        ) -> None:
             base = self.bag_class()
             info = dataclasses.replace(
-                cast(H5Info, base.get_bag_info()), libver_str=code
+                cast(H5Info, base.get_bag_info()), libver_str=code, **info_overrides
             )
 
             def _pack_bag_info(this):
@@ -188,7 +190,7 @@ class AbstractTestNamespace:
             ]
             self.assertTrue(write_calls)
             for call in write_calls:
-                self.assertEqual("v110", call.kwargs.get("libver"))
+                self.assertEqual(("v110", "v110"), call.kwargs.get("libver"))
 
         def test_subpath_save_keeps_own_libver(self):
             name = f"{self.save_name}.h5"
