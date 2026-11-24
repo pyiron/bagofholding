@@ -17,8 +17,17 @@ LIBVER_HDF5_VERSIONS: dict[str, tuple[int, int]] = {
 }
 
 
+def _require_known(max_libver: str) -> None:
+    if max_libver not in LIBVER_HDF5_VERSIONS:
+        raise ValueError(
+            f"Invalid max_libver {max_libver!r}; must be one of: "
+            f"{', '.join(LIBVER_HDF5_VERSIONS)}"
+        )
+
+
 def allowed_libvers(max_libver: str) -> tuple[str, ...]:
     """The libver codes no newer than `max_libver`, oldest first."""
+    _require_known(max_libver)
     codes = tuple(LIBVER_HDF5_VERSIONS)
     return codes[: codes.index(max_libver) + 1]
 
@@ -41,6 +50,7 @@ def resolve_save_libver(libver: str | None, max_libver: str) -> str:
 
 def check_hdf5_supports(max_libver: str) -> None:
     """Raise if the installed HDF5 is too old to write `max_libver`."""
+    _require_known(max_libver)
     required = LIBVER_HDF5_VERSIONS[max_libver]
     found = tuple(h5py.version.hdf5_version_tuple[:2])
     if found < required:

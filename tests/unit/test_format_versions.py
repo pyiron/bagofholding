@@ -36,3 +36,13 @@ class TestFormatVersions(unittest.TestCase):
                 EnvironmentMismatchError, r"HDF5 >= 2\.0.*1\.14\.6.*update h5py"
             ):
                 format_versions.check_hdf5_supports("v200")
+
+
+class TestInvalidMaxLibver(unittest.TestCase):
+    def test_allowed_libvers_rejects_unknown_code(self):
+        with self.assertRaisesRegex(ValueError, "Invalid max_libver 'latest'.*v200"):
+            format_versions.allowed_libvers("latest")
+
+    def test_check_hdf5_supports_rejects_unknown_code(self):
+        with self.assertRaisesRegex(ValueError, "Invalid max_libver 'v999'.*v200"):
+            format_versions.check_hdf5_supports("v999")
