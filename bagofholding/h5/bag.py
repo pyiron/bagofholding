@@ -86,7 +86,11 @@ class H5Bag(Bag, HasH5FileContext, ArrayPacker):
         self, info: BagInfo, bag_version_validator: VersionValidatorType
     ) -> None:
         format_versions.check_hdf5_supports(self.max_libver)
-        if bag_version_validator != "none":
+        saved_by_this_class = (info.qualname, info.module) == (
+            self.get_bag_info().qualname,
+            self.get_bag_info().module,
+        )
+        if bag_version_validator != "none" and saved_by_this_class:
             format_versions.check_stored_libver(
                 cast(H5Info, info).libver_str, self.max_libver
             )

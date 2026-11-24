@@ -204,6 +204,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         info = self._load_existing_bag_info()
         if info is not None:
             self.bag_info = info
+            self._validate_loaded_bag_info(info, bag_version_validator)
             if bag_version_validator != "none" and not self._meets_version_floor(info):
                 raise BagMismatchError(
                     f"The bag saved at {filepath} has bagofholding version "
@@ -220,12 +221,15 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                     f"class info is {self.get_bag_info()}, but the info saved is "
                     f"{self.bag_info}"
                 )
-            self._validate_loaded_bag_info(info, bag_version_validator)
 
     def _validate_loaded_bag_info(
         self, info: BagInfo, bag_version_validator: VersionValidatorType
     ) -> None:
-        """Hook: extra validation of saved bag info after the generic checks pass.
+        """Hook: extra validation of saved bag info.
+
+        Runs right after the info is loaded, *before* the version-floor and generic
+        bag-info checks, so that specific problems (e.g., a file format from a
+        newer bagofholding) are reported in preference to a generic mismatch.
 
         The base implementation does nothing. Subclasses should raise
         :class:`BagMismatchError` (or similar) if the saved info is unusable.

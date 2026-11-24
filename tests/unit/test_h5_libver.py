@@ -74,6 +74,17 @@ class AbstractTestNamespace:
                         self.bag_class()(self.save_name)
                     os.remove(self.save_name)
 
+        def test_libver_message_wins_over_newer_minor_version(self):
+            self._save_with_stored_libver("v999", version="99.0.0")
+            with self.assertRaisesRegex(BagMismatchError, "update bagofholding"):
+                self.bag_class()(self.save_name)
+
+        def test_other_bag_class_gets_generic_mismatch(self):
+            self._save_with_stored_libver("v999", qualname="SomeOtherBag")
+            with self.assertRaises(BagMismatchError) as ctx:
+                self.bag_class()(self.save_name)
+            self.assertNotIn("update bagofholding", str(ctx.exception))
+
         def test_stored_missing_code_rejected(self):
             self._save_with_stored_libver(None)
             with self.assertRaises(BagMismatchError):
