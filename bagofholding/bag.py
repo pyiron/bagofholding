@@ -94,6 +94,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
         overwrite_existing: bool = True,
         require_importable: bool | None = None,
+        **backend_options: Any,
     ) -> None:
         """
         Save a python object to file.
@@ -128,6 +129,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 e.g. if you will re-execute code to make them importable before
                 loading.) Objects in `__main__` are importable at save time but not in
                 a fresh interpreter; use `forbidden_modules` to guard against that.
+            **backend_options (Any): Backend-specific save options, e.g. `libver` for
+                the HDF5 bags.
         """
         if require_importable is None:
             require_importable = True
@@ -139,7 +142,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        bag = cls._new_for_save(filepath, overwrite_existing)
+        bag = cls._new_for_save(filepath, overwrite_existing, **backend_options)
         bag._pack_bag_info()
         pack(
             obj,
@@ -158,7 +161,10 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def _new_for_save(
-        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+        cls,
+        filepath: str | pathlib.Path,
+        overwrite_existing: bool,
+        **backend_options: Any,
     ) -> Self:
         """Hook: build a bag instance ready to be packed into.
 

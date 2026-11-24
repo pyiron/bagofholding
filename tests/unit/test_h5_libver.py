@@ -124,6 +124,70 @@ class AbstractTestNamespace:
             for call in read_calls:
                 self.assertNotIn("libver", call.kwargs)
 
+    class TestLibverSave(unittest.TestCase, abc.ABC):
+        save_name = "libver_savefile"
+
+        @classmethod
+        @abc.abstractmethod
+        def bag_class(cls) -> type[bag.Bag]: ...
+
+        def tearDown(self):
+            for path in (self.save_name, f"{self.save_name}.h5"):
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove(path)
+
+        def _stored(self, path: str) -> str | None:
+            return cast(H5Info, self.bag_class()(path).bag_info).libver_str
+
+        def test_default_save_stores_max_libver(self):
+            self.bag_class().save(42, self.save_name)
+            self.assertEqual("v114", self._stored(self.save_name))
+
+        def test_explicit_libver_stored_and_loads(self):
+            self.bag_class().save(42, self.save_name, libver="v110")
+            self.assertEqual("v110", self._stored(self.save_name))
+            self.assertEqual(42, self.bag_class()(self.save_name).load())
+
+        def test_invalid_libver_rejected_before_writing(self):
+            for code in ("latest", "earliest", "v200", "v116"):
+                with self.subTest(code=code):
+                    with self.assertRaises(ValueError):
+                        self.bag_class().save(42, self.save_name, libver=code)
+                    self.assertFalse(os.path.exists(self.save_name))
+
+        def test_unknown_option_is_type_error(self):
+            with self.assertRaisesRegex(TypeError, "Unexpected save option"):
+                self.bag_class().save(42, self.save_name, bogus=1)
+
+        def test_env_check_on_save(self):
+            with (
+                mock.patch.object(h5py.version, "hdf5_version_tuple", (1, 12, 0)),
+                self.assertRaises(EnvironmentMismatchError),
+            ):
+                self.bag_class().save(42, self.save_name, libver="v110")
+            self.assertFalse(os.path.exists(self.save_name))
+
+        def test_write_opens_use_chosen_libver(self):
+            with mock.patch("h5py.File", wraps=h5py.File) as spy:
+                self.bag_class().save(42, self.save_name, libver="v110")
+            write_calls = [
+                c
+                for c in spy.call_args_list
+                if (c.args[1] if len(c.args) > 1 else c.kwargs.get("mode")) != "r"
+            ]
+            self.assertTrue(write_calls)
+            for call in write_calls:
+                self.assertEqual("v110", call.kwargs.get("libver"))
+
+        def test_subpath_save_keeps_own_libver(self):
+            name = f"{self.save_name}.h5"
+            self.bag_class().save(1, f"{name}/a", libver="v108")
+            self.bag_class().save(2, f"{name}/b")
+            self.assertEqual("v108", self._stored(f"{name}/a"))
+            self.assertEqual("v114", self._stored(f"{name}/b"))
+            self.assertEqual(1, self.bag_class()(f"{name}/a").load())
+            self.assertEqual(2, self.bag_class()(f"{name}/b").load())
+
 
 class TestH5BagLibverLoad(AbstractTestNamespace.TestLibverLoad):
     @classmethod
@@ -147,6 +211,18 @@ class TestH5BagLibverLoad(AbstractTestNamespace.TestLibverLoad):
 
 
 class TestTrieH5BagLibverLoad(AbstractTestNamespace.TestLibverLoad):
+    @classmethod
+    def bag_class(cls):
+        return bagofholding.h5.triebag.TrieH5Bag
+
+
+class TestH5BagLibverSave(AbstractTestNamespace.TestLibverSave):
+    @classmethod
+    def bag_class(cls):
+        return bagofholding.h5.bag.H5Bag
+
+
+class TestTrieH5BagLibverSave(AbstractTestNamespace.TestLibverSave):
     @classmethod
     def bag_class(cls):
         return bagofholding.h5.triebag.TrieH5Bag

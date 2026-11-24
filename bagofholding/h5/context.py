@@ -21,7 +21,6 @@ class HasH5FileContext:
     extensions is controlled by :attr:`file_extensions`.
     """
 
-    libver_str: ClassVar[str] = "latest"
     max_libver: ClassVar[str] = "v114"
     file_extensions: ClassVar[tuple[str, ...]] = (".h5", ".hdf5")
 
@@ -30,6 +29,7 @@ class HasH5FileContext:
     _context_depth: int
     _parsed_path: tuple[pathlib.Path, str] | None
     _working_root: h5py.Group | None
+    _write_libver: str
 
     @property
     def file(self) -> h5py.Group:
@@ -111,7 +111,7 @@ class HasH5FileContext:
         if mode == "r":
             self._file = h5py.File(file_path, mode)
         else:
-            self._file = h5py.File(file_path, mode, libver=self.libver_str)
+            self._file = h5py.File(file_path, mode, libver=self._write_libver)
         if group_path == "/":
             return self._file
         if group_path in self._file:
@@ -136,9 +136,9 @@ class HasH5FileContext:
                     raise FileExistsError(
                         f"{self.filepath} already exists or is not a file."
                     )
-            self._file = h5py.File(file_path, "w", libver=self.libver_str)
+            self._file = h5py.File(file_path, "w", libver=self._write_libver)
             return
-        self._file = h5py.File(file_path, "a", libver=self.libver_str)
+        self._file = h5py.File(file_path, "a", libver=self._write_libver)
         try:
             self._reject_save_under_existing_bag(group_path)
             if group_path in self._file:

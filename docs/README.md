@@ -120,7 +120,7 @@ We saw this in the GUI snapshot above, but it can also be accessed directly by c
 
 ```python
 >>> boh.H5Bag.get_bag_info()
-H5Info(qualname='H5Bag', module='bagofholding.h5.bag', version='...', libver_str='latest')
+H5Info(qualname='H5Bag', module='bagofholding.h5.bag', version='...', libver_str='v114')
 
 ```
 

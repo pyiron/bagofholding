@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import pathlib
 from typing import Any, ClassVar, Self, TypeAlias, TypeVar, cast
 
@@ -36,6 +37,10 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
     The resulting HDF5 file cannot be directly related to the structure of the stored
     object, but must be re-mapped via mapping fields. Metadata is also lumped in with
     other string data to minimize the number of different h5 groups.
+
+    ``save`` accepts a ``libver`` option (default :attr:`max_libver`) controlling
+    the HDF5 file-format version written, which is also stored in the bag info.
+    Only codes up to :attr:`max_libver` are accepted; ``"latest"`` is not.
     """
 
     _content_key: ClassVar[str] = "content_type"
@@ -74,7 +79,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
             qualname=cls.__qualname__,
             module=cls.__module__,
             version=cls.get_version(),
-            libver_str=cls.libver_str,
+            libver_str=cls.max_libver,
         )
 
     @classmethod
@@ -88,6 +93,7 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
         self._context_depth = 0
         self._parsed_path = None
         self._working_root = None
+        self._write_libver = self.max_libver
         self._unpacked_paths: StringArrayType | None = None
         self._unpacked_type_index: IntArrayType | None = None
         self._unpacked_position_index: IntArrayType | None = None
@@ -156,11 +162,29 @@ class TrieH5Bag(Bag, HasH5FileContext, ArrayPacker):
 
     @classmethod
     def _new_for_save(
-        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+        cls,
+        filepath: str | pathlib.Path,
+        overwrite_existing: bool,
+        libver: str | None = None,
+        **backend_options: Any,
     ) -> Self:
+        if backend_options:
+            raise TypeError(
+                f"Unexpected save option(s) for {cls.__name__}: "
+                f"{sorted(backend_options)}"
+            )
+        format_versions.check_hdf5_supports(cls.max_libver)
+        resolved = format_versions.resolve_save_libver(libver, cls.max_libver)
         bag = cls(filepath, _skip_load=True)
+        bag._write_libver = resolved
         bag._open_for_write(overwrite_existing)
         return bag
+
+    def _pack_bag_info(self) -> None:
+        info = dataclasses.replace(
+            cast(H5Info, self.get_bag_info()), libver_str=self._write_libver
+        )
+        self._pack_fields(info, PATH_DELIMITER)
 
     def _write(self) -> None:
         str_type = h5py.string_dtype(encoding="utf-8")
