@@ -21,7 +21,7 @@ class HasH5FileContext:
     extensions is controlled by :attr:`file_extensions`.
     """
 
-    libver_str: ClassVar[str] = "latest"
+    max_libver: ClassVar[str] = "v114"
     file_extensions: ClassVar[tuple[str, ...]] = (".h5", ".hdf5")
 
     filepath: pathlib.Path
@@ -29,6 +29,12 @@ class HasH5FileContext:
     _context_depth: int
     _parsed_path: tuple[pathlib.Path, str] | None
     _working_root: h5py.Group | None
+    _write_libver: str
+
+    @property
+    def _write_libver_bounds(self) -> tuple[str, str]:
+        """Both libver bounds, since h5py treats a single string as only the floor."""
+        return (self._write_libver, self._write_libver)
 
     @property
     def file(self) -> h5py.Group:
@@ -107,7 +113,10 @@ class HasH5FileContext:
         if self._file is not None:
             raise FileAlreadyOpenError(f"The bag at {self.filepath} is already open")
         file_path, group_path = self._parse_path()
-        self._file = h5py.File(file_path, mode, libver=self.libver_str)
+        if mode == "r":
+            self._file = h5py.File(file_path, mode)
+        else:
+            self._file = h5py.File(file_path, mode, libver=self._write_libver_bounds)
         if group_path == "/":
             return self._file
         if group_path in self._file:
@@ -132,9 +141,9 @@ class HasH5FileContext:
                     raise FileExistsError(
                         f"{self.filepath} already exists or is not a file."
                     )
-            self._file = h5py.File(file_path, "w", libver=self.libver_str)
+            self._file = h5py.File(file_path, "w", libver=self._write_libver_bounds)
             return
-        self._file = h5py.File(file_path, "a", libver=self.libver_str)
+        self._file = h5py.File(file_path, "a", libver=self._write_libver_bounds)
         try:
             self._reject_save_under_existing_bag(group_path)
             if group_path in self._file:

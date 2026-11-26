@@ -94,6 +94,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         _pickle_protocol: SupportsIndex = MAX_PICKLE_PROTOCOL,
         overwrite_existing: bool = True,
         require_importable: bool | None = None,
+        **backend_options: Any,
     ) -> None:
         """
         Save a python object to file.
@@ -128,6 +129,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 e.g. if you will re-execute code to make them importable before
                 loading.) Objects in `__main__` are importable at save time but not in
                 a fresh interpreter; use `forbidden_modules` to guard against that.
+            **backend_options (Any): Backend-specific save options, e.g. `libver` for
+                the HDF5 bags.
         """
         if require_importable is None:
             require_importable = True
@@ -139,7 +142,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        bag = cls._new_for_save(filepath, overwrite_existing)
+        bag = cls._new_for_save(filepath, overwrite_existing, **backend_options)
         bag._pack_bag_info()
         pack(
             obj,
@@ -158,7 +161,10 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
     @classmethod
     @abc.abstractmethod
     def _new_for_save(
-        cls, filepath: str | pathlib.Path, overwrite_existing: bool
+        cls,
+        filepath: str | pathlib.Path,
+        overwrite_existing: bool,
+        **backend_options: Any,
     ) -> Self:
         """Hook: build a bag instance ready to be packed into.
 
@@ -188,7 +194,8 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                 bagofholding version saved in an existing bag must match the
                 current one; see :func:`bagofholding.metadata.versions_match`. All
                 other bag info (class, module, and implementation-specific fields)
-                must always match exactly. (Default is "semantic-minor".)
+                must always match exactly. "none" also skips the HDF5 format-code
+                check of the H5 bags. (Default is "semantic-minor".)
         """
         super().__init__(*args, **kwargs)
         self.filepath = pathlib.Path(filepath)
@@ -197,6 +204,7 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
         info = self._load_existing_bag_info()
         if info is not None:
             self.bag_info = info
+            self._validate_loaded_bag_info(info, bag_version_validator)
             if bag_version_validator != "none" and not self._meets_version_floor(info):
                 raise BagMismatchError(
                     f"The bag saved at {filepath} has bagofholding version "
@@ -213,6 +221,19 @@ class Bag(Packer, Mapping[str, Metadata | None], abc.ABC):
                     f"class info is {self.get_bag_info()}, but the info saved is "
                     f"{self.bag_info}"
                 )
+
+    def _validate_loaded_bag_info(
+        self, info: BagInfo, bag_version_validator: VersionValidatorType
+    ) -> None:
+        """Hook: extra validation of saved bag info.
+
+        Runs right after the info is loaded, *before* the version-floor and generic
+        bag-info checks, so that specific problems (e.g., a file format from a
+        newer bagofholding) are reported in preference to a generic mismatch.
+
+        The base implementation does nothing. Subclasses should raise
+        :class:`BagMismatchError` (or similar) if the saved info is unusable.
+        """
 
     @abc.abstractmethod
     def _load_existing_bag_info(self) -> BagInfo | None:
