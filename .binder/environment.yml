@@ -8,7 +8,7 @@ dependencies:
 - numpy =2.5.3
 - packaging =26.3
 - pygtrie =2.6.2
-- pyiron_snippets =1.5.0
+- pyiron_snippets =1.5.1
 - ipytree =0.2.2
 - traitlets =5.16.1
 - python =3.13

@@ -28,7 +28,7 @@ dependencies = [
     "numpy==2.5.3",
     "packaging==26.3",
     "pygtrie==2.6.2",
-    "pyiron_snippets==1.5.0",
+    "pyiron_snippets==1.5.1",
 ]
 dynamic = [ "version",]
 authors = [
